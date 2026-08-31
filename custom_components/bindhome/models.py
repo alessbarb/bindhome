@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
 import re
+from dataclasses import dataclass, replace
 from typing import Any
 from uuid import uuid4
 
@@ -103,12 +103,21 @@ class Asset:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Asset:
         """Deserialize and validate an asset."""
-        asset_id = normalize_non_empty(str(data["id"]), "id")
-        name = normalize_non_empty(str(data["name"]), "name")
-        asset_type = normalize_identifier(str(data["asset_type"]), "asset_type")
+        if not isinstance(data, dict):
+            raise ModelValidationError("Asset data must be a dictionary")
+        try:
+            asset_id = normalize_non_empty(str(data["id"]), "id")
+            name = normalize_non_empty(str(data["name"]), "name")
+            asset_type = normalize_identifier(str(data["asset_type"]), "asset_type")
+        except KeyError as err:
+            raise ModelValidationError(
+                f"Missing required asset field: {err.args[0]}"
+            ) from err
         code_raw = data.get("code")
         area_raw = data.get("area_id")
         capabilities_raw = data.get("capabilities", [])
+        if not isinstance(capabilities_raw, (list, tuple)):
+            raise ModelValidationError("Capabilities must be a list or tuple")
         capabilities = tuple(
             sorted(
                 {
@@ -121,9 +130,15 @@ class Asset:
             id=asset_id,
             name=name,
             asset_type=asset_type,
-            code=(normalize_non_empty(str(code_raw), "code") if code_raw else None),
+            code=(
+                normalize_non_empty(str(code_raw), "code")
+                if code_raw is not None
+                else None
+            ),
             area_id=(
-                normalize_non_empty(str(area_raw), "area_id") if area_raw else None
+                normalize_non_empty(str(area_raw), "area_id")
+                if area_raw is not None
+                else None
             ),
             capabilities=capabilities,
         )
@@ -166,18 +181,25 @@ class Relation:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Relation:
         """Deserialize and validate a relation."""
-        relation = cls(
-            id=normalize_non_empty(str(data["id"]), "id"),
-            source_asset_id=normalize_non_empty(
-                str(data["source_asset_id"]), "source_asset_id"
-            ),
-            relation_type=normalize_identifier(
-                str(data["relation_type"]), "relation_type"
-            ),
-            target_asset_id=normalize_non_empty(
-                str(data["target_asset_id"]), "target_asset_id"
-            ),
-        )
+        if not isinstance(data, dict):
+            raise ModelValidationError("Relation data must be a dictionary")
+        try:
+            relation = cls(
+                id=normalize_non_empty(str(data["id"]), "id"),
+                source_asset_id=normalize_non_empty(
+                    str(data["source_asset_id"]), "source_asset_id"
+                ),
+                relation_type=normalize_identifier(
+                    str(data["relation_type"]), "relation_type"
+                ),
+                target_asset_id=normalize_non_empty(
+                    str(data["target_asset_id"]), "target_asset_id"
+                ),
+            )
+        except KeyError as err:
+            raise ModelValidationError(
+                f"Missing required relation field: {err.args[0]}"
+            ) from err
         if relation.source_asset_id == relation.target_asset_id:
             raise ModelValidationError("A relation cannot connect an asset to itself")
         return relation
@@ -228,10 +250,17 @@ class Binding:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Binding:
         """Deserialize and validate a binding."""
-        return cls(
-            id=normalize_non_empty(str(data["id"]), "id"),
-            asset_id=normalize_non_empty(str(data["asset_id"]), "asset_id"),
-            capability=normalize_identifier(str(data["capability"]), "capability"),
-            entity_id=normalize_non_empty(str(data["entity_id"]), "entity_id"),
-            role=normalize_identifier(str(data.get("role", "primary")), "role"),
-        )
+        if not isinstance(data, dict):
+            raise ModelValidationError("Binding data must be a dictionary")
+        try:
+            return cls(
+                id=normalize_non_empty(str(data["id"]), "id"),
+                asset_id=normalize_non_empty(str(data["asset_id"]), "asset_id"),
+                capability=normalize_identifier(str(data["capability"]), "capability"),
+                entity_id=normalize_non_empty(str(data["entity_id"]), "entity_id"),
+                role=normalize_identifier(str(data.get("role", "primary")), "role"),
+            )
+        except KeyError as err:
+            raise ModelValidationError(
+                f"Missing required binding field: {err.args[0]}"
+            ) from err

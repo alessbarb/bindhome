@@ -9,7 +9,6 @@ from homeassistant.helpers.typing import ConfigType
 from .manager import BindHomeManager
 from .services import async_register_services
 
-
 type BindHomeConfigEntry = ConfigEntry[BindHomeManager]
 
 
