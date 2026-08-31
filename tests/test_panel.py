@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.const import Platform
@@ -30,6 +30,7 @@ async def test_panel_registration(hass: HomeAssistant) -> None:
         ) as mock_register_panel,
         patch.object(hass, "http", MagicMock()) as mock_http,
     ):
+        mock_http.async_register_static_paths = AsyncMock()
         await async_register_panel(hass)
 
         mock_register_panel.assert_called_once()
@@ -40,11 +41,33 @@ async def test_panel_registration(hass: HomeAssistant) -> None:
         assert kwargs["config"]["js_url"] == "/bindhome_static/bindhome-panel.js"
         assert kwargs["require_admin"] is True
 
-        mock_http.register_static_path.assert_called_once()
-        path_args, path_kwargs = mock_http.register_static_path.call_args
-        assert path_args[0] == "/bindhome_static/bindhome-panel.js"
-        assert path_args[1].endswith("bindhome-panel.js")
-        assert path_kwargs["cache_headers"] is True
+        mock_http.async_register_static_paths.assert_called_once()
+        (path_configs,), _ = mock_http.async_register_static_paths.call_args
+        assert len(path_configs) == 1
+        assert path_configs[0].url_path == "/bindhome_static/bindhome-panel.js"
+        assert path_configs[0].path.endswith("bindhome-panel.js")
+        assert path_configs[0].cache_headers is True
+
+
+@pytest.mark.asyncio
+async def test_panel_registration_is_idempotent(hass: HomeAssistant) -> None:
+    """Test repeated setup does not register the panel or static path twice."""
+    with (
+        patch(
+            "homeassistant.components.frontend.async_register_built_in_panel"
+        ) as mock_register_panel,
+        patch(
+            "homeassistant.components.frontend.async_panel_exists",
+            side_effect=[False, True],
+        ),
+        patch.object(hass, "http", MagicMock()) as mock_http,
+    ):
+        mock_http.async_register_static_paths = AsyncMock()
+        await async_register_panel(hass)
+        await async_register_panel(hass)
+
+        mock_register_panel.assert_called_once()
+        mock_http.async_register_static_paths.assert_awaited_once()
 
 
 @pytest.mark.asyncio

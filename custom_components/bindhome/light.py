@@ -50,6 +50,8 @@ class BindHomeLight(LightEntity):
         self._resolution: Resolution | None = None
         self._attr_name = asset.name
         self._attr_unique_id = f"{DOMAIN}_{asset.id}"
+        self._attr_available = False
+        self._attr_is_on = None
 
     @property
     def asset_id(self) -> str:
@@ -61,25 +63,18 @@ class BindHomeLight(LightEntity):
         """Return whether an asset can be represented as a logical light."""
         return _CAPABILITY in asset.capabilities
 
-    @property
-    def available(self) -> bool:
-        """Be unavailable when the current binding cannot provide a live state."""
-        return bool(self._resolution and self._resolution.runtime_available)
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return the current on/off state, if the binding is usable."""
-        if not self._resolution or not self._resolution.runtime_available:
-            return None
-        if self._resolution.state == "on":
-            return True
-        if self._resolution.state == "off":
-            return False
-        return None
-
     async def async_update(self) -> None:
         """Refresh state from the binding resolved at operation time."""
         self._resolution = self._resolver.resolve(self._asset.id, _CAPABILITY)
+        self._attr_available = self._resolution.runtime_available
+        self._attr_is_on = (
+            self._resolution.state
+            if self._resolution.runtime_available
+            and self._resolution.state in {"on", "off"}
+            else None
+        )
+        if self._attr_is_on is not None:
+            self._attr_is_on = self._attr_is_on == "on"
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Forward turn-on to the currently bound switch or light."""

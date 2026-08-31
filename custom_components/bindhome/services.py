@@ -112,7 +112,11 @@ def async_register_services(hass: HomeAssistant) -> None:
             )
         except (ModelValidationError, RegistryError) as err:
             raise _translate_registry_error(err) from err
-        return {"relation": relation.to_dict()} if call.return_response else None
+        return (
+            cast(ServiceResponse, {"relation": relation.to_dict()})
+            if call.return_response
+            else None
+        )
 
     async def remove_relation(call: ServiceCall) -> ServiceResponse | None:
         manager = _get_manager(hass)
@@ -135,7 +139,11 @@ def async_register_services(hass: HomeAssistant) -> None:
             )
         except (ModelValidationError, RegistryError) as err:
             raise _translate_registry_error(err) from err
-        return {"binding": binding.to_dict()} if call.return_response else None
+        return (
+            cast(ServiceResponse, {"binding": binding.to_dict()})
+            if call.return_response
+            else None
+        )
 
     async def remove_binding(call: ServiceCall) -> ServiceResponse | None:
         manager = _get_manager(hass)

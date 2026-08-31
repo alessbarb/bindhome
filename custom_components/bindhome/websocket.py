@@ -7,6 +7,16 @@ from typing import Any, cast
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components import websocket_api
+from homeassistant.components.websocket_api.connection import ActiveConnection
+from homeassistant.components.websocket_api.const import (
+    ERR_INVALID_FORMAT,
+    ERR_NOT_FOUND,
+)
+from homeassistant.components.websocket_api.decorators import (
+    async_response,
+    require_admin,
+    websocket_command,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
@@ -54,27 +64,27 @@ def _get_manager(hass: HomeAssistant) -> BindHomeManager:
 
 
 def _send_error(
-    connection: websocket_api.ActiveConnection, msg: dict[str, Any], err: Exception
+    connection: ActiveConnection, msg: dict[str, Any], err: Exception
 ) -> None:
     """Translate domain and Home Assistant validation errors to stable WS errors."""
     if isinstance(err, RegistryNotFoundError):
-        code = websocket_api.ERR_NOT_FOUND
+        code = ERR_NOT_FOUND
     elif isinstance(err, RegistryConflictError):
         code = "conflict"
     elif isinstance(err, ServiceValidationError):
-        code = websocket_api.ERR_NOT_FOUND
+        code = ERR_NOT_FOUND
     elif isinstance(err, (ModelValidationError, RegistryValidationError)):
-        code = websocket_api.ERR_INVALID_FORMAT
+        code = ERR_INVALID_FORMAT
     else:
-        code = websocket_api.ERR_INVALID_FORMAT
+        code = ERR_INVALID_FORMAT
     connection.send_error(msg["id"], code, str(err))
 
 
-@websocket_api.require_admin
-@websocket_api.websocket_command({vol.Required("type"): WS_REGISTRY_GET})
-@websocket_api.async_response
+@require_admin
+@websocket_command({vol.Required("type"): WS_REGISTRY_GET})
+@async_response
 async def ws_registry_get(
-    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Return the complete serialized registry."""
     try:
@@ -85,8 +95,8 @@ async def ws_registry_get(
     connection.send_result(msg["id"], result)
 
 
-@websocket_api.require_admin
-@websocket_api.websocket_command(
+@require_admin
+@websocket_command(
     {
         vol.Required("type"): WS_ASSET_CREATE,
         vol.Required("name"): cv.string,
@@ -96,9 +106,9 @@ async def ws_registry_get(
         vol.Optional("capabilities", default=[]): [cv.string],
     }
 )
-@websocket_api.async_response
+@async_response
 async def ws_asset_create(
-    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Create an asset."""
     try:
@@ -116,13 +126,13 @@ async def ws_asset_create(
     connection.send_result(msg["id"], {"asset": asset.to_dict()})
 
 
-@websocket_api.require_admin
-@websocket_api.websocket_command(
+@require_admin
+@websocket_command(
     {vol.Required("type"): WS_ASSET_DELETE, vol.Required("asset_id"): cv.string}
 )
-@websocket_api.async_response
+@async_response
 async def ws_asset_delete(
-    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Delete an asset."""
     try:
@@ -133,8 +143,8 @@ async def ws_asset_delete(
     connection.send_result(msg["id"], {"deleted": True})
 
 
-@websocket_api.require_admin
-@websocket_api.websocket_command(
+@require_admin
+@websocket_command(
     {
         vol.Required("type"): WS_RELATION_CREATE,
         vol.Required("source_asset_id"): cv.string,
@@ -142,9 +152,9 @@ async def ws_asset_delete(
         vol.Required("target_asset_id"): cv.string,
     }
 )
-@websocket_api.async_response
+@async_response
 async def ws_relation_create(
-    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Create a relation."""
     try:
@@ -159,13 +169,13 @@ async def ws_relation_create(
     connection.send_result(msg["id"], {"relation": relation.to_dict()})
 
 
-@websocket_api.require_admin
-@websocket_api.websocket_command(
+@require_admin
+@websocket_command(
     {vol.Required("type"): WS_RELATION_DELETE, vol.Required("relation_id"): cv.string}
 )
-@websocket_api.async_response
+@async_response
 async def ws_relation_delete(
-    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Delete a relation."""
     try:
@@ -176,8 +186,8 @@ async def ws_relation_delete(
     connection.send_result(msg["id"], {"deleted": True})
 
 
-@websocket_api.require_admin
-@websocket_api.websocket_command(
+@require_admin
+@websocket_command(
     {
         vol.Required("type"): WS_BINDING_SET,
         vol.Required("asset_id"): cv.string,
@@ -186,9 +196,9 @@ async def ws_relation_delete(
         vol.Optional("role", default="primary"): cv.string,
     }
 )
-@websocket_api.async_response
+@async_response
 async def ws_binding_set(
-    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Create or replace a binding."""
     try:
@@ -205,13 +215,13 @@ async def ws_binding_set(
     connection.send_result(msg["id"], {"binding": binding.to_dict()})
 
 
-@websocket_api.require_admin
-@websocket_api.websocket_command(
+@require_admin
+@websocket_command(
     {vol.Required("type"): WS_BINDING_DELETE, vol.Required("binding_id"): cv.string}
 )
-@websocket_api.async_response
+@async_response
 async def ws_binding_delete(
-    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Delete a binding."""
     try:
@@ -222,13 +232,13 @@ async def ws_binding_delete(
     connection.send_result(msg["id"], {"deleted": True})
 
 
-@websocket_api.require_admin
-@websocket_api.websocket_command(
+@require_admin
+@websocket_command(
     {vol.Required("type"): WS_ASSET_GET, vol.Required("asset_id"): cv.string}
 )
-@websocket_api.async_response
+@async_response
 async def ws_asset_get(
-    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Return a single asset."""
     try:
@@ -239,11 +249,11 @@ async def ws_asset_get(
     connection.send_result(msg["id"], {"asset": asset.to_dict()})
 
 
-@websocket_api.require_admin
-@websocket_api.websocket_command({vol.Required("type"): WS_ASSET_LIST})
-@websocket_api.async_response
+@require_admin
+@websocket_command({vol.Required("type"): WS_ASSET_LIST})
+@async_response
 async def ws_asset_list(
-    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Return every asset, ordered deterministically."""
     try:
@@ -254,8 +264,8 @@ async def ws_asset_list(
     connection.send_result(msg["id"], {"assets": [asset.to_dict() for asset in assets]})
 
 
-@websocket_api.require_admin
-@websocket_api.websocket_command(
+@require_admin
+@websocket_command(
     {
         vol.Required("type"): WS_RELATION_LIST,
         vol.Required("asset_id"): cv.string,
@@ -263,9 +273,9 @@ async def ws_asset_list(
         vol.Optional("relation_types", default=[]): [cv.string],
     }
 )
-@websocket_api.async_response
+@async_response
 async def ws_relation_list(
-    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Return relations involving an asset, filtered by direction and type."""
     registry = _get_manager(hass).registry
@@ -287,8 +297,8 @@ async def ws_relation_list(
     )
 
 
-@websocket_api.require_admin
-@websocket_api.websocket_command(
+@require_admin
+@websocket_command(
     {
         vol.Required("type"): WS_GRAPH_TRAVERSE,
         vol.Required("asset_id"): cv.string,
@@ -299,9 +309,9 @@ async def ws_relation_list(
         vol.Optional("max_depth"): vol.All(int, vol.Range(min=0)),
     }
 )
-@websocket_api.async_response
+@async_response
 async def ws_graph_traverse(
-    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Recursive cycle-safe directional traversal from an asset."""
     registry = _get_manager(hass).registry
@@ -326,8 +336,8 @@ async def ws_graph_traverse(
     )
 
 
-@websocket_api.require_admin
-@websocket_api.websocket_command(
+@require_admin
+@websocket_command(
     {
         vol.Required("type"): WS_GRAPH_PATH,
         vol.Required("source_asset_id"): cv.string,
@@ -338,9 +348,9 @@ async def ws_graph_traverse(
         vol.Optional("relation_types", default=[]): [cv.string],
     }
 )
-@websocket_api.async_response
+@async_response
 async def ws_graph_path(
-    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Return the shortest deterministic asset path between two assets."""
     registry = _get_manager(hass).registry
@@ -359,11 +369,11 @@ async def ws_graph_path(
     connection.send_result(msg["id"], {"path": path, "found": path is not None})
 
 
-@websocket_api.require_admin
-@websocket_api.websocket_command({vol.Required("type"): WS_BINDING_STATUS})
-@websocket_api.async_response
+@require_admin
+@websocket_command({vol.Required("type"): WS_BINDING_STATUS})
+@async_response
 async def ws_binding_status(
-    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+    hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Return the binding/resolver status read model for the whole registry."""
     manager = _get_manager(hass)

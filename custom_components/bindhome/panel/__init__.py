@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Final
 
 from homeassistant.components import frontend
+from homeassistant.components.http.server import StaticPathConfig
 from homeassistant.core import HomeAssistant
 
 _LOGGER = logging.getLogger(__name__)
@@ -18,6 +19,7 @@ PANEL_COMPONENT_NAME: Final = "bindhome-panel"
 
 STATIC_PATH: Final = Path(__file__).parent / "static"
 BUNDLE_FILENAME: Final = "bindhome-panel.js"
+STATIC_REGISTERED_KEY: Final = "static_registered"
 
 
 async def async_register_panel(hass: HomeAssistant) -> None:
@@ -27,7 +29,23 @@ async def async_register_panel(hass: HomeAssistant) -> None:
         _LOGGER.error("BindHome panel bundle file not found at %s", bundle_path)
         return
 
-    # Register static file URL path for panel bundle
+    if frontend.async_panel_exists(hass, PANEL_URL_PATH):
+        return
+
+    panel_data = hass.data.setdefault("bindhome_panel", {})
+    if not panel_data.get(STATIC_REGISTERED_KEY):
+        if hass.http is not None:
+            await hass.http.async_register_static_paths(
+                [
+                    StaticPathConfig(
+                        f"/{PANEL_URL_PATH}_static/{BUNDLE_FILENAME}",
+                        str(bundle_path),
+                        cache_headers=True,
+                    )
+                ]
+            )
+        panel_data[STATIC_REGISTERED_KEY] = True
+
     frontend.async_register_built_in_panel(
         hass,
         component_name="custom",
@@ -40,13 +58,6 @@ async def async_register_panel(hass: HomeAssistant) -> None:
         },
         require_admin=True,
     )
-
-    if hass.http is not None:
-        hass.http.register_static_path(
-            f"/{PANEL_URL_PATH}_static/{BUNDLE_FILENAME}",
-            str(bundle_path),
-            cache_headers=True,
-        )
 
 
 def async_unregister_panel(hass: HomeAssistant) -> None:

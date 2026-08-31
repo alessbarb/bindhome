@@ -110,6 +110,7 @@ class EntityProbe(Protocol):
 
     def is_known(self, entity_id: str) -> bool:
         """Return True if the entity exists in the registry or state machine."""
+        ...
 
     def get_state(self, entity_id: str) -> str | None:
         """Return the current state string, or None if the entity has no state."""
