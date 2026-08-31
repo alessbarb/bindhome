@@ -9,6 +9,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
 from .manager import BindHomeManager
+from .panel import async_register_panel
 from .services import async_register_services
 from .websocket import async_register_websocket_commands
 
@@ -29,6 +30,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: BindHomeConfigEntry) -> 
     manager = BindHomeManager(hass)
     await manager.async_load()
     entry.runtime_data = manager
+    await async_register_panel(hass)
     return True
 
 
