@@ -4,18 +4,23 @@ from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
+from .const import DOMAIN
 from .manager import BindHomeManager
 from .services import async_register_services
-
+from .websocket import async_register_websocket_commands
 
 type BindHomeConfigEntry = ConfigEntry[BindHomeManager]
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up BindHome and register service actions."""
     async_register_services(hass)
+    async_register_websocket_commands(hass)
     return True
 
 

@@ -6,7 +6,7 @@ from dataclasses import replace
 from typing import Any
 
 from .const import REGISTRY_SCHEMA_VERSION
-from .models import Asset, Binding, Relation
+from .models import Asset, Binding, ModelValidationError, Relation
 
 
 class RegistryError(ValueError):
@@ -37,7 +37,9 @@ class BindHomeRegistry:
         """Add an asset."""
         if asset.id in self.assets:
             raise RegistryConflictError(f"Asset {asset.id} already exists")
-        if asset.code and any(existing.code == asset.code for existing in self.assets.values()):
+        if asset.code and any(
+            existing.code == asset.code for existing in self.assets.values()
+        ):
             raise RegistryConflictError(f"Asset code {asset.code} already exists")
         self.assets[asset.id] = asset
         return asset
@@ -126,8 +128,30 @@ class BindHomeRegistry:
             self.bindings[existing.id] = updated
             return updated
 
+        if binding.id in self.bindings:
+            raise RegistryConflictError(f"Binding {binding.id} already exists")
+
         self.bindings[binding.id] = binding
         return binding
+
+    def get_binding(
+        self, asset_id: str, capability: str, role: str = "primary"
+    ) -> Binding | None:
+        """Return the binding for an asset capability and role, if any.
+
+        This is the read-side counterpart of :meth:`set_binding` and uses the
+        same ``(asset_id, capability, role)`` identity rule.
+        """
+        return next(
+            (
+                candidate
+                for candidate in self.bindings.values()
+                if candidate.asset_id == asset_id
+                and candidate.capability == capability
+                and candidate.role == role
+            ),
+            None,
+        )
 
     def remove_binding(self, binding_id: str) -> None:
         """Remove a capability binding."""
@@ -150,6 +174,8 @@ class BindHomeRegistry:
         registry = cls()
         if data is None:
             return registry
+        if not isinstance(data, dict):
+            raise RegistryValidationError("Persisted registry must be a dictionary")
 
         schema_version = data.get("schema_version", REGISTRY_SCHEMA_VERSION)
         if schema_version != REGISTRY_SCHEMA_VERSION:
@@ -158,10 +184,27 @@ class BindHomeRegistry:
             )
 
         for raw_asset in data.get("assets", []):
-            registry.add_asset(Asset.from_dict(raw_asset))
+            try:
+                registry.add_asset(Asset.from_dict(raw_asset))
+            except (ModelValidationError, RegistryError) as err:
+                raise RegistryValidationError(
+                    f"Invalid asset in registry: {err}"
+                ) from err
+
         for raw_relation in data.get("relations", []):
-            registry.add_relation(Relation.from_dict(raw_relation))
+            try:
+                registry.add_relation(Relation.from_dict(raw_relation))
+            except (ModelValidationError, RegistryError) as err:
+                raise RegistryValidationError(
+                    f"Invalid relation in registry: {err}"
+                ) from err
+
         for raw_binding in data.get("bindings", []):
-            registry.set_binding(Binding.from_dict(raw_binding))
+            try:
+                registry.set_binding(Binding.from_dict(raw_binding))
+            except (ModelValidationError, RegistryError) as err:
+                raise RegistryValidationError(
+                    f"Invalid binding in registry: {err}"
+                ) from err
 
         return registry
