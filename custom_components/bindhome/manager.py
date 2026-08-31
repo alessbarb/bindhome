@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from .models import Asset, Binding, Relation
 from .registry import BindHomeRegistry
+from .resolver import BindingResolver, HomeAssistantEntityProbe
 from .store import BindHomeStore
 
 
@@ -19,6 +20,12 @@ class BindHomeManager:
         self.registry = BindHomeRegistry()
         self._store = BindHomeStore(hass)
         self._mutation_lock = asyncio.Lock()
+        self._probe = HomeAssistantEntityProbe(hass)
+
+    @property
+    def resolver(self) -> BindingResolver:
+        """Return a resolver bound to the current registry and Home Assistant."""
+        return BindingResolver(self.registry, self._probe)
 
     async def async_load(self) -> None:
         """Load persisted registry state."""

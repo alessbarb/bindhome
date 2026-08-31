@@ -129,6 +129,25 @@ class BindHomeRegistry:
         self.bindings[binding.id] = binding
         return binding
 
+    def get_binding(
+        self, asset_id: str, capability: str, role: str = "primary"
+    ) -> Binding | None:
+        """Return the binding for an asset capability and role, if any.
+
+        This is the read-side counterpart of :meth:`set_binding` and uses the
+        same ``(asset_id, capability, role)`` identity rule.
+        """
+        return next(
+            (
+                candidate
+                for candidate in self.bindings.values()
+                if candidate.asset_id == asset_id
+                and candidate.capability == capability
+                and candidate.role == role
+            ),
+            None,
+        )
+
     def remove_binding(self, binding_id: str) -> None:
         """Remove a capability binding."""
         if binding_id not in self.bindings:
