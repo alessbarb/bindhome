@@ -1,0 +1,13 @@
+{
+  "domain": "bindhome",
+  "name": "BindHome",
+  "version": "0.1.0",
+  "codeowners": ["@alessbarb"],
+  "config_flow": true,
+  "single_config_entry": true,
+  "dependencies": [],
+  "documentation": "https://github.com/alessbarb/bindhome",
+  "integration_type": "helper",
+  "issue_tracker": "https://github.com/alessbarb/bindhome/issues",
+  "requirements": []
+}

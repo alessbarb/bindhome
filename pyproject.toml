@@ -1,0 +1,20 @@
+[project]
+name = "bindhome"
+version = "0.1.0"
+description = "Stable home infrastructure bound to replaceable Home Assistant hardware"
+requires-python = ">=3.13"
+license = { text = "MIT" }
+authors = [
+  { name = "Alessandro" }
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]

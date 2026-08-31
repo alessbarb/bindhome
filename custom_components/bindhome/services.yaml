@@ -1,0 +1,75 @@
+create_asset:
+  fields:
+    name:
+      required: true
+      selector:
+        text:
+    asset_type:
+      required: true
+      selector:
+        text:
+    code:
+      selector:
+        text:
+    area_id:
+      selector:
+        area:
+    capabilities:
+      selector:
+        object:
+
+delete_asset:
+  fields:
+    asset_id:
+      required: true
+      selector:
+        text:
+
+add_relation:
+  fields:
+    source_asset_id:
+      required: true
+      selector:
+        text:
+    relation_type:
+      required: true
+      selector:
+        text:
+    target_asset_id:
+      required: true
+      selector:
+        text:
+
+remove_relation:
+  fields:
+    relation_id:
+      required: true
+      selector:
+        text:
+
+set_binding:
+  fields:
+    asset_id:
+      required: true
+      selector:
+        text:
+    capability:
+      required: true
+      selector:
+        text:
+    entity_id:
+      required: true
+      selector:
+        entity:
+    role:
+      selector:
+        text:
+
+remove_binding:
+  fields:
+    binding_id:
+      required: true
+      selector:
+        text:
+
+get_registry:
