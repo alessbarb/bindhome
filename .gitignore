@@ -9,3 +9,7 @@ htmlcov/
 venv/
 .env
 .DS_Store
+
+# Python build artifacts
+build/
+*.egg-info/
