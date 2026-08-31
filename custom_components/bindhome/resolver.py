@@ -247,9 +247,7 @@ class BindingResolver:
                 f"No binding for ({asset_id}, {capability}, {role})"
             )
         if result.status is ResolutionStatus.ENTITY_NOT_FOUND:
-            raise StaleBindingError(
-                f"Bound entity {result.entity_id} no longer exists"
-            )
+            raise StaleBindingError(f"Bound entity {result.entity_id} no longer exists")
         assert result.entity_id is not None
         return result.entity_id
 

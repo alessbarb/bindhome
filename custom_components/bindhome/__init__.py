@@ -8,6 +8,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .manager import BindHomeManager
 from .services import async_register_services
+from .websocket import async_register_websocket_commands
 
 type BindHomeConfigEntry = ConfigEntry[BindHomeManager]
 
@@ -15,6 +16,7 @@ type BindHomeConfigEntry = ConfigEntry[BindHomeManager]
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up BindHome and register service actions."""
     async_register_services(hass)
+    async_register_websocket_commands(hass)
     return True
 
 

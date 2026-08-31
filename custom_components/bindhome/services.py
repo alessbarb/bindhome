@@ -13,9 +13,7 @@ from homeassistant.core import (
     SupportsResponse,
 )
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers import entity_registry as er
 
 from .const import (
     DOMAIN,
@@ -30,6 +28,7 @@ from .const import (
 from .manager import BindHomeManager
 from .models import ModelValidationError
 from .registry import RegistryError
+from .validation import validate_area, validate_entity
 
 _CREATE_ASSET_SCHEMA = vol.Schema(
     {
@@ -72,23 +71,6 @@ def _get_manager(hass: HomeAssistant) -> BindHomeManager:
     return cast(BindHomeManager, entries[0].runtime_data)
 
 
-def _validate_area(hass: HomeAssistant, area_id: str | None) -> None:
-    """Validate an optional Home Assistant area reference."""
-    if area_id is None:
-        return
-    if ar.async_get(hass).async_get_area(area_id) is None:
-        raise ServiceValidationError(f"Home Assistant area {area_id} was not found")
-
-
-def _validate_entity(hass: HomeAssistant, entity_id: str) -> None:
-    """Validate that a binding target exists in Home Assistant."""
-    if (
-        er.async_get(hass).async_get(entity_id) is None
-        and hass.states.get(entity_id) is None
-    ):
-        raise ServiceValidationError(f"Home Assistant entity {entity_id} was not found")
-
-
 def _translate_registry_error(err: Exception) -> ServiceValidationError:
     return ServiceValidationError(str(err))
 
@@ -99,7 +81,7 @@ def async_register_services(hass: HomeAssistant) -> None:
     async def create_asset(call: ServiceCall) -> ServiceResponse | None:
         manager = _get_manager(hass)
         area_id = call.data.get("area_id")
-        _validate_area(hass, area_id)
+        validate_area(hass, area_id)
         try:
             asset = await manager.async_create_asset(
                 name=call.data["name"],
@@ -143,7 +125,7 @@ def async_register_services(hass: HomeAssistant) -> None:
     async def set_binding(call: ServiceCall) -> ServiceResponse | None:
         manager = _get_manager(hass)
         entity_id = call.data["entity_id"]
-        _validate_entity(hass, entity_id)
+        validate_entity(hass, entity_id)
         try:
             binding = await manager.async_set_binding(
                 asset_id=call.data["asset_id"],
