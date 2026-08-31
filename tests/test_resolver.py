@@ -11,6 +11,8 @@ from custom_components.bindhome.resolver import (
     CapabilityCompatibility,
     CapabilityNotDeclaredError,
     Compatibility,
+    EntityProbe,
+    HomeAssistantEntityProbe,
     InvalidResolveRequestError,
     ResolutionStatus,
     StaleBindingError,
@@ -74,6 +76,33 @@ def test_registry_only_target_is_valid_config_but_not_runtime_available() -> Non
     assert result.runtime_available is False
     # strict API still yields the entity id: not a configuration failure
     assert resolver.resolve_entity_id(asset.id, "on_off") == "switch.relay"
+
+
+def test_both_probe_implementations_satisfy_the_entity_probe_protocol() -> None:
+    static_probe: EntityProbe = StaticEntityProbe(states={"switch.relay": "on"})
+    ha_probe: EntityProbe = HomeAssistantEntityProbe.__new__(HomeAssistantEntityProbe)
+    assert static_probe.is_known("switch.relay") is True
+    assert static_probe.get_state("switch.relay") == "on"
+    assert callable(ha_probe.is_known)
+    assert callable(ha_probe.get_state)
+
+
+def test_registry_and_state_machine_can_disagree_on_which_entity_exists() -> None:
+    registry = BindHomeRegistry()
+    asset = _asset(registry, ["on_off"])
+    _bind(registry, asset, "on_off", "switch.registered_only")
+    # Entity is in the Entity Registry but a different entity holds a state:
+    # the restart window where hardware has not reported yet.
+    probe = StaticEntityProbe(
+        registered={"switch.registered_only"},
+        states={"switch.unrelated": "on"},
+    )
+    resolver = BindingResolver(registry, probe)
+
+    result = resolver.resolve(asset.id, "on_off")
+
+    assert result.status is ResolutionStatus.RUNTIME_UNAVAILABLE
+    assert result.config_valid is True
 
 
 def test_missing_asset() -> None:
