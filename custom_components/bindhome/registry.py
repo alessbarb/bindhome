@@ -37,7 +37,9 @@ class BindHomeRegistry:
         """Add an asset."""
         if asset.id in self.assets:
             raise RegistryConflictError(f"Asset {asset.id} already exists")
-        if asset.code and any(existing.code == asset.code for existing in self.assets.values()):
+        if asset.code and any(
+            existing.code == asset.code for existing in self.assets.values()
+        ):
             raise RegistryConflictError(f"Asset code {asset.code} already exists")
         self.assets[asset.id] = asset
         return asset

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
 import re
+from dataclasses import dataclass, replace
 from typing import Any
 from uuid import uuid4
 
