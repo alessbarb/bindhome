@@ -5,11 +5,16 @@ from __future__ import annotations
 from typing import cast
 
 import voluptuous as vol
-
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
+from homeassistant.core import (
+    HomeAssistant,
+    ServiceCall,
+    ServiceResponse,
+    SupportsResponse,
+)
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers import area_registry as ar, config_validation as cv
+from homeassistant.helpers import area_registry as ar
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_registry as er
 
 from .const import (
@@ -77,7 +82,10 @@ def _validate_area(hass: HomeAssistant, area_id: str | None) -> None:
 
 def _validate_entity(hass: HomeAssistant, entity_id: str) -> None:
     """Validate that a binding target exists in Home Assistant."""
-    if er.async_get(hass).async_get(entity_id) is None and hass.states.get(entity_id) is None:
+    if (
+        er.async_get(hass).async_get(entity_id) is None
+        and hass.states.get(entity_id) is None
+    ):
         raise ServiceValidationError(f"Home Assistant entity {entity_id} was not found")
 
 
