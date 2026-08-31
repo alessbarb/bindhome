@@ -67,14 +67,12 @@ class BindHomeLight(LightEntity):
         """Refresh state from the binding resolved at operation time."""
         self._resolution = self._resolver.resolve(self._asset.id, _CAPABILITY)
         self._attr_available = self._resolution.runtime_available
+        state = self._resolution.state
         self._attr_is_on = (
-            self._resolution.state
-            if self._resolution.runtime_available
-            and self._resolution.state in {"on", "off"}
+            state == "on"
+            if self._resolution.runtime_available and state in {"on", "off"}
             else None
         )
-        if self._attr_is_on is not None:
-            self._attr_is_on = self._attr_is_on == "on"
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Forward turn-on to the currently bound switch or light."""
