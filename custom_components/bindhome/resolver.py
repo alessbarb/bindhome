@@ -168,6 +168,11 @@ class BindingResolver:
         self._registry = registry
         self._probe = probe
 
+    @property
+    def probe(self) -> EntityProbe:
+        """Return the entity probe backing this resolver (read-side queries)."""
+        return self._probe
+
     def resolve(
         self, asset_id: str, capability: str, role: str = "primary"
     ) -> Resolution:

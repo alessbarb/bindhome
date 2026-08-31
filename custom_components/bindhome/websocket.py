@@ -11,9 +11,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 
+from . import query
 from .const import DOMAIN
 from .manager import BindHomeManager
 from .models import ModelValidationError
+from .query import Direction
 from .registry import (
     RegistryConflictError,
     RegistryError,
@@ -29,6 +31,14 @@ WS_RELATION_CREATE = f"{DOMAIN}/relations/create"
 WS_RELATION_DELETE = f"{DOMAIN}/relations/delete"
 WS_BINDING_SET = f"{DOMAIN}/bindings/set"
 WS_BINDING_DELETE = f"{DOMAIN}/bindings/delete"
+WS_ASSET_GET = f"{DOMAIN}/assets/get"
+WS_ASSET_LIST = f"{DOMAIN}/assets/list"
+WS_RELATION_LIST = f"{DOMAIN}/relations/list"
+WS_GRAPH_TRAVERSE = f"{DOMAIN}/graph/traverse"
+WS_GRAPH_PATH = f"{DOMAIN}/graph/path"
+WS_BINDING_STATUS = f"{DOMAIN}/bindings/status"
+
+_DIRECTIONS = [direction.value for direction in Direction]
 
 
 def _get_manager(hass: HomeAssistant) -> BindHomeManager:
@@ -212,6 +222,159 @@ async def ws_binding_delete(
     connection.send_result(msg["id"], {"deleted": True})
 
 
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {vol.Required("type"): WS_ASSET_GET, vol.Required("asset_id"): cv.string}
+)
+@websocket_api.async_response
+async def ws_asset_get(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Return a single asset."""
+    try:
+        asset = query.get_asset(_get_manager(hass).registry, msg["asset_id"])
+    except RegistryError as err:
+        _send_error(connection, msg, err)
+        return
+    connection.send_result(msg["id"], {"asset": asset.to_dict()})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required("type"): WS_ASSET_LIST})
+@websocket_api.async_response
+async def ws_asset_list(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Return every asset, ordered deterministically."""
+    try:
+        assets = query.list_assets(_get_manager(hass).registry)
+    except RegistryError as err:
+        _send_error(connection, msg, err)
+        return
+    connection.send_result(msg["id"], {"assets": [asset.to_dict() for asset in assets]})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_RELATION_LIST,
+        vol.Required("asset_id"): cv.string,
+        vol.Optional("direction", default=Direction.ANY.value): vol.In(_DIRECTIONS),
+        vol.Optional("relation_types", default=[]): [cv.string],
+    }
+)
+@websocket_api.async_response
+async def ws_relation_list(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Return relations involving an asset, filtered by direction and type."""
+    registry = _get_manager(hass).registry
+    asset_id = msg["asset_id"]
+    relation_types = list(msg.get("relation_types", []))
+    reader = {
+        Direction.OUTGOING.value: query.outgoing_relations,
+        Direction.INCOMING.value: query.incoming_relations,
+        Direction.ANY.value: query.relations_for_asset,
+    }[msg.get("direction", Direction.ANY.value)]
+    try:
+        relations = reader(registry, asset_id, relation_types or None)
+    except (ModelValidationError, RegistryError) as err:
+        _send_error(connection, msg, err)
+        return
+    connection.send_result(
+        msg["id"],
+        {"relations": [relation.to_dict() for relation in relations]},
+    )
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_GRAPH_TRAVERSE,
+        vol.Required("asset_id"): cv.string,
+        vol.Optional("direction", default=Direction.OUTGOING.value): vol.In(
+            _DIRECTIONS
+        ),
+        vol.Optional("relation_types", default=[]): [cv.string],
+        vol.Optional("max_depth"): vol.All(int, vol.Range(min=0)),
+    }
+)
+@websocket_api.async_response
+async def ws_graph_traverse(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Recursive cycle-safe directional traversal from an asset."""
+    registry = _get_manager(hass).registry
+    relation_types = list(msg.get("relation_types", []))
+    try:
+        hits = query.traverse(
+            registry,
+            msg["asset_id"],
+            msg.get("direction", Direction.OUTGOING.value),
+            relation_types or None,
+            msg.get("max_depth"),
+        )
+    except (ModelValidationError, RegistryError) as err:
+        _send_error(connection, msg, err)
+        return
+    connection.send_result(
+        msg["id"],
+        {
+            "direction": msg.get("direction", Direction.OUTGOING.value),
+            "assets": [hit.to_dict() for hit in hits],
+        },
+    )
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_GRAPH_PATH,
+        vol.Required("source_asset_id"): cv.string,
+        vol.Required("target_asset_id"): cv.string,
+        vol.Optional("direction", default=Direction.OUTGOING.value): vol.In(
+            _DIRECTIONS
+        ),
+        vol.Optional("relation_types", default=[]): [cv.string],
+    }
+)
+@websocket_api.async_response
+async def ws_graph_path(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Return the shortest deterministic asset path between two assets."""
+    registry = _get_manager(hass).registry
+    relation_types = list(msg.get("relation_types", []))
+    try:
+        path = query.find_path(
+            registry,
+            msg["source_asset_id"],
+            msg["target_asset_id"],
+            msg.get("direction", Direction.OUTGOING.value),
+            relation_types or None,
+        )
+    except (ModelValidationError, RegistryError) as err:
+        _send_error(connection, msg, err)
+        return
+    connection.send_result(msg["id"], {"path": path, "found": path is not None})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required("type"): WS_BINDING_STATUS})
+@websocket_api.async_response
+async def ws_binding_status(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Return the binding/resolver status read model for the whole registry."""
+    manager = _get_manager(hass)
+    try:
+        result = query.resolver_status(manager.registry, manager.resolver.probe)
+    except RegistryError as err:
+        _send_error(connection, msg, err)
+        return
+    connection.send_result(msg["id"], result)
+
+
 def async_register_websocket_commands(hass: HomeAssistant) -> None:
     """Register BindHome WebSocket commands once during integration setup."""
     for handler in (
@@ -222,5 +385,11 @@ def async_register_websocket_commands(hass: HomeAssistant) -> None:
         ws_relation_delete,
         ws_binding_set,
         ws_binding_delete,
+        ws_asset_get,
+        ws_asset_list,
+        ws_relation_list,
+        ws_graph_traverse,
+        ws_graph_path,
+        ws_binding_status,
     ):
         websocket_api.async_register_command(hass, handler)
