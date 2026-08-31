@@ -1,0 +1,15 @@
+{
+  "name": "bindhome-panel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  },
+  "dependencies": {
+    "lit": "^3.3.3"
+  }
+}

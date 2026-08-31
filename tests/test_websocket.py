@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -11,10 +12,12 @@ import voluptuous as vol
 from custom_components.bindhome import websocket
 from custom_components.bindhome.models import Asset, Binding, Relation
 from custom_components.bindhome.registry import (
+    BindHomeRegistry,
     RegistryConflictError,
     RegistryNotFoundError,
     RegistryValidationError,
 )
+from custom_components.bindhome.resolver import BindingResolver, StaticEntityProbe
 
 
 class FakeConnection:
@@ -334,4 +337,139 @@ def test_registers_all_commands_under_bindhome_namespace() -> None:
         websocket.WS_RELATION_DELETE,
         websocket.WS_BINDING_SET,
         websocket.WS_BINDING_DELETE,
+        websocket.WS_ASSET_GET,
+        websocket.WS_ASSET_LIST,
+        websocket.WS_RELATION_LIST,
+        websocket.WS_GRAPH_TRAVERSE,
+        websocket.WS_GRAPH_PATH,
+        websocket.WS_BINDING_STATUS,
     }
+
+
+class _QueryManager:
+    """Manager double backed by a real registry and entity probe."""
+
+    def __init__(self, registry: BindHomeRegistry, probe: StaticEntityProbe) -> None:
+        self.registry = registry
+        self.resolver = BindingResolver(registry, probe)
+
+
+def _query_hass(
+    registry: BindHomeRegistry, probe: StaticEntityProbe
+) -> SimpleNamespace:
+    return hass_for(_QueryManager(registry, probe))
+
+
+def _sample_registry() -> BindHomeRegistry:
+    registry = BindHomeRegistry()
+    a = Asset(id="a", name="A", asset_type="node", capabilities=("on_off",))
+    b = Asset(id="b", name="B", asset_type="node")
+    c = Asset(id="c", name="C", asset_type="node")
+    for asset in (a, b, c):
+        registry.add_asset(asset)
+    registry.add_relation(
+        Relation(
+            id="r1", source_asset_id="a", relation_type="feeds", target_asset_id="b"
+        )
+    )
+    registry.add_relation(
+        Relation(
+            id="r2", source_asset_id="b", relation_type="feeds", target_asset_id="c"
+        )
+    )
+    return registry
+
+
+@pytest.mark.asyncio
+async def test_asset_list_and_get_are_deterministic() -> None:
+    registry = _sample_registry()
+    hass = _query_hass(registry, StaticEntityProbe())
+    connection = FakeConnection()
+
+    await call(websocket.ws_asset_list, hass, connection, {"id": "1"})
+    await call(websocket.ws_asset_get, hass, connection, {"id": "2", "asset_id": "b"})
+
+    ids = [a["id"] for a in connection.results[0][1]["assets"]]
+    assert ids == ["a", "b", "c"]
+    assert connection.results[1][1]["asset"]["id"] == "b"
+
+
+@pytest.mark.asyncio
+async def test_asset_get_unknown_is_not_found() -> None:
+    hass = _query_hass(_sample_registry(), StaticEntityProbe())
+    connection = FakeConnection()
+
+    await call(websocket.ws_asset_get, hass, connection, {"id": "1", "asset_id": "zz"})
+
+    assert connection.errors[0][1] == "not_found"
+
+
+@pytest.mark.asyncio
+async def test_relation_list_direction_filter() -> None:
+    hass = _query_hass(_sample_registry(), StaticEntityProbe())
+    connection = FakeConnection()
+
+    await call(
+        websocket.ws_relation_list,
+        hass,
+        connection,
+        {"id": "1", "asset_id": "b", "direction": "incoming"},
+    )
+
+    relations = connection.results[0][1]["relations"]
+    assert [r["source_asset_id"] for r in relations] == ["a"]
+
+
+@pytest.mark.asyncio
+async def test_graph_traverse_and_path() -> None:
+    hass = _query_hass(_sample_registry(), StaticEntityProbe())
+    connection = FakeConnection()
+
+    await call(
+        websocket.ws_graph_traverse,
+        hass,
+        connection,
+        {"id": "1", "asset_id": "a", "direction": "outgoing"},
+    )
+    await call(
+        websocket.ws_graph_path,
+        hass,
+        connection,
+        {"id": "2", "source_asset_id": "a", "target_asset_id": "c"},
+    )
+
+    assert connection.results[0][1]["assets"] == [
+        {"asset_id": "b", "depth": 1},
+        {"asset_id": "c", "depth": 2},
+    ]
+    assert connection.results[1][1] == {"path": ["a", "b", "c"], "found": True}
+
+
+@pytest.mark.asyncio
+async def test_graph_traverse_rejects_invalid_relation_type() -> None:
+    hass = _query_hass(_sample_registry(), StaticEntityProbe())
+    connection = FakeConnection()
+
+    await call(
+        websocket.ws_graph_traverse,
+        hass,
+        connection,
+        {"id": "1", "asset_id": "a", "relation_types": ["Not Valid"]},
+    )
+
+    assert connection.errors[0][1] == "invalid_format"
+
+
+@pytest.mark.asyncio
+async def test_binding_status_read_model_is_json_serializable() -> None:
+    registry = _sample_registry()
+    probe = StaticEntityProbe(states={"switch.a": "on"})
+    hass = _query_hass(registry, probe)
+    connection = FakeConnection()
+
+    await call(websocket.ws_binding_status, hass, connection, {"id": "1"})
+
+    result = connection.results[0][1]
+    json.dumps(result)
+    assert result["summary"]["total"] == 1
+    assert result["records"][0]["status"] == "binding_not_found"
