@@ -1,9 +1,13 @@
 {
   "domain": "bindhome",
   "name": "BindHome",
-  "codeowners": ["@alessbarb"],
+  "codeowners": [
+    "@alessbarb"
+  ],
   "config_flow": true,
-  "dependencies": [],
+  "dependencies": [
+    "http"
+  ],
   "documentation": "https://github.com/alessbarb/bindhome",
   "integration_type": "helper",
   "iot_class": "local_push",
