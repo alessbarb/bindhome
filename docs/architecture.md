@@ -97,6 +97,55 @@ unmapped capabilities or un-parseable entity ids. Compatibility never blocks
 resolution and contains no manufacturer or protocol knowledge; the domain map is
 extensible via `register()`.
 
+## Infrastructure query layer
+
+`query.py` is the pure, side-effect-free read layer that makes BindHome
+semantically queryable. Every function takes a `BindHomeRegistry` (and, for the
+resolver status read model, an `EntityProbe`) and returns plain data or simple
+serializable dataclasses (`to_dict()`), following the `models.py` idiom.
+
+It never mutates the registry and adds no dependency: traversal is plain
+breadth-first search over dictionaries.
+
+### Relation reads
+
+`get_asset` / `list_assets`, and `incoming_relations` / `outgoing_relations` /
+`relations_for_asset`. Relation direction is significant: `outgoing` follows
+`source -> target`, `incoming` follows `target -> source`. All reads accept an
+optional `relation_types` filter, matched as normalized identifiers so `POWERS`
+matches `powers`; relation types are never interpreted. Unknown assets raise
+`RegistryNotFoundError` (never an empty list).
+
+### Traversal and paths
+
+`traverse(registry, asset_id, direction, relation_types=None, max_depth=None)`
+returns `TraversalHit(asset_id, depth)` entries. The `Direction` enum is
+`OUTGOING` (default), `INCOMING`, or `ANY`. The start asset is excluded; each
+reachable asset appears once at its minimum depth, so cycles terminate safely.
+`max_depth=1` yields direct neighbours only. `reachable_assets` is the sorted
+id-only view. `find_path` returns the shortest asset-id path between two assets
+(both endpoints included) or `None`.
+
+Results are deterministic: neighbours and result lists are sorted by a stable
+key, so output does not depend on asset insertion order.
+
+### Binding / resolver status read model
+
+`resolver_status(registry, probe)` composes `BindingResolver` outcomes into an
+aggregate read model: per-key `records` (each a serialized `BindingStatus` with
+`status`, `config_valid`, `runtime_available`, `entity_id`, `state`, `binding`)
+plus a `summary` with totals and a per-status breakdown. The key set is the union
+of existing bindings and every declared-but-unbound capability, so
+`binding_not_found` gaps are surfaced rather than omitted.
+
+### WebSocket surface
+
+These are exposed as additive read commands alongside the Sprint 1 CRUD
+commands, without renaming any: `bindhome/assets/get`, `bindhome/assets/list`,
+`bindhome/relations/list`, `bindhome/graph/traverse`, `bindhome/graph/path`, and
+`bindhome/bindings/status`. The panel branch remains usable from
+`bindhome/registry/get` alone.
+
 ## Hardware ownership
 
 BindHome does not maintain a hardware registry. Home Assistant already owns the Device Registry and Entity Registry. BindHome only stores entity references in bindings.
