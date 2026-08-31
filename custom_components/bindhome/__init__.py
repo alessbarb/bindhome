@@ -10,6 +10,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import DOMAIN
 from .manager import BindHomeManager
+from .panel import async_register_panel, async_unregister_panel
 from .services import async_register_services
 from .websocket import async_register_websocket_commands
 
@@ -32,9 +33,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: BindHomeConfigEntry) -> 
     await manager.async_load()
     entry.runtime_data = manager
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    await async_register_panel(hass)
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: BindHomeConfigEntry) -> bool:
     """Unload BindHome."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        async_unregister_panel(hass)
+    return unload_ok
