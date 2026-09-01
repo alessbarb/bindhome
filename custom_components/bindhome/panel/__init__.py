@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 from typing import Final
 
-from homeassistant.components import frontend
+from homeassistant.components import frontend, panel_custom
 from homeassistant.components.http.server import StaticPathConfig
 from homeassistant.core import HomeAssistant
 
@@ -46,16 +46,13 @@ async def async_register_panel(hass: HomeAssistant) -> None:
             )
         panel_data[STATIC_REGISTERED_KEY] = True
 
-    frontend.async_register_built_in_panel(
+    await panel_custom.async_register_panel(
         hass,
-        component_name="custom",
+        frontend_url_path=PANEL_URL_PATH,
+        webcomponent_name=PANEL_COMPONENT_NAME,
         sidebar_title=PANEL_TITLE,
         sidebar_icon=PANEL_ICON,
-        frontend_url_path=PANEL_URL_PATH,
-        config={
-            "_name": PANEL_COMPONENT_NAME,
-            "js_url": f"/{PANEL_URL_PATH}_static/{BUNDLE_FILENAME}",
-        },
+        js_url=f"/{PANEL_URL_PATH}_static/{BUNDLE_FILENAME}",
         require_admin=True,
     )
 

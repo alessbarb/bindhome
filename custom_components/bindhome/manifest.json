@@ -1,6 +1,9 @@
 {
   "domain": "bindhome",
   "name": "BindHome",
+  "after_dependencies": [
+    "panel_custom"
+  ],
   "codeowners": [
     "@alessbarb"
   ],

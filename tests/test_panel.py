@@ -26,20 +26,22 @@ async def test_panel_registration(hass: HomeAssistant) -> None:
     """Test panel registration registers custom panel and static path."""
     with (
         patch(
-            "homeassistant.components.frontend.async_register_built_in_panel"
+            "custom_components.bindhome.panel.panel_custom.async_register_panel"
         ) as mock_register_panel,
         patch.object(hass, "http", MagicMock()) as mock_http,
     ):
         mock_http.async_register_static_paths = AsyncMock()
         await async_register_panel(hass)
 
-        mock_register_panel.assert_called_once()
-        args, kwargs = mock_register_panel.call_args
-        assert kwargs["component_name"] == "custom"
-        assert kwargs["frontend_url_path"] == "bindhome"
-        assert kwargs["config"]["_name"] == "bindhome-panel"
-        assert kwargs["config"]["js_url"] == "/bindhome_static/bindhome-panel.js"
-        assert kwargs["require_admin"] is True
+        mock_register_panel.assert_awaited_once_with(
+            hass,
+            frontend_url_path="bindhome",
+            webcomponent_name="bindhome-panel",
+            sidebar_title="BindHome",
+            sidebar_icon="mdi:home-switch",
+            js_url="/bindhome_static/bindhome-panel.js",
+            require_admin=True,
+        )
 
         mock_http.async_register_static_paths.assert_called_once()
         (path_configs,), _ = mock_http.async_register_static_paths.call_args
@@ -54,7 +56,7 @@ async def test_panel_registration_is_idempotent(hass: HomeAssistant) -> None:
     """Test repeated setup does not register the panel or static path twice."""
     with (
         patch(
-            "homeassistant.components.frontend.async_register_built_in_panel"
+            "custom_components.bindhome.panel.panel_custom.async_register_panel"
         ) as mock_register_panel,
         patch(
             "homeassistant.components.frontend.async_panel_exists",
@@ -66,7 +68,7 @@ async def test_panel_registration_is_idempotent(hass: HomeAssistant) -> None:
         await async_register_panel(hass)
         await async_register_panel(hass)
 
-        mock_register_panel.assert_called_once()
+        mock_register_panel.assert_awaited_once()
         mock_http.async_register_static_paths.assert_awaited_once()
 
 
@@ -82,11 +84,11 @@ async def test_panel_registration_missing_bundle(hass: HomeAssistant) -> None:
             new=MagicMock(__truediv__=lambda self, other: mock_bundle_path),
         ),
         patch(
-            "homeassistant.components.frontend.async_register_built_in_panel"
+            "custom_components.bindhome.panel.panel_custom.async_register_panel"
         ) as mock_register_panel,
     ):
         await async_register_panel(hass)
-        mock_register_panel.assert_not_called()
+        mock_register_panel.assert_not_awaited()
 
 
 @pytest.mark.asyncio
