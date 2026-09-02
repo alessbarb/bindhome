@@ -40,6 +40,7 @@ async def test_system_health_loaded(hass: HomeAssistant) -> None:
         "assets": 1,
         "relations": 0,
         "bindings": 0,
+        "representations": 0,
     }
 
 

@@ -36,4 +36,5 @@ async def _async_system_health_info(hass: HomeAssistant) -> dict[str, Any]:
         "assets": len(manager.registry.assets),
         "relations": len(manager.registry.relations),
         "bindings": len(manager.registry.bindings),
+        "representations": len(manager.registry.representations),
     }

@@ -5,8 +5,14 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
-from .const import REGISTRY_SCHEMA_VERSION
-from .models import Asset, Binding, ModelValidationError, Relation
+from .const import REGISTRY_SCHEMA_VERSION, REPRESENTATION_REQUIREMENTS
+from .models import (
+    Asset,
+    Binding,
+    ModelValidationError,
+    Relation,
+    Representation,
+)
 
 
 class RegistryError(ValueError):
@@ -35,12 +41,13 @@ class RegistryValidationError(RegistryError):
 
 
 class BindHomeRegistry:
-    """Store assets, topology relations, and capability bindings."""
+    """Store BindHome-owned infrastructure abstractions."""
 
     def __init__(self) -> None:
         self.assets: dict[str, Asset] = {}
         self.relations: dict[str, Relation] = {}
         self.bindings: dict[str, Binding] = {}
+        self.representations: dict[str, Representation] = {}
 
     def add_asset(self, asset: Asset) -> Asset:
         """Add an asset."""
@@ -97,6 +104,18 @@ class BindHomeRegistry:
                     "Cannot remove capabilities that still have active bindings"
                 )
 
+            representation = self.representations.get(asset_id)
+            if representation is not None:
+                required = REPRESENTATION_REQUIREMENTS[representation.platform]
+                missing = sorted(required - set(updated.capabilities))
+                if missing:
+                    raise RegistryConflictError(
+                        "Cannot remove capabilities required by active "
+                        f"{representation.platform} representation: "
+                        f"{', '.join(missing)}",
+                        field="capabilities",
+                    )
+
         self.assets[asset_id] = updated
         return updated
 
@@ -124,6 +143,10 @@ class BindHomeRegistry:
             raise RegistryConflictError("Cannot delete an asset used by a relation")
         if any(binding.asset_id == asset_id for binding in self.bindings.values()):
             raise RegistryConflictError("Cannot delete an asset with active bindings")
+        if asset_id in self.representations:
+            raise RegistryConflictError(
+                "Cannot delete an asset with active representation"
+            )
         del self.assets[asset_id]
 
     def get_asset(self, asset_id: str) -> Asset:
@@ -209,6 +232,59 @@ class BindHomeRegistry:
             raise RegistryNotFoundError(f"Binding {binding_id} was not found")
         del self.bindings[binding_id]
 
+    def set_representation(
+        self,
+        representation: Representation,
+    ) -> Representation:
+        """Create the optional logical representation for an Asset."""
+        asset = self.get_asset(representation.asset_id)
+
+        required = REPRESENTATION_REQUIREMENTS.get(representation.platform)
+        if required is None:
+            raise RegistryValidationError(
+                "BindHome does not implement representation platform "
+                f"{representation.platform}",
+                field="platform",
+            )
+
+        missing = sorted(required - set(asset.capabilities))
+        if missing:
+            raise RegistryValidationError(
+                f"{representation.platform} representation requires capabilities: "
+                f"{', '.join(missing)}",
+                field="capabilities",
+            )
+
+        existing = self.representations.get(asset.id)
+        if existing is not None:
+            if existing.platform == representation.platform:
+                return existing
+
+            raise RegistryConflictError(
+                "Cannot change representation platform directly; "
+                "remove the current representation first",
+                field="platform",
+            )
+
+        self.representations[asset.id] = representation
+        return representation
+
+    def get_representation(self, asset_id: str) -> Representation | None:
+        """Return an Asset's logical representation, if configured."""
+        self.get_asset(asset_id)
+        return self.representations.get(asset_id)
+
+    def remove_representation(self, asset_id: str) -> None:
+        """Remove an Asset's logical representation."""
+        self.get_asset(asset_id)
+
+        if asset_id not in self.representations:
+            raise RegistryNotFoundError(
+                f"Representation for Asset {asset_id} was not found"
+            )
+
+        del self.representations[asset_id]
+
     def to_dict(self) -> dict[str, Any]:
         """Serialize the complete registry."""
         return {
@@ -216,6 +292,10 @@ class BindHomeRegistry:
             "assets": [asset.to_dict() for asset in self.assets.values()],
             "relations": [relation.to_dict() for relation in self.relations.values()],
             "bindings": [binding.to_dict() for binding in self.bindings.values()],
+            "representations": [
+                representation.to_dict()
+                for representation in self.representations.values()
+            ],
         }
 
     @classmethod
@@ -232,6 +312,12 @@ class BindHomeRegistry:
             raise RegistryValidationError(
                 f"Unsupported registry schema version: {schema_version}"
             )
+
+        # Persisted registries created before Representation existed have no
+        # "representations" key. Preserve their exact previous runtime
+        # behaviour once by migrating every formerly implicit on_off logical
+        # light to an explicit light Representation.
+        legacy_implicit_representations = "representations" not in data
 
         for raw_asset in data.get("assets", []):
             try:
@@ -256,5 +342,27 @@ class BindHomeRegistry:
                 raise RegistryValidationError(
                     f"Invalid binding in registry: {err}"
                 ) from err
+
+        if legacy_implicit_representations:
+            for asset in registry.assets.values():
+                if "on_off" not in asset.capabilities:
+                    continue
+
+                registry.set_representation(
+                    Representation.create(
+                        asset_id=asset.id,
+                        platform="light",
+                    )
+                )
+        else:
+            for raw_representation in data.get("representations", []):
+                try:
+                    registry.set_representation(
+                        Representation.from_dict(raw_representation)
+                    )
+                except (ModelValidationError, RegistryError) as err:
+                    raise RegistryValidationError(
+                        f"Invalid representation in registry: {err}"
+                    ) from err
 
         return registry
