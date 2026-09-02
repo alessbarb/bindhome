@@ -288,20 +288,35 @@ In particular:
 - Creation presets never create bindings, entity references or
   Representations.
 
+## Frontend architecture
+
+The Home Assistant custom panel remains a Lit application bundled with esbuild.
+Its production frontend is split into explicit boundaries:
+
+1. a panel shell with Inventory and Infrastructure navigation;
+2. a BindHome WebSocket adapter for registry, Asset, preset and bulk-create
+   operations;
+3. a Home Assistant adapter that reads the native Floor and Area registries;
+4. pure local draft-state helpers and a guarded bulk-save controller;
+5. the Area-oriented **Inventory this room** workflow;
+6. a preserved Infrastructure inspector for Assets, Relations and Bindings.
+
+The room workflow joins Home Assistant Areas to Floors in the client. `No floor`
+is a presentation-only grouping for Areas whose Home Assistant `floor_id` is
+empty. It is never persisted by BindHome.
+
+Creation preset values are consumed directly from `bindhome/presets/list`.
+Quantities create local editable drafts, while reduced quantities retain
+inactive edits only in session memory. Only active drafts are serialized, and
+the accepted batch is sent in one `bindhome/assets/create_bulk` request.
+
+Successful inventory creation does not create Bindings, Relations,
+Representations, Home Assistant entities, devices or automations. Those remain
+separate lifecycle stages.
+
 ## Next product work
 
-The first user-facing milestone is the Area-oriented **Inventory this room**
-workflow using Home Assistant Floors and Areas.
-
-The backend primitives it requires are already available:
-
-1. read the creation preset catalogue;
-2. generate and edit local Asset drafts;
-3. submit the complete room inventory through transactional bulk creation;
-4. enrich created Assets later with bindings, topology and optional
-   Representations.
-
 Later UX work can add topology visualization, richer editing, issues/status
-views and import/export workflows without changing these core ownership rules.
+views and import/export workflows without changing these ownership rules.
 
 See `product-contract.md` for the agreed product behaviour.

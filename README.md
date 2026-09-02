@@ -57,8 +57,10 @@ The backend functional foundation for inventory UX is now in place:
 transactional bulk creation, explicit logical Representations, and extensible
 creation presets.
 
-The next product milestone is the Area-oriented **Inventory this room** user
-experience built on those primitives.
+The Area-oriented **Inventory this room** experience is implemented in the
+BindHome panel. It reads Home Assistant Floors and Areas live, uses BindHome's
+creation presets to generate editable local drafts, shows existing room
+inventory separately, and persists each accepted room batch atomically.
 
 ## Data model
 

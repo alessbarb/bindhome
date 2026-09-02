@@ -9,6 +9,8 @@ htmlcov/
 venv/
 .env
 .DS_Store
+.superdesign/init/
+.superdesign/resume.json
 
 # Python build artifacts
 build/

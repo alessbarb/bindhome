@@ -155,8 +155,8 @@ empty collection means no logical exposure.
 
 ## Inventory-first workflow
 
-This is the next user-facing milestone. Its required backend foundations are
-implemented.
+The Area-oriented room inventory workflow is implemented in the BindHome panel.
+Its backend foundations and transactional semantics remain as described below.
 
 The primary user workflow is inventorying the home, not configuring automation.
 
