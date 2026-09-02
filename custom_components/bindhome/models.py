@@ -13,13 +13,23 @@ _IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 class ModelValidationError(ValueError):
     """Raised when a BindHome model is invalid."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        field: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.field = field
+
 
 def normalize_identifier(value: str, field: str) -> str:
     """Validate and normalize an extensible identifier."""
     normalized = value.strip().lower()
     if not _IDENTIFIER_RE.fullmatch(normalized):
         raise ModelValidationError(
-            f"{field} must use lower_snake_case and start with a letter"
+            f"{field} must use lower_snake_case and start with a letter",
+            field=field,
         )
     return normalized
 
@@ -28,7 +38,10 @@ def normalize_non_empty(value: str, field: str) -> str:
     """Return a trimmed non-empty string."""
     normalized = value.strip()
     if not normalized:
-        raise ModelValidationError(f"{field} must not be empty")
+        raise ModelValidationError(
+            f"{field} must not be empty",
+            field=field,
+        )
     return normalized
 
 
@@ -140,13 +153,17 @@ class Asset:
             asset_type = normalize_identifier(str(data["asset_type"]), "asset_type")
         except KeyError as err:
             raise ModelValidationError(
-                f"Missing required asset field: {err.args[0]}"
+                f"Missing required asset field: {err.args[0]}",
+                field=str(err.args[0]),
             ) from err
         code_raw = data.get("code")
         area_raw = data.get("area_id")
         capabilities_raw = data.get("capabilities", [])
         if not isinstance(capabilities_raw, (list, tuple)):
-            raise ModelValidationError("Capabilities must be a list or tuple")
+            raise ModelValidationError(
+                "Capabilities must be a list or tuple",
+                field="capabilities",
+            )
         capabilities = tuple(
             sorted(
                 {

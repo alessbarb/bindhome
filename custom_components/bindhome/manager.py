@@ -3,15 +3,65 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .const import SIGNAL_REGISTRY_CHANGED
-from .models import Asset, Binding, Relation
-from .registry import BindHomeRegistry
+from .models import Asset, Binding, ModelValidationError, Relation
+from .registry import (
+    BindHomeRegistry,
+    RegistryError,
+)
 from .resolver import BindingResolver, HomeAssistantEntityProbe
 from .store import BindHomeStore
+
+
+@dataclass(frozen=True, slots=True)
+class AssetCreateSpec:
+    """Validated-boundary input for creating one Asset in a batch."""
+
+    name: str
+    asset_type: str
+    code: str | None = None
+    area_id: str | None = None
+    capabilities: tuple[str, ...] = ()
+
+
+class BulkAssetCreateError(ValueError):
+    """Identify the exact Asset draft that failed during atomic creation."""
+
+    def __init__(
+        self,
+        index: int,
+        cause: Exception,
+        *,
+        field: str | None = None,
+    ) -> None:
+        self.index = index
+        self.cause = cause
+
+        cause_field = getattr(cause, "field", None)
+        if cause_field == "capability":
+            cause_field = "capabilities"
+
+        self.field = field if field is not None else cause_field
+        self.reason = str(cause)
+
+        location = f"assets[{index}]"
+        if self.field is not None:
+            location += f".{self.field}"
+
+        super().__init__(f"{location}: {self.reason}")
+
+    def to_dict(self) -> dict[str, object]:
+        """Return structured details suitable for a user-facing API."""
+        return {
+            "index": self.index,
+            "field": self.field,
+            "message": self.reason,
+        }
 
 
 class BindHomeManager:
@@ -33,6 +83,22 @@ class BindHomeManager:
         """Persist the registry and notify runtime consumers."""
         await self._store.async_save(self.registry)
         async_dispatcher_send(self.hass, SIGNAL_REGISTRY_CHANGED)
+
+    def _adopt_staged_registry(self, staged: BindHomeRegistry) -> None:
+        """Commit staged state while preserving the live registry identity.
+
+        Long-lived runtime consumers may retain references to the current
+        BindHomeRegistry, so batch commits replace its contents rather than
+        replacing the registry object itself.
+        """
+        self.registry.assets.clear()
+        self.registry.assets.update(staged.assets)
+
+        self.registry.relations.clear()
+        self.registry.relations.update(staged.relations)
+
+        self.registry.bindings.clear()
+        self.registry.bindings.update(staged.bindings)
 
     async def async_load(self) -> None:
         """Load persisted registry state."""
@@ -60,6 +126,43 @@ class BindHomeManager:
             )
             await self._async_persist_and_notify()
             return asset
+
+    async def async_create_assets(
+        self,
+        specs: list[AssetCreateSpec],
+    ) -> list[Asset]:
+        """Create many Assets as one atomic persistent mutation."""
+        if not specs:
+            raise ValueError("assets must contain at least one item")
+
+        async with self._mutation_lock:
+            staged = BindHomeRegistry.from_dict(self.registry.to_dict())
+            created: list[Asset] = []
+
+            for index, spec in enumerate(specs):
+                try:
+                    asset = Asset.create(
+                        name=spec.name,
+                        asset_type=spec.asset_type,
+                        code=spec.code,
+                        area_id=spec.area_id,
+                        capabilities=list(spec.capabilities),
+                    )
+                    staged.add_asset(asset)
+                except (ModelValidationError, RegistryError) as err:
+                    raise BulkAssetCreateError(index, err) from err
+
+                created.append(asset)
+
+            # Persistence is deliberately performed before changing the live
+            # registry. If storage fails, the running registry remains exactly
+            # as it was before the batch.
+            await self._store.async_save(staged)
+
+            self._adopt_staged_registry(staged)
+            async_dispatcher_send(self.hass, SIGNAL_REGISTRY_CHANGED)
+
+            return created
 
     async def async_update_asset(
         self,

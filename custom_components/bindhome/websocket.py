@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any, cast
 
 import voluptuous as vol
@@ -23,7 +24,11 @@ from homeassistant.helpers import config_validation as cv
 
 from . import query
 from .const import DOMAIN
-from .manager import BindHomeManager
+from .manager import (
+    AssetCreateSpec,
+    BindHomeManager,
+    BulkAssetCreateError,
+)
 from .models import ModelValidationError
 from .query import Direction
 from .registry import (
@@ -36,6 +41,7 @@ from .validation import validate_area, validate_entity
 
 WS_REGISTRY_GET = f"{DOMAIN}/registry/get"
 WS_ASSET_CREATE = f"{DOMAIN}/assets/create"
+WS_ASSET_CREATE_BULK = f"{DOMAIN}/assets/create_bulk"
 WS_ASSET_UPDATE = f"{DOMAIN}/assets/update"
 WS_ASSET_DELETE = f"{DOMAIN}/assets/delete"
 WS_RELATION_CREATE = f"{DOMAIN}/relations/create"
@@ -50,6 +56,16 @@ WS_GRAPH_PATH = f"{DOMAIN}/graph/path"
 WS_BINDING_STATUS = f"{DOMAIN}/bindings/status"
 
 _DIRECTIONS = [direction.value for direction in Direction]
+
+_ASSET_CREATE_ITEM_SCHEMA = vol.Schema(
+    {
+        vol.Required("name"): cv.string,
+        vol.Required("asset_type"): cv.string,
+        vol.Optional("code"): cv.string,
+        vol.Optional("area_id"): cv.string,
+        vol.Optional("capabilities", default=[]): [cv.string],
+    }
+)
 
 
 def _get_manager(hass: HomeAssistant) -> BindHomeManager:
@@ -79,6 +95,26 @@ def _send_error(
     else:
         code = ERR_INVALID_FORMAT
     connection.send_error(msg["id"], code, str(err))
+
+
+def _send_bulk_asset_error(
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+    err: BulkAssetCreateError,
+) -> None:
+    """Return an indexed, machine-readable error for one batch item."""
+    if isinstance(err.cause, RegistryConflictError):
+        code = "conflict"
+    elif isinstance(err.cause, ServiceValidationError):
+        code = ERR_NOT_FOUND
+    else:
+        code = ERR_INVALID_FORMAT
+
+    connection.send_error(
+        msg["id"],
+        code,
+        json.dumps(err.to_dict(), separators=(",", ":")),
+    )
 
 
 @require_admin
@@ -125,6 +161,58 @@ async def ws_asset_create(
         _send_error(connection, msg, err)
         return
     connection.send_result(msg["id"], {"asset": asset.to_dict()})
+
+
+@require_admin
+@websocket_command(
+    {
+        vol.Required("type"): WS_ASSET_CREATE_BULK,
+        vol.Required("assets"): vol.All(
+            [_ASSET_CREATE_ITEM_SCHEMA],
+            vol.Length(min=1),
+        ),
+    }
+)
+@async_response
+async def ws_asset_create_bulk(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Create multiple Assets as one atomic mutation."""
+    specs: list[AssetCreateSpec] = []
+
+    for index, raw in enumerate(msg["assets"]):
+        try:
+            validate_area(hass, raw.get("area_id"))
+        except ServiceValidationError as err:
+            _send_bulk_asset_error(
+                connection,
+                msg,
+                BulkAssetCreateError(index, err, field="area_id"),
+            )
+            return
+
+        specs.append(
+            AssetCreateSpec(
+                name=raw["name"],
+                asset_type=raw["asset_type"],
+                code=raw.get("code"),
+                area_id=raw.get("area_id"),
+                capabilities=tuple(raw.get("capabilities", [])),
+            )
+        )
+
+    try:
+        assets = await _get_manager(hass).async_create_assets(specs)
+    except BulkAssetCreateError as err:
+        _send_bulk_asset_error(connection, msg, err)
+        return
+
+    connection.send_result(
+        msg["id"],
+        {"assets": [asset.to_dict() for asset in assets]},
+    )
 
 
 @require_admin
@@ -436,6 +524,7 @@ def async_register_websocket_commands(hass: HomeAssistant) -> None:
     for handler in (
         ws_registry_get,
         ws_asset_create,
+        ws_asset_create_bulk,
         ws_asset_update,
         ws_asset_delete,
         ws_relation_create,

@@ -12,6 +12,15 @@ from .models import Asset, Binding, ModelValidationError, Relation
 class RegistryError(ValueError):
     """Base registry error."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        field: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.field = field
+
 
 class RegistryNotFoundError(RegistryError):
     """Raised when a registry object does not exist."""
@@ -40,7 +49,10 @@ class BindHomeRegistry:
         if asset.code and any(
             existing.code == asset.code for existing in self.assets.values()
         ):
-            raise RegistryConflictError(f"Asset code {asset.code} already exists")
+            raise RegistryConflictError(
+                f"Asset code {asset.code} already exists",
+                field="code",
+            )
         self.assets[asset.id] = asset
         return asset
 
@@ -68,7 +80,10 @@ class BindHomeRegistry:
             existing.id != asset_id and existing.code == updated.code
             for existing in self.assets.values()
         ):
-            raise RegistryConflictError(f"Asset code {updated.code} already exists")
+            raise RegistryConflictError(
+                f"Asset code {updated.code} already exists",
+                field="code",
+            )
 
         removed = set(asset.capabilities) - set(updated.capabilities)
         if removed:
