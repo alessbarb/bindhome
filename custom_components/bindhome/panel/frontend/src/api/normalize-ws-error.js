@@ -1,11 +1,9 @@
-const FALLBACK_MESSAGE = "The room inventory could not be saved. Nothing was saved.";
-
 function candidateMessages(error) {
   return [error?.message, error?.body?.message, error?.data?.message, error?.error]
     .filter((value) => typeof value === "string");
 }
 
-export function normalizeBulkError(error) {
+export function normalizeBulkError(error, fallbackMessage = null) {
   for (const value of candidateMessages(error)) {
     try {
       const parsed = JSON.parse(value);
@@ -27,6 +25,6 @@ export function normalizeBulkError(error) {
     }
   }
 
-  const message = candidateMessages(error).find((value) => value.trim()) ?? FALLBACK_MESSAGE;
+  const message = candidateMessages(error).find((value) => value.trim()) ?? fallbackMessage;
   return { structured: false, index: null, field: null, message };
 }

@@ -10,20 +10,12 @@ import {
   updateDraft,
 } from "./draft-state.js";
 import { InventorySaveController } from "./inventory-controller.js";
-
-const GROUP_LABELS = {
-  electrical: "Electrical",
-  network: "Network / communications",
-  climate: "Climate",
-  water: "Water",
-  building: "Building",
-  equipment: "Equipment",
-  other: "Other / custom",
-};
+import { pluralKey, presetDisplayName } from "../i18n/localize.js";
 
 export class BindHomeInventoryWorkflow extends LitElement {
   static properties = {
     hass: { attribute: false },
+    t: { attribute: false },
     presets: { attribute: false },
     floors: { attribute: false },
     areas: { attribute: false },
@@ -43,6 +35,7 @@ export class BindHomeInventoryWorkflow extends LitElement {
   constructor() {
     super();
     this.presets = [];
+    this.t = (key) => key;
     this.floors = [];
     this.areas = [];
     this.assets = [];
@@ -60,12 +53,12 @@ export class BindHomeInventoryWorkflow extends LitElement {
   }
 
   willUpdate(changed) {
-    if (changed.has("presets") && this.presets.length && this._activeDrafts.length === 0) {
-      this._draftState = createDraftState(this.presets);
+    if ((changed.has("presets") || changed.has("t")) && this.presets.length && this._activeDrafts.length === 0) {
+      this._draftState = createDraftState(this._localizedPresets());
       this._openGroups = new Set([this.presets[0].group]);
     }
-    if (changed.has("hass") && this.hass) {
-      this._controller = new InventorySaveController(createBindHomeApi(this.hass));
+    if ((changed.has("hass") || changed.has("t")) && this.hass) {
+      this._controller = new InventorySaveController(createBindHomeApi(this.hass), this.t("errors.batch_fallback"));
     }
   }
 
@@ -182,6 +175,9 @@ export class BindHomeInventoryWorkflow extends LitElement {
   get _selectedFloor() { return this._floorId === NO_FLOOR_ID ? null : this.floors.find((floor) => floor.floor_id === this._floorId); }
   get _areaAssets() { return filterAssetsByArea(this.assets, this._areaId); }
   get _activeDrafts() { return activeDrafts(this._draftState); }
+  _localizedPresets() { return this.presets.map((preset) => ({ ...preset, default_name: presetDisplayName(this.t, preset) })); }
+  _groupLabel(group) { return this.t(`groups.${group}`) === `groups.${group}` ? group : this.t(`groups.${group}`); }
+  _count(key, count) { return this.t(pluralKey(key, count), { count }); }
 
   _selectFloor(event) {
     this._floorId = event.target.value;
@@ -249,8 +245,8 @@ export class BindHomeInventoryWorkflow extends LitElement {
     const refreshedAssets = result.assets ?? [...this.assets, ...result.created];
     this.assets = refreshedAssets;
     this.dispatchEvent(new CustomEvent("assets-refreshed", { detail: refreshedAssets, bubbles: true, composed: true }));
-    this._success = { count: result.created.length, areaName: this._selectedArea?.name ?? "Selected area" };
-    this._draftState = createDraftState(this.presets);
+    this._success = { count: result.created.length, areaName: this._selectedArea?.name ?? this.t("inventory.selected_area") };
+    this._draftState = createDraftState(this._localizedPresets());
     this._openGroups = new Set([this.presets[0]?.group].filter(Boolean));
     this._openDrafts = new Set();
     this._step = "success";
@@ -264,7 +260,7 @@ export class BindHomeInventoryWorkflow extends LitElement {
     this._step = "select";
   }
   _discardAndChangeRoom() {
-    this._draftState = createDraftState(this.presets);
+    this._draftState = createDraftState(this._localizedPresets());
     this._saveError = null;
     this._openDrafts = new Set();
     this._confirmRoomChange = false;
@@ -278,53 +274,54 @@ export class BindHomeInventoryWorkflow extends LitElement {
   _renderContext() {
     return html`<div class="context"><div class="context-inner">
       <div class="context-values">
-        <div class="context-item"><ha-icon icon="mdi:layers-outline"></ha-icon><span class="context-label">Floor</span><span class="context-value">${this._selectedFloor?.name ?? "No floor"}</span></div>
-        <div class="context-item"><ha-icon icon="mdi:floor-plan"></ha-icon><span class="context-label">Area</span><span class="context-value">${this._selectedArea?.name}</span></div>
+        <div class="context-item"><ha-icon icon="mdi:layers-outline"></ha-icon><span class="context-label">${this.t("common.floor")}</span><span class="context-value">${this._selectedFloor?.name ?? this.t("common.no_floor")}</span></div>
+        <div class="context-item"><ha-icon icon="mdi:floor-plan"></ha-icon><span class="context-label">${this.t("common.area")}</span><span class="context-value">${this._selectedArea?.name}</span></div>
       </div>
-      <button class="button text" @click=${this._requestRoomChange} ?disabled=${this._saving}>Change room</button>
+      <button class="button text" @click=${this._requestRoomChange} ?disabled=${this._saving}>${this.t("inventory.change_room")}</button>
     </div></div>`;
   }
 
   _renderSelection() {
-    const floorOptions = [...this.floors, { floor_id: NO_FLOOR_ID, name: "No floor" }];
+    const floorOptions = [...this.floors, { floor_id: NO_FLOOR_ID, name: this.t("common.no_floor") }];
     const visibleAreas = areasForFloor(this.areas, this._floorId);
     return html`<div class="content selection">
-      <h1>Inventory this room</h1><p class="muted intro">Choose a Home Assistant Floor and Area before recording physical infrastructure.</p>
-      <div class="field-block"><label for="floor">Floor</label><select id="floor" .value=${this._floorId} @change=${this._selectFloor}><option value="">Select a floor</option>${floorOptions.map((floor) => html`<option value=${floor.floor_id}>${floor.name}</option>`)}</select><p class="muted helper">Areas without a floor remain available under No floor.</p></div>
-      <div class="field-block"><label for="area">Area</label><select id="area" .value=${this._areaId} @change=${(event) => (this._areaId = event.target.value)} ?disabled=${!this._floorId}><option value="">Select an area</option>${visibleAreas.map((area) => html`<option value=${area.area_id}>${area.name}</option>`)}</select>${this._floorId && !visibleAreas.length ? html`<p class="muted helper">This floor has no Areas. Create one in Home Assistant Settings.</p>` : nothing}</div>
-      <div class="actions"><button class="button primary" @click=${this._continue} ?disabled=${!this._areaId}>Continue to quantities</button></div>
+      <h1>${this.t("inventory.title")}</h1><p class="muted intro">${this.t("inventory.selection_intro")}</p>
+      <div class="field-block"><label for="floor">${this.t("common.floor")}</label><select id="floor" .value=${this._floorId} @change=${this._selectFloor}><option value="">${this.t("inventory.select_floor")}</option>${floorOptions.map((floor) => html`<option value=${floor.floor_id}>${floor.name}</option>`)}</select><p class="muted helper">${this.t("inventory.no_floor_helper")}</p></div>
+      <div class="field-block"><label for="area">${this.t("common.area")}</label><select id="area" .value=${this._areaId} @change=${(event) => (this._areaId = event.target.value)} ?disabled=${!this._floorId}><option value="">${this.t("inventory.select_area")}</option>${visibleAreas.map((area) => html`<option value=${area.area_id}>${area.name}</option>`)}</select>${this._floorId && !visibleAreas.length ? html`<p class="muted helper">${this.t("inventory.no_areas")}</p>` : nothing}</div>
+      <div class="actions"><button class="button primary" @click=${this._continue} ?disabled=${!this._areaId}>${this.t("inventory.continue")}</button></div>
     </div>`;
   }
 
   _renderExisting() {
     const groups = groupExistingAssets(this._areaAssets, this.presets);
-    if (!this._areaAssets.length) return html`<p class="muted helper">No BindHome Assets are registered in this room yet.</p>`;
-    return html`<div class="existing-summary">${[...groups].map(([group, assets]) => html`<div class="existing-group"><div class="existing-heading"><strong>${GROUP_LABELS[group] ?? group}</strong><span class="muted">${assets.length}</span></div><ul class="existing-list">${assets.map((asset) => html`<li>${asset.name}</li>`)}</ul></div>`)}</div>`;
+    if (!this._areaAssets.length) return html`<p class="muted helper">${this.t("inventory.no_existing")}</p>`;
+    return html`<div class="existing-summary">${[...groups].map(([group, assets]) => html`<div class="existing-group"><div class="existing-heading"><strong>${this._groupLabel(group)}</strong><span class="muted">${assets.length}</span></div><ul class="existing-list">${assets.map((asset) => html`<li>${asset.name}</li>`)}</ul></div>`)}</div>`;
   }
 
   _renderQuantity() {
     const grouped = new Map();
     for (const preset of this.presets) grouped.set(preset.group, [...(grouped.get(preset.group) ?? []), preset]);
-    return html`${this._renderContext()}${this._renderRoomChangeConfirmation()}<div class="content layout"><section><h1>What is physically installed here?</h1><p class="muted intro">Set a quantity above zero to create editable drafts. Zero creates nothing.</p>
-      <details class="mobile-existing"><summary><strong>Existing in this room</strong><span class="muted">${this._areaAssets.length}</span></summary>${this._renderExisting()}</details>
+    return html`${this._renderContext()}${this._renderRoomChangeConfirmation()}<div class="content layout"><section><h1>${this.t("inventory.quantity_title")}</h1><p class="muted intro">${this.t("inventory.quantity_intro")}</p>
+      <details class="mobile-existing"><summary><strong>${this.t("inventory.existing")}</strong><span class="muted">${this._areaAssets.length}</span></summary>${this._renderExisting()}</details>
       <div class="groups">${[...grouped].map(([group, presets]) => {
         const selected = presets.reduce((total, preset) => total + (this._draftState.quantities.get(preset.preset_id) ?? 0), 0);
         const open = this._openGroups.has(group);
-        return html`<section class="group"><button class="group-toggle" @click=${() => this._toggleGroup(group)} aria-expanded=${open}><span class="group-title"><ha-icon icon=${open ? "mdi:chevron-down" : "mdi:chevron-right"}></ha-icon>${GROUP_LABELS[group] ?? group}</span><span class="muted">${selected} selected</span></button>${open ? presets.map((preset) => {
+        return html`<section class="group"><button class="group-toggle" @click=${() => this._toggleGroup(group)} aria-expanded=${open} aria-label=${this.t(open ? "actions.collapse_group" : "actions.expand_group", { group: this._groupLabel(group) })}><span class="group-title"><ha-icon icon=${open ? "mdi:chevron-down" : "mdi:chevron-right"}></ha-icon>${this._groupLabel(group)}</span><span class="muted">${this._count("counts.selected", selected)}</span></button>${open ? presets.map((preset) => {
           const quantity = this._draftState.quantities.get(preset.preset_id) ?? 0;
-          return html`<div class="quantity-row"><div><div class="preset-name">${preset.default_name}</div>${preset.suggested_capabilities?.length ? html`<div class="suggestions">Suggested: ${preset.suggested_capabilities.join(", ")}</div>` : nothing}</div><div class="stepper"><button aria-label=${`Decrease ${preset.default_name} quantity`} @click=${() => this._changeQuantity(preset.preset_id, -1)} ?disabled=${quantity === 0 || this._saving}><ha-icon icon="mdi:minus"></ha-icon></button><output aria-live="polite">${quantity}</output><button aria-label=${`Increase ${preset.default_name} quantity`} @click=${() => this._changeQuantity(preset.preset_id, 1)} ?disabled=${this._saving}><ha-icon icon="mdi:plus"></ha-icon></button></div></div>`;
+          const displayName = presetDisplayName(this.t, preset);
+          return html`<div class="quantity-row"><div><div class="preset-name">${displayName}</div>${preset.suggested_capabilities?.length ? html`<div class="suggestions">${this.t("inventory.suggested", { capabilities: preset.suggested_capabilities.join(", ") })}</div>` : nothing}</div><div class="stepper"><button aria-label=${this.t("actions.decrease_quantity", { name: displayName })} @click=${() => this._changeQuantity(preset.preset_id, -1)} ?disabled=${quantity === 0 || this._saving}><ha-icon icon="mdi:minus"></ha-icon></button><output aria-live="polite">${quantity}</output><button aria-label=${this.t("actions.increase_quantity", { name: displayName })} @click=${() => this._changeQuantity(preset.preset_id, 1)} ?disabled=${this._saving}><ha-icon icon="mdi:plus"></ha-icon></button></div></div>`;
         }) : nothing}</section>`;
-      })}</div></section><aside class="rail"><h2>Existing in this room</h2><p class="muted helper">Registered Assets remain unchanged.</p>${this._renderExisting()}<div class="draft-count"><span class="muted">Being added now</span><strong>${this._activeDrafts.length} assets</strong><p class="muted helper">Drafts are not saved until the complete batch passes validation.</p></div></aside></div>${this._renderBottom("quantity")}`;
+      })}</div></section><aside class="rail"><h2>${this.t("inventory.existing")}</h2><p class="muted helper">${this.t("inventory.existing_unchanged")}</p>${this._renderExisting()}<div class="draft-count"><span class="muted">${this.t("inventory.being_added")}</span><strong>${this._count("counts.asset", this._activeDrafts.length)}</strong><p class="muted helper">${this.t("inventory.not_saved_yet")}</p></div></aside></div>${this._renderBottom("quantity")}`;
   }
 
   _renderDraft(draft, index) {
     const open = this._openDrafts.has(draft.key) || ["name", "asset_type", "code", "capabilities"].some((field) => this._fieldError(index, field));
     const rowError = this._saveError?.structured && this._saveError.index === index;
-    return html`<article class="draft-row ${rowError ? "error" : ""}" data-draft-index=${index}><div class="draft-summary"><span class="draft-number">${index + 1}</span><div class="draft-title"><strong>${draft.name}</strong><span>${draft.asset_type}</span></div><button class="draft-toggle" aria-label=${`${open ? "Collapse" : "Edit"} ${draft.name}`} aria-expanded=${open} @click=${() => this._toggleDraft(draft.key)}><ha-icon icon=${open ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon></button></div>${open ? html`<div class="draft-fields">
-      ${this._renderInput(draft, index, "name", "Name", draft.name)}
-      ${this._renderInput(draft, index, "asset_type", "Asset type", draft.asset_type)}
-      ${this._renderInput(draft, index, "code", "Code (optional)", draft.code ?? "")}
-      <div class="capabilities"><label>Capabilities</label><div class="capability-list">${draft.capabilities.length ? draft.capabilities.map((capability) => html`<span class="capability">${capability}<button aria-label=${`Remove capability ${capability}`} @click=${() => this._removeCapability(draft, capability)} ?disabled=${this._saving}><ha-icon icon="mdi:close"></ha-icon></button></span>`) : html`<span class="muted helper">No capabilities</span>`}</div><div class="add-capability"><label>Custom capability<input id=${this._fieldId(draft, "capabilities")} placeholder="e.g. power_measurement" aria-invalid=${this._fieldError(index, "capabilities")} aria-describedby=${this._fieldError(index, "capabilities") ? `${this._fieldId(draft, "capabilities")}-error` : nothing} @keydown=${(event) => { if (event.key === "Enter") { event.preventDefault(); this._addCapability(draft, event.target); } }}></label><button class="button secondary" @click=${(event) => this._addCapability(draft, event.currentTarget.previousElementSibling.querySelector("input"))} ?disabled=${this._saving}>Add</button></div>${this._fieldError(index, "capabilities") ? html`<p class="field-error" id=${`${this._fieldId(draft, "capabilities")}-error`}>${this._saveError.message}</p>` : nothing}</div>
+    return html`<article class="draft-row ${rowError ? "error" : ""}" data-draft-index=${index}><div class="draft-summary"><span class="draft-number">${index + 1}</span><div class="draft-title"><strong>${draft.name}</strong><span>${draft.asset_type}</span></div><button class="draft-toggle" aria-label=${this.t(open ? "actions.collapse_draft" : "actions.edit_draft", { name: draft.name })} aria-expanded=${open} @click=${() => this._toggleDraft(draft.key)}><ha-icon icon=${open ? "mdi:chevron-up" : "mdi:chevron-down"}></ha-icon></button></div>${open ? html`<div class="draft-fields">
+      ${this._renderInput(draft, index, "name", this.t("fields.name"), draft.name)}
+      ${this._renderInput(draft, index, "asset_type", this.t("fields.asset_type"), draft.asset_type)}
+      ${this._renderInput(draft, index, "code", this.t("fields.code_optional"), draft.code ?? "")}
+      <div class="capabilities"><label>${this.t("fields.capabilities")}</label><div class="capability-list">${draft.capabilities.length ? draft.capabilities.map((capability) => html`<span class="capability">${capability}<button aria-label=${this.t("actions.remove_capability", { capability })} @click=${() => this._removeCapability(draft, capability)} ?disabled=${this._saving}><ha-icon icon="mdi:close"></ha-icon></button></span>`) : html`<span class="muted helper">${this.t("fields.no_capabilities")}</span>`}</div><div class="add-capability"><label>${this.t("fields.custom_capability")}<input id=${this._fieldId(draft, "capabilities")} placeholder=${this.t("fields.capability_placeholder")} aria-invalid=${this._fieldError(index, "capabilities")} aria-describedby=${this._fieldError(index, "capabilities") ? `${this._fieldId(draft, "capabilities")}-error` : nothing} @keydown=${(event) => { if (event.key === "Enter") { event.preventDefault(); this._addCapability(draft, event.target); } }}></label><button class="button secondary" @click=${(event) => this._addCapability(draft, event.currentTarget.previousElementSibling.querySelector("input"))} ?disabled=${this._saving}>${this.t("common.add")}</button></div>${this._fieldError(index, "capabilities") ? html`<p class="field-error" id=${`${this._fieldId(draft, "capabilities")}-error`}>${this._saveError.message}</p>` : nothing}</div>
     </div>` : nothing}</article>`;
   }
 
@@ -335,25 +332,25 @@ export class BindHomeInventoryWorkflow extends LitElement {
   }
 
   _renderReview() {
-    return html`${this._renderContext()}${this._renderRoomChangeConfirmation()}<div class="content">${this._saveError ? html`<div class="alert" role="alert"><ha-icon icon="mdi:alert-circle-outline"></ha-icon><div><h3>Nothing was saved</h3><p class="muted helper">${this._saveError.structured ? "Correct the highlighted field and save the complete batch again." : this._saveError.message} All drafts have been preserved.</p></div></div>` : nothing}<div class="review-header"><div><h1>Review ${this._activeDrafts.length} generated drafts</h1><p class="muted intro">Every name and type is editable. Open a row to change its optional code or capabilities.</p></div></div><section class="existing-review"><div class="section-heading"><div><h2>Already registered</h2><p class="muted helper">Read-only and not included in this batch.</p></div><strong>${this._areaAssets.length}</strong></div></section><section class="drafts"><div class="section-heading"><div><h2>Being added now</h2><p class="muted helper">All drafts save together as one atomic batch.</p></div><strong>${this._activeDrafts.length}</strong></div><div>${this._activeDrafts.map((draft, index) => this._renderDraft(draft, index))}</div></section></div>${this._renderBottom("review")}`;
+    return html`${this._renderContext()}${this._renderRoomChangeConfirmation()}<div class="content">${this._saveError ? html`<div class="alert" role="alert"><ha-icon icon="mdi:alert-circle-outline"></ha-icon><div><h3>${this.t("errors.nothing_saved")}</h3><p class="muted helper">${this._saveError.structured ? this.t("errors.correct_field") : (this._saveError.message || this.t("errors.batch_fallback"))} ${this.t("errors.drafts_preserved")}</p></div></div>` : nothing}<div class="review-header"><div><h1>${this._count("review.title", this._activeDrafts.length)}</h1><p class="muted intro">${this.t("review.intro")}</p></div></div><section class="existing-review"><div class="section-heading"><div><h2>${this.t("review.registered")}</h2><p class="muted helper">${this.t("review.registered_helper")}</p></div><strong>${this._areaAssets.length}</strong></div></section><section class="drafts"><div class="section-heading"><div><h2>${this.t("inventory.being_added")}</h2><p class="muted helper">${this.t("review.atomic_batch")}</p></div><strong>${this._activeDrafts.length}</strong></div><div>${this._activeDrafts.map((draft, index) => this._renderDraft(draft, index))}</div></section></div>${this._renderBottom("review")}`;
   }
 
   _renderRoomChangeConfirmation() {
     if (!this._confirmRoomChange) return nothing;
-    return html`<div class="content"><section class="alert" role="alertdialog" aria-labelledby="change-room-title" aria-describedby="change-room-description"><ha-icon icon="mdi:alert-outline"></ha-icon><div><h3 id="change-room-title">Discard this unsaved batch?</h3><p class="muted helper" id="change-room-description">Changing room clears every draft in the current batch. Nothing will be saved.</p><div class="actions"><button class="button secondary" @click=${() => (this._confirmRoomChange = false)}>Stay in this room</button><button class="button primary" @click=${this._discardAndChangeRoom}>Discard batch and change room</button></div></div></section></div>`;
+    return html`<div class="content"><section class="alert" role="alertdialog" aria-labelledby="change-room-title" aria-describedby="change-room-description"><ha-icon icon="mdi:alert-outline"></ha-icon><div><h3 id="change-room-title">${this.t("discard.title")}</h3><p class="muted helper" id="change-room-description">${this.t("discard.description")}</p><div class="actions"><button class="button secondary" @click=${() => (this._confirmRoomChange = false)}>${this.t("discard.stay")}</button><button class="button primary" @click=${this._discardAndChangeRoom}>${this.t("discard.confirm")}</button></div></div></section></div>`;
   }
 
   _renderBottom(step) {
     const count = this._activeDrafts.length;
-    return html`<div class="bottom-bar" aria-busy=${this._saving}><div class="bottom-inner"><p class="muted bottom-copy">${step === "review" ? html`<strong>${count} assets</strong> save together or none are saved.` : html`<strong>${count} drafts</strong> will be reviewed before saving.`}</p>${step === "review" ? html`<div><button class="button secondary" @click=${this._backToQuantities} ?disabled=${this._saving}>Back to quantities</button> <button class="button primary" @click=${this._save} ?disabled=${this._saving || !count}>${this._saving ? "Saving…" : `Save ${count} assets`}</button></div>` : html`<button class="button primary" @click=${() => (this._step = "review")} ?disabled=${!count}>Review ${count} items</button>`}</div></div>`;
+    return html`<div class="bottom-bar" aria-busy=${this._saving}><div class="bottom-inner"><p class="muted bottom-copy">${step === "review" ? this._count("review.save_explanation", count) : this._count("review.before_save", count)}</p>${step === "review" ? html`<div><button class="button secondary" @click=${this._backToQuantities} ?disabled=${this._saving}>${this.t("review.back_quantities")}</button> <button class="button primary" @click=${this._save} ?disabled=${this._saving || !count}>${this._saving ? this.t("review.saving") : this._count("review.save", count)}</button></div>` : html`<button class="button primary" @click=${() => (this._step = "review")} ?disabled=${!count}>${this._count("review.review_items", count)}</button>`}</div></div>`;
   }
 
   _renderSuccess() {
-    return html`${this._renderContext()}<div class="content success"><div><ha-icon icon="mdi:check-circle-outline"></ha-icon><h1>${this._success.count} assets created</h1><p class="intro">${this._success.areaName}</p><p class="muted intro">Only physical inventory was created. No devices or automations were created.</p><div class="actions"><button class="button primary" @click=${() => (this._step = "quantity")}>Back to room inventory</button><button class="button secondary" @click=${() => this.dispatchEvent(new CustomEvent("view-infrastructure", { bubbles: true, composed: true }))}>View inventory</button></div></div></div>`;
+    return html`${this._renderContext()}<div class="content success"><div><ha-icon icon="mdi:check-circle-outline"></ha-icon><h1>${this._count("success.created", this._success.count)}</h1><p class="intro">${this._success.areaName}</p><p class="muted intro">${this.t("success.explanation")}</p><div class="actions"><button class="button primary" @click=${() => (this._step = "quantity")}>${this.t("success.back")}</button><button class="button secondary" @click=${() => this.dispatchEvent(new CustomEvent("view-infrastructure", { bubbles: true, composed: true }))}>${this.t("success.view")}</button></div></div></div>`;
   }
 
   render() {
-    if (!this.floors.length && !this.areas.length) return html`<div class="content selection"><h1>Inventory this room</h1><p class="muted intro">No Home Assistant Floors or Areas are available. Create an Area in Home Assistant Settings, then refresh BindHome.</p></div>`;
+    if (!this.floors.length && !this.areas.length) return html`<div class="content selection"><h1>${this.t("inventory.title")}</h1><p class="muted intro">${this.t("inventory.no_floor_area")}</p></div>`;
     if (this._step === "select") return this._renderSelection();
     if (this._step === "quantity") return this._renderQuantity();
     if (this._step === "review") return this._renderReview();

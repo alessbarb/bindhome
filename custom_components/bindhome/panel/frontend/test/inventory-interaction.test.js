@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { Window } from "happy-dom";
 
 const window = new Window({ url: "http://localhost/bindhome" });
@@ -21,6 +22,17 @@ if (!customElements.get("ha-icon")) customElements.define("ha-icon", class exten
 
 await import("../src/inventory/inventory-workflow.js");
 await import("../src/bindhome-panel.js");
+const { createLocalizer } = await import("../src/i18n/localize.js");
+
+const translationJson = JSON.parse(readFileSync(new URL("../../../translations/en.json", import.meta.url)));
+function flatten(object, prefix = "component.bindhome.panel", result = {}) {
+  for (const [key, value] of Object.entries(object)) typeof value === "object" ? flatten(value, `${prefix}.${key}`, result) : (result[`${prefix}.${key}`] = value);
+  return result;
+}
+const englishResources = flatten(translationJson.panel);
+const englishT = createLocalizer(englishResources, englishResources);
+const spanishJson = JSON.parse(readFileSync(new URL("../../../translations/es.json", import.meta.url)));
+const spanishResources = flatten(spanishJson.panel);
 
 const presets = [
   { preset_id: "light_point", group: "electrical", asset_type: "light_point", default_name: "Light point", suggested_capabilities: ["on_off"] },
@@ -36,6 +48,7 @@ async function settle(element) {
 async function roomWorkflow(hass, areas = [{ area_id: "living", name: "Living room", floor_id: "ground" }]) {
   const element = document.createElement("bindhome-inventory-workflow");
   element.hass = hass;
+  element.t = englishT;
   element.presets = presets;
   element.floors = [{ floor_id: "ground", name: "Ground floor" }];
   element.areas = areas;
@@ -59,6 +72,7 @@ test("routine hass replacement does not reload or unmount an edited room batch",
     if (message.type === "bindhome/registry/get") return { assets: [], relations: [], bindings: [] };
     if (message.type === "config/floor_registry/list") return [{ floor_id: "ground", name: "Ground floor" }];
     if (message.type === "config/area_registry/list") return [{ area_id: "living", name: "Living room", floor_id: "ground" }];
+    if (message.type === "frontend/get_translations") return { resources: englishResources };
     throw new Error(`Unexpected call: ${message.type}`);
   };
   const panel = document.createElement("bindhome-panel");
@@ -85,6 +99,47 @@ test("routine hass replacement does not reload or unmount an edited room batch",
   assert.equal(calls.length, initialCalls);
   assert.equal(panel.shadowRoot.querySelector("bindhome-inventory-workflow"), workflow);
   assert.equal(workflow._activeDrafts[0].name, "Edited socket");
+});
+
+test("changing HA language localizes presentation without touching an active batch", async () => {
+  const calls = [];
+  const callWS = async (message) => {
+    calls.push(structuredClone(message));
+    if (message.type === "frontend/get_translations") return { resources: message.language === "es" ? spanishResources : englishResources };
+    if (message.type === "bindhome/presets/list") return { presets };
+    if (message.type === "bindhome/assets/list") return { assets: [] };
+    if (message.type === "bindhome/registry/get") return { assets: [], relations: [], bindings: [] };
+    if (message.type === "config/floor_registry/list") return [{ floor_id: "ground", name: "Ground floor user name" }];
+    if (message.type === "config/area_registry/list") return [{ area_id: "living", name: "Living room user name", floor_id: "ground" }];
+    throw new Error(`Unexpected call: ${message.type}`);
+  };
+  const panel = document.createElement("bindhome-panel");
+  panel.hass = { callWS, language: "en", states: {} };
+  document.body.append(panel);
+  await settle(panel);
+  const workflow = panel.shadowRoot.querySelector("bindhome-inventory-workflow");
+  workflow._floorId = "ground";
+  workflow._areaId = "living";
+  workflow._continue();
+  workflow._changeQuantity("socket", 1);
+  workflow._updateDraft(workflow._activeDrafts[0].key, { name: "My edited socket", asset_type: "socket", capabilities: ["on_off"] });
+  await settle(workflow);
+  const beforeDataCalls = calls.filter((call) => call.type !== "frontend/get_translations").length;
+
+  panel.hass = { callWS, language: "es", states: { "sensor.language": { state: "es" } } };
+  await settle(panel);
+  await window.happyDOM.waitUntilComplete();
+  await settle(panel);
+
+  assert.equal(panel.shadowRoot.querySelector("bindhome-inventory-workflow"), workflow);
+  assert.equal(workflow._activeDrafts[0].name, "My edited socket");
+  assert.equal(workflow._activeDrafts[0].asset_type, "socket");
+  assert.deepEqual(workflow._activeDrafts[0].capabilities, ["on_off"]);
+  assert.match(panel.shadowRoot.textContent, /Inventario/);
+  assert.match(workflow.shadowRoot.textContent, /Ground floor user name/);
+  assert.match(workflow.shadowRoot.textContent, /Living room user name/);
+  assert.equal(calls.filter((call) => call.type !== "frontend/get_translations").length, beforeDataCalls);
+  assert.equal(calls.filter((call) => call.type === "bindhome/assets/create_bulk").length, 0);
 });
 
 test("changing room requires discard and cannot retarget active drafts", async () => {
@@ -164,6 +219,7 @@ test("room workflow preserves and focuses a failed draft, then retries one atomi
   };
   const element = document.createElement("bindhome-inventory-workflow");
   element.hass = hass;
+  element.t = englishT;
   element.presets = presets;
   element.floors = [{ floor_id: "ground", name: "Ground floor" }];
   element.areas = [{ area_id: "living", name: "Living room", floor_id: "ground" }];

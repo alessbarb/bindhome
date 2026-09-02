@@ -2,8 +2,9 @@ import { normalizeBulkError } from "../api/normalize-ws-error.js";
 import { serializeActiveDrafts } from "./draft-state.js";
 
 export class InventorySaveController {
-  constructor(api) {
+  constructor(api, fallbackMessage = null) {
     this.api = api;
+    this.fallbackMessage = fallbackMessage;
     this.saving = false;
   }
 
@@ -16,7 +17,7 @@ export class InventorySaveController {
       response = await this.api.createAssetsBulk(payload);
     } catch (error) {
       this.saving = false;
-      return { ok: false, duplicate: false, error: normalizeBulkError(error) };
+      return { ok: false, duplicate: false, error: normalizeBulkError(error, this.fallbackMessage) };
     }
     try {
       const assets = await this.api.listAssets();

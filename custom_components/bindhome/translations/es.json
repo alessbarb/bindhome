@@ -1,0 +1,255 @@
+{
+  "panel": {
+    "common": {
+      "floor": "Planta",
+      "area": "Área",
+      "no_floor": "Sin planta",
+      "retry": "Reintentar",
+      "add": "Añadir",
+      "not_set": "Sin definir",
+      "none": "Ninguno"
+    },
+    "nav": {
+      "inventory": "Inventario",
+      "infrastructure": "Infraestructura"
+    },
+    "shell": {
+      "loading": "Cargando el inventario de BindHome…",
+      "load_error": "No se pudo cargar BindHome",
+      "load_error_detail": "No se pudieron cargar los datos de inventario de BindHome.",
+      "refresh_label": "Actualizar datos de BindHome",
+      "sections_label": "Secciones de BindHome",
+      "refresh_error": "Falló la actualización. Tu trabajo actual se ha conservado."
+    },
+    "groups": {
+      "electrical": "Electricidad",
+      "network": "Red y comunicaciones",
+      "climate": "Climatización",
+      "water": "Agua",
+      "building": "Edificio",
+      "equipment": "Equipamiento",
+      "other": "Otros / personalizados"
+    },
+    "counts": {
+      "asset": {
+        "one": "{count} elemento",
+        "other": "{count} elementos"
+      },
+      "draft": {
+        "one": "{count} borrador",
+        "other": "{count} borradores"
+      },
+      "item": {
+        "one": "{count} elemento",
+        "other": "{count} elementos"
+      },
+      "selected": {
+        "one": "{count} seleccionado",
+        "other": "{count} seleccionados"
+      }
+    },
+    "inventory": {
+      "title": "Inventariar esta habitación",
+      "selection_intro": "Elige una planta y un área de Home Assistant antes de registrar la infraestructura física.",
+      "select_floor": "Selecciona una planta",
+      "select_area": "Selecciona un área",
+      "no_floor_helper": "Las áreas sin planta siguen disponibles en Sin planta.",
+      "no_areas": "Esta planta no tiene áreas. Crea una en los ajustes de Home Assistant.",
+      "continue": "Continuar a cantidades",
+      "change_room": "Cambiar habitación",
+      "selected_area": "Área seleccionada",
+      "quantity_title": "¿Qué hay instalado físicamente aquí?",
+      "quantity_intro": "Indica una cantidad mayor que cero para crear borradores editables. Cero no crea nada.",
+      "existing": "Ya existente en esta habitación",
+      "existing_unchanged": "Los elementos registrados no se modificarán.",
+      "no_existing": "Todavía no hay elementos de BindHome registrados en esta habitación.",
+      "being_added": "Añadiendo ahora",
+      "suggested": "Sugeridas: {capabilities}",
+      "not_saved_yet": "Los borradores no se guardan hasta que se valida el lote completo.",
+      "no_floor_area": "No hay plantas ni áreas de Home Assistant disponibles. Crea un área en los ajustes de Home Assistant y actualiza BindHome."
+    },
+    "actions": {
+      "expand_group": "Expandir {group}",
+      "collapse_group": "Contraer {group}",
+      "increase_quantity": "Aumentar cantidad de {name}",
+      "decrease_quantity": "Reducir cantidad de {name}",
+      "edit_draft": "Editar {name}",
+      "collapse_draft": "Contraer {name}",
+      "remove_capability": "Eliminar capacidad {capability}"
+    },
+    "fields": {
+      "name": "Nombre",
+      "type": "Tipo",
+      "asset_type": "Tipo de elemento",
+      "code": "Código",
+      "code_optional": "Código (opcional)",
+      "capabilities": "Capacidades",
+      "capability": "Capacidad",
+      "no_capabilities": "Sin capacidades",
+      "custom_capability": "Capacidad personalizada",
+      "capability_placeholder": "p. ej., power_measurement",
+      "source": "Origen",
+      "relation": "Relación",
+      "target": "Destino",
+      "asset": "Elemento",
+      "role": "Rol",
+      "ha_entity": "Entidad de Home Assistant"
+    },
+    "review": {
+      "title": {
+        "one": "Revisar {count} borrador generado",
+        "other": "Revisar {count} borradores generados"
+      },
+      "intro": "Puedes editar todos los nombres y tipos. Abre una fila para cambiar su código opcional o sus capacidades.",
+      "registered": "Ya registrado",
+      "registered_helper": "Solo lectura; no se incluye en este lote.",
+      "atomic_batch": "Todos los borradores se guardan juntos como un único lote atómico.",
+      "back_quantities": "Volver a cantidades",
+      "saving": "Guardando…",
+      "save": {
+        "one": "Guardar {count} elemento",
+        "other": "Guardar {count} elementos"
+      },
+      "review_items": {
+        "one": "Revisar {count} elemento",
+        "other": "Revisar {count} elementos"
+      },
+      "save_explanation": {
+        "one": "Se guardará {count} elemento o no se guardará nada.",
+        "other": "Se guardarán juntos {count} elementos o no se guardará ninguno."
+      },
+      "before_save": {
+        "one": "Se revisará {count} borrador antes de guardar.",
+        "other": "Se revisarán {count} borradores antes de guardar."
+      }
+    },
+    "discard": {
+      "title": "¿Descartar este lote sin guardar?",
+      "description": "Cambiar de habitación elimina todos los borradores del lote actual. No se guardará nada.",
+      "stay": "Permanecer en esta habitación",
+      "confirm": "Descartar lote y cambiar de habitación"
+    },
+    "errors": {
+      "nothing_saved": "No se guardó nada",
+      "correct_field": "Corrige el campo resaltado y vuelve a guardar el lote completo.",
+      "drafts_preserved": "Todos los borradores se han conservado.",
+      "batch_fallback": "No se pudo guardar el inventario de la habitación. No se guardó nada."
+    },
+    "success": {
+      "created": {
+        "one": "{count} elemento creado",
+        "other": "{count} elementos creados"
+      },
+      "explanation": "Solo se creó el inventario físico. No se crearon dispositivos ni automatizaciones.",
+      "back": "Volver al inventario de la habitación",
+      "view": "Ver inventario"
+    },
+    "infrastructure": {
+      "intro": "Consulta los elementos estables, las relaciones topológicas y las vinculaciones de hardware ya registradas.",
+      "views_label": "Vistas de infraestructura",
+      "tabs": {
+        "assets": "Elementos",
+        "relations": "Relaciones",
+        "bindings": "Vinculaciones"
+      },
+      "no_assets": "Todavía no hay elementos de infraestructura registrados.",
+      "no_relations": "No hay relaciones topológicas registradas.",
+      "no_bindings": "No hay vinculaciones de hardware configuradas.",
+      "back_assets": "Volver a elementos",
+      "advanced": "Identificadores avanzados",
+      "asset_id": "ID estable del elemento",
+      "area_id": "ID de área de Home Assistant",
+      "unknown_area": "Área desconocida",
+      "no_area": "Sin área"
+    },
+    "presets": {
+      "light_point": {
+        "name": "Punto de luz"
+      },
+      "socket": {
+        "name": "Enchufe"
+      },
+      "switch": {
+        "name": "Interruptor"
+      },
+      "electrical_panel": {
+        "name": "Cuadro eléctrico"
+      },
+      "circuit": {
+        "name": "Circuito"
+      },
+      "junction_box": {
+        "name": "Caja de conexiones"
+      },
+      "ethernet_outlet": {
+        "name": "Toma Ethernet"
+      },
+      "telephone_outlet": {
+        "name": "Toma telefónica"
+      },
+      "antenna_outlet": {
+        "name": "Toma de antena"
+      },
+      "wifi_access_point": {
+        "name": "Punto de acceso Wi-Fi"
+      },
+      "radiator": {
+        "name": "Radiador"
+      },
+      "thermostat": {
+        "name": "Termostato"
+      },
+      "fan": {
+        "name": "Ventilador"
+      },
+      "air_conditioning_unit": {
+        "name": "Unidad de aire acondicionado"
+      },
+      "tap": {
+        "name": "Grifo"
+      },
+      "shutoff_valve": {
+        "name": "Llave de corte"
+      },
+      "valve": {
+        "name": "Válvula"
+      },
+      "drain": {
+        "name": "Desagüe"
+      },
+      "manifold": {
+        "name": "Colector"
+      },
+      "door": {
+        "name": "Puerta"
+      },
+      "window": {
+        "name": "Ventana"
+      },
+      "blind": {
+        "name": "Persiana"
+      },
+      "skylight": {
+        "name": "Tragaluz"
+      },
+      "boiler": {
+        "name": "Caldera"
+      },
+      "water_heater": {
+        "name": "Calentador de agua"
+      },
+      "pump": {
+        "name": "Bomba"
+      },
+      "freezer": {
+        "name": "Congelador"
+      },
+      "appliance": {
+        "name": "Electrodoméstico"
+      },
+      "machine": {
+        "name": "Máquina"
+      }
+    }
+  }
+}

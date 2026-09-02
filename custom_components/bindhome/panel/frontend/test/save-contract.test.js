@@ -9,7 +9,7 @@ const preset = { preset_id: "socket", group: "electrical", asset_type: "socket",
 test("structured and malformed Home Assistant errors normalize safely", () => {
   assert.deepEqual(normalizeBulkError({ message: '{"index":1,"field":"code","message":"Duplicate"}' }), { structured: true, index: 1, field: "code", message: "Duplicate" });
   assert.deepEqual(normalizeBulkError({ message: "not-json" }), { structured: false, index: null, field: null, message: "not-json" });
-  assert.match(normalizeBulkError(null).message, /could not be saved/);
+  assert.equal(normalizeBulkError(null, "Localized fallback").message, "Localized fallback");
 });
 
 test("save uses one bulk call, no individual create, then refreshes Assets", async () => {

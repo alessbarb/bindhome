@@ -314,6 +314,16 @@ Successful inventory creation does not create Bindings, Relations,
 Representations, Home Assistant entities, devices or automations. Those remain
 separate lifecycle stages.
 
+Panel localization uses Home Assistant's backend integration translation
+pipeline. The shell requests the `panel` category through
+`frontend/get_translations` for the current `hass.language`, scoped to the
+`bindhome` integration. English resources are also loaded as the fallback.
+Language changes refresh only presentation translations: the mounted workflow,
+selected Floor/Area and local draft state are preserved. This includes existing
+auto-generated draft names; names already created in a room session are not
+rewritten when the language changes. New clean sessions use the localized preset
+name when available and otherwise use the backend preset `default_name`.
+
 ## Next product work
 
 Later UX work can add topology visualization, richer editing, issues/status
