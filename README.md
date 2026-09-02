@@ -42,16 +42,23 @@ The current implementation provides:
 - persistent storage managed by Home Assistant;
 - Home Assistant actions for registry mutations;
 - CRUD and query WebSocket APIs;
+- atomic bulk Asset creation for high-volume inventory;
 - binding resolution with configuration/runtime status;
+- explicit optional logical Representations;
 - dynamic logical entity reconciliation;
-- a logical `light` platform;
+- a logical `light` platform driven by explicit Representation;
+- an extensible built-in creation preset catalogue;
+- a read-only preset WebSocket API;
 - a dedicated BindHome panel;
 - system health counters;
 - import/export-ready registry serialization.
 
-The next functional foundations focus on high-volume home inventory,
-transactional bulk creation, explicit logical representations, and an
-inventory-first user experience.
+The backend functional foundation for inventory UX is now in place:
+transactional bulk creation, explicit logical Representations, and extensible
+creation presets.
+
+The next product milestone is the Area-oriented **Inventory this room** user
+experience built on those primitives.
 
 ## Data model
 
@@ -79,6 +86,25 @@ Maps one asset capability to the Home Assistant entity that currently implements
 
 Bindings are replaceable. Assets are stable.
 
+### Representation
+
+Describes whether and how BindHome exposes an Asset back into Home Assistant as
+a logical entity.
+
+Representation is explicit and independent from Capability. An Asset may expose
+`on_off` without being represented as a Home Assistant Light.
+
+The currently implemented logical `light` Representation requires the BindHome
+`on_off` capability.
+
+### Creation preset
+
+UX metadata used to generate editable Asset drafts quickly during high-volume
+inventory.
+
+Presets suggest an `asset_type`, display name and capabilities. They do not
+restrict custom Assets, create bindings, or create logical Representations.
+
 ## Installation during development
 
 Copy `custom_components/bindhome` to your Home Assistant configuration directory:
@@ -93,7 +119,7 @@ The integration is configured through the UI and supports one config entry per H
 
 ## Actions
 
-The first backend exposes actions for creating and maintaining the registry:
+The backend exposes Home Assistant actions for creating and maintaining the registry:
 
 - `bindhome.create_asset`
 - `bindhome.update_asset`

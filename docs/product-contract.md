@@ -111,7 +111,7 @@ Relation types remain extensible.
 
 ### Representation
 
-Target behaviour; not yet implemented as a first-class model.
+Implemented as a first-class model.
 
 A Representation describes whether and how BindHome exposes an Asset back into
 Home Assistant as a logical entity.
@@ -127,18 +127,36 @@ Example:
 Another Asset may have `on_off` without being represented as a Home Assistant
 Light.
 
-Initially an Asset should support zero or one primary Representation.
+An Asset currently supports zero or one primary Representation.
+
+The persisted Representation stores the stable BindHome `asset_id` and the
+BindHome-implemented logical platform.
 
 Representation platforms are limited to logical platforms actually implemented
 by BindHome. This does not attempt to catalogue every platform supported by Home
 Assistant.
 
-A Representation may define its own BindHome-side capability contract. For
-example, the BindHome logical Light implementation may require `on_off`. This
+A Representation may define its own BindHome-side capability contract. The
+current BindHome logical `light` implementation requires `on_off`. This
 describes BindHome's implementation requirements, not Home Assistant domain
 compatibility.
 
+Creating an Asset with `on_off` does not automatically create a logical Light.
+The Light appears only after an explicit `light` Representation is configured.
+
+Removing a Representation removes the logical entity while preserving the
+Asset. Re-adding it preserves the stable logical identity derived from the
+Asset.
+
+Registries written before Representation existed are migrated on load so Assets
+that previously produced implicit logical lights keep that behaviour. Once
+saved by the current model, the `representations` collection is explicit; an
+empty collection means no logical exposure.
+
 ## Inventory-first workflow
+
+This is the next user-facing milestone. Its required backend foundations are
+implemented.
 
 The primary user workflow is inventorying the home, not configuring automation.
 
@@ -213,7 +231,7 @@ Each copied Asset receives its own stable identity.
 
 ## Creation presets
 
-BindHome should provide convenient built-in presets for common home
+BindHome provides convenient built-in presets for common home
 infrastructure.
 
 Examples include:
@@ -267,17 +285,28 @@ Equipment:
 
 Presets are UX metadata, not backend restrictions.
 
-A preset may suggest:
+The initial built-in catalogue contains 29 presets across six inventory groups:
+electrical, network, climate, water, building and equipment.
 
-- `asset_type`;
+A preset contains only:
+
+- `preset_id`;
+- inventory `group`;
+- suggested `asset_type`;
 - default display name;
 - suggested capabilities.
 
-The user may modify those values.
+The catalogue is exposed read-only through `bindhome/presets/list`.
+
+The user may modify the suggested Asset draft values before saving.
 
 Custom Asset types and custom capabilities remain supported.
 
-A preset suggestion must never become a hidden compatibility rule.
+A preset suggestion must never become a hidden compatibility rule. Presets do
+not create bindings, Home Assistant entity references or logical
+Representations, and there is deliberately no separate `create_from_preset`
+write path. Drafts are saved through the ordinary Asset creation APIs,
+especially transactional bulk creation for room inventory.
 
 ## Inventory before automation
 
@@ -304,7 +333,10 @@ For a batch containing N Assets:
 - Home Assistant references such as Areas are validated against Home Assistant;
 - all model and registry invariants are checked against a staged registry;
 - persistence occurs once;
-- the live registry is replaced only after successful persistence;
+- staged state is adopted into the existing live registry only after successful
+  persistence;
+- the identity of the live registry object is preserved for long-lived runtime
+  consumers;
 - one registry-changed notification is emitted.
 
 If any item is invalid, no Asset from the batch is committed.
@@ -368,21 +400,25 @@ Removing a capability that still has bindings must remain blocked until those
 bindings are removed or reassigned.
 
 Deleting an Asset must remain blocked while it is referenced by active BindHome
-bindings or topology relations.
+bindings, topology relations or a logical Representation.
 
 Destructive operations must explain what blocks them rather than silently
 cascading.
 
-## Implementation sequence before UX
+## Functional foundation status
 
-The agreed implementation order is:
+The pre-UX functional foundation is complete:
 
-1. P0-A: transactional bulk Asset creation;
-2. P0-B: explicit Representation model;
-3. P0-C: extensible creation presets;
-4. P0-D: keep architecture and product documentation synchronized;
-5. begin the user-facing inventory UX.
+1. P0-A: transactional bulk Asset creation -- implemented;
+2. P0-B: explicit Representation model -- implemented;
+3. P0-C: extensible creation presets -- implemented;
+4. P0-D: architecture and product documentation synchronized with the
+   implementation.
 
 The first UX milestone is not a generic "Create Asset" form.
 
-It is an Area-oriented "Inventory this room" workflow.
+It is an Area-oriented **Inventory this room** workflow.
+
+That UX should read Home Assistant Floors and Areas live, use the BindHome preset
+catalogue to build editable local drafts, and persist the accepted room
+inventory through `bindhome/assets/create_bulk`.
