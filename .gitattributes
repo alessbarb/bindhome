@@ -1,0 +1,2 @@
+# Generated Lit bundle contains significant whitespace inside template literals.
+custom_components/bindhome/panel/static/bindhome-panel.js -whitespace
