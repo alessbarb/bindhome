@@ -58,6 +58,7 @@ export class BindHomePanel extends LitElement {
           .floors=${this._floors}
           .areas=${this._areas}
           .assets=${this._assets}
+          .registry=${this._registry ?? {}}
           @assets-refreshed=${this._assetsRefreshed}
         ></bindhome-inventory-section>
       </section>

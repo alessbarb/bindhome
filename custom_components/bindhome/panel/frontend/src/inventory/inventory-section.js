@@ -6,6 +6,7 @@ import "./inventory-workflow.js";
 export class BindHomeInventorySection extends LitElement {
   static properties = {
     hass: { attribute: false },
+    registry: { attribute: false },
     t: { attribute: false },
     presets: { attribute: false },
     floors: { attribute: false },
@@ -17,6 +18,7 @@ export class BindHomeInventorySection extends LitElement {
   constructor() {
     super();
     this.hass = null;
+    this.registry = {};
     this.t = (key) => key;
     this.presets = [];
     this.floors = [];
@@ -166,11 +168,15 @@ export class BindHomeInventorySection extends LitElement {
         "browse"}
       >
         <bindhome-inventory-browser
+          .hass=${this.hass}
           .t=${this.t}
           .presets=${this.presets}
           .floors=${this.floors}
           .areas=${this.areas}
           .assets=${this.assets}
+          .registry=${this.registry}
+          @assets-refreshed=${this
+            ._forwardAssetsRefreshed}
         ></bindhome-inventory-browser>
       </section>
 

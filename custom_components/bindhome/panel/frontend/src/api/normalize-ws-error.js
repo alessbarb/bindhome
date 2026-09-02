@@ -3,6 +3,22 @@ function candidateMessages(error) {
     .filter((value) => typeof value === "string");
 }
 
+export function normalizeWsError(error, fallbackMessage = null) {
+  const message =
+    candidateMessages(error).find(
+      (value) => value.trim(),
+    ) ?? fallbackMessage;
+
+  return {
+    code:
+      error?.code ??
+      error?.body?.code ??
+      error?.data?.code ??
+      null,
+    message,
+  };
+}
+
 export function normalizeBulkError(error, fallbackMessage = null) {
   for (const value of candidateMessages(error)) {
     try {

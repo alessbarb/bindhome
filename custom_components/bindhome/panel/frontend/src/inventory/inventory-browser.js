@@ -3,27 +3,37 @@ import { LitElement, css, html, nothing } from "lit";
 import { pluralKey, presetDisplayName } from "../i18n/localize.js";
 import { buildInventoryHierarchy } from "./inventory-browser-state.js";
 
+import "./asset-detail-editor.js";
+
 const NO_AREA_KEY = "__bindhome_no_area_assets__";
 const UNKNOWN_AREA_KEY = "__bindhome_unknown_area_assets__";
 
 export class BindHomeInventoryBrowser extends LitElement {
   static properties = {
+    hass: { attribute: false },
     floors: { attribute: false },
     areas: { attribute: false },
     assets: { attribute: false },
     presets: { attribute: false },
+    registry: { attribute: false },
     t: { attribute: false },
     _selectedKey: { state: true },
+    _selectedAssetId: { state: true },
+    _editorLocked: { state: true },
   };
 
   constructor() {
     super();
+    this.hass = null;
     this.floors = [];
     this.areas = [];
     this.assets = [];
     this.presets = [];
+    this.registry = {};
     this.t = (key) => key;
     this._selectedKey = "";
+    this._selectedAssetId = null;
+    this._editorLocked = false;
   }
 
   static styles = css`
@@ -150,9 +160,15 @@ export class BindHomeInventoryBrowser extends LitElement {
       cursor: pointer;
     }
 
-    .area-button:hover,
-    .special-button:hover {
+    .area-button:hover:not(:disabled),
+    .special-button:hover:not(:disabled) {
       background: var(--secondary-background-color);
+    }
+
+    .area-button:disabled,
+    .special-button:disabled {
+      cursor: not-allowed;
+      opacity: .6;
     }
 
     .area-button.selected,
@@ -254,10 +270,19 @@ export class BindHomeInventoryBrowser extends LitElement {
       min-width: 0;
     }
 
-    .asset-name {
-      overflow-wrap: anywhere;
+    .asset-open {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--primary-color);
       font-weight: 500;
       line-height: 22px;
+      text-align: left;
+      overflow-wrap: anywhere;
+    }
+
+    .asset-open:hover {
+      text-decoration: underline;
     }
 
     .asset-type {
@@ -417,11 +442,93 @@ export class BindHomeInventoryBrowser extends LitElement {
       ) {
         this._selectedKey = "";
       }
+
+      if (
+        this._selectedAssetId &&
+        !this.assets.some(
+          (asset) =>
+            asset.id ===
+            this._selectedAssetId,
+        )
+      ) {
+        this._selectedAssetId = null;
+        this._editorLocked = false;
+      }
     }
   }
 
   _select(key) {
+    if (this._editorLocked) {
+      return;
+    }
+
+    this._selectedAssetId = null;
     this._selectedKey = key;
+  }
+
+  _openAsset(assetId) {
+    this._selectedAssetId = assetId;
+  }
+
+  _closeAsset() {
+    if (this._editorLocked) {
+      return;
+    }
+
+    this._selectedAssetId = null;
+  }
+
+  _locationKeyForAsset(asset) {
+    if (!asset.area_id) {
+      return NO_AREA_KEY;
+    }
+
+    return this.areas.some(
+      (area) =>
+        area.area_id === asset.area_id,
+    )
+      ? asset.area_id
+      : UNKNOWN_AREA_KEY;
+  }
+
+  _handleEditingChanged(event) {
+    this._editorLocked =
+      Boolean(event.detail);
+  }
+
+  _handleAssetUpdated(event) {
+    event.stopPropagation();
+
+    const updated = event.detail;
+
+    const nextAssets =
+      this.assets.map(
+        (asset) =>
+          asset.id === updated.id
+            ? updated
+            : asset,
+      );
+
+    this.assets = nextAssets;
+
+    this._selectedKey =
+      this._locationKeyForAsset(
+        updated,
+      );
+
+    this._selectedAssetId =
+      updated.id;
+
+    this.dispatchEvent(
+      new CustomEvent(
+        "assets-refreshed",
+        {
+          detail: nextAssets,
+          bubbles: true,
+          composed: true,
+        },
+      ),
+    );
   }
 
   _assetTypeLabel(asset) {
@@ -448,6 +555,7 @@ export class BindHomeInventoryBrowser extends LitElement {
         aria-pressed=${selected
           ? "true"
           : "false"}
+        ?disabled=${this._editorLocked}
         @click=${() =>
           this._select(node.area.area_id)}
       >
@@ -538,6 +646,7 @@ export class BindHomeInventoryBrowser extends LitElement {
                 aria-pressed=${noAreaSelected
                   ? "true"
                   : "false"}
+                ?disabled=${this._editorLocked}
                 @click=${() =>
                   this._select(NO_AREA_KEY)}
               >
@@ -567,6 +676,7 @@ export class BindHomeInventoryBrowser extends LitElement {
                 aria-pressed=${unknownSelected
                   ? "true"
                   : "false"}
+                ?disabled=${this._editorLocked}
                 @click=${() =>
                   this._select(
                     UNKNOWN_AREA_KEY,
@@ -595,9 +705,15 @@ export class BindHomeInventoryBrowser extends LitElement {
     return html`
       <li class="asset">
         <div class="asset-main">
-          <div class="asset-name">
+          <button
+            class="asset-open"
+            @click=${() =>
+              this._openAsset(
+                asset.id,
+              )}
+          >
             ${asset.name}
-          </div>
+          </button>
           <div class="asset-type">
             ${this._assetTypeLabel(asset)}
           </div>
@@ -658,6 +774,32 @@ export class BindHomeInventoryBrowser extends LitElement {
             "browser.no_assets_home",
           )}
         </div>
+      `;
+    }
+
+    const selectedAsset =
+      this.assets.find(
+        (asset) =>
+          asset.id ===
+          this._selectedAssetId,
+      );
+
+    if (selectedAsset) {
+      return html`
+        <bindhome-asset-detail-editor
+          .hass=${this.hass}
+          .t=${this.t}
+          .asset=${selectedAsset}
+          .assets=${this.assets}
+          .areas=${this.areas}
+          .floors=${this.floors}
+          .registry=${this.registry}
+          @close=${this._closeAsset}
+          @editing-changed=${this
+            ._handleEditingChanged}
+          @asset-updated=${this
+            ._handleAssetUpdated}
+        ></bindhome-asset-detail-editor>
       `;
     }
 
