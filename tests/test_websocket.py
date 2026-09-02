@@ -47,6 +47,7 @@ class FakeManager:
             "bindings": [],
         }
         self.async_create_asset = AsyncMock()
+        self.async_create_assets = AsyncMock()
         self.async_update_asset = AsyncMock()
         self.async_delete_asset = AsyncMock()
         self.async_add_relation = AsyncMock()
@@ -151,6 +152,178 @@ async def test_asset_create_rejects_invalid_area() -> None:
 
     assert connection.errors == [("1", "not_found", "missing")]
     manager.async_create_asset.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_asset_create_bulk_returns_assets_in_request_order() -> None:
+    manager = FakeManager()
+
+    first = Asset.create(
+        name="Light point 1",
+        asset_type="light_point",
+        area_id="living_room",
+    )
+    second = Asset.create(
+        name="Socket 1",
+        asset_type="socket",
+        area_id="living_room",
+    )
+
+    manager.async_create_assets.return_value = [first, second]
+
+    connection = FakeConnection()
+    hass = hass_for(manager)
+
+    with pytest.MonkeyPatch.context() as patch:
+        validate = Mock()
+        patch.setattr(websocket, "validate_area", validate)
+
+        await call(
+            websocket.ws_asset_create_bulk,
+            hass,
+            connection,
+            {
+                "id": "1",
+                "assets": [
+                    {
+                        "name": "Light point 1",
+                        "asset_type": "light_point",
+                        "area_id": "living_room",
+                    },
+                    {
+                        "name": "Socket 1",
+                        "asset_type": "socket",
+                        "area_id": "living_room",
+                    },
+                ],
+            },
+        )
+
+    specs = manager.async_create_assets.await_args.args[0]
+
+    assert [spec.name for spec in specs] == [
+        "Light point 1",
+        "Socket 1",
+    ]
+    assert [spec.area_id for spec in specs] == [
+        "living_room",
+        "living_room",
+    ]
+
+    assert validate.call_count == 2
+
+    assert connection.results == [
+        (
+            "1",
+            {
+                "assets": [
+                    first.to_dict(),
+                    second.to_dict(),
+                ]
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_asset_create_bulk_identifies_invalid_area_row() -> None:
+    manager = FakeManager()
+    connection = FakeConnection()
+    hass = hass_for(manager)
+
+    def validate(_hass, area_id):
+        if area_id == "missing":
+            raise websocket.ServiceValidationError("Area missing")
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(websocket, "validate_area", validate)
+
+        await call(
+            websocket.ws_asset_create_bulk,
+            hass,
+            connection,
+            {
+                "id": "1",
+                "assets": [
+                    {
+                        "name": "Socket 1",
+                        "asset_type": "socket",
+                        "area_id": "living_room",
+                    },
+                    {
+                        "name": "Socket 2",
+                        "asset_type": "socket",
+                        "area_id": "missing",
+                    },
+                ],
+            },
+        )
+
+    assert manager.async_create_assets.await_count == 0
+    assert len(connection.errors) == 1
+
+    message_id, code, raw_error = connection.errors[0]
+    details = json.loads(raw_error)
+
+    assert message_id == "1"
+    assert code == "not_found"
+    assert details == {
+        "index": 1,
+        "field": "area_id",
+        "message": "Area missing",
+    }
+
+
+@pytest.mark.asyncio
+async def test_asset_create_bulk_returns_structured_conflict_row() -> None:
+    manager = FakeManager()
+    manager.async_create_assets.side_effect = websocket.BulkAssetCreateError(
+        1,
+        RegistryConflictError(
+            "Asset code SOCK-01 already exists",
+            field="code",
+        ),
+    )
+
+    connection = FakeConnection()
+    hass = hass_for(manager)
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(websocket, "validate_area", Mock())
+
+        await call(
+            websocket.ws_asset_create_bulk,
+            hass,
+            connection,
+            {
+                "id": "1",
+                "assets": [
+                    {
+                        "name": "Socket 1",
+                        "asset_type": "socket",
+                        "code": "SOCK-01",
+                    },
+                    {
+                        "name": "Socket 2",
+                        "asset_type": "socket",
+                        "code": "SOCK-01",
+                    },
+                ],
+            },
+        )
+
+    assert len(connection.errors) == 1
+
+    message_id, code, raw_error = connection.errors[0]
+    details = json.loads(raw_error)
+
+    assert message_id == "1"
+    assert code == "conflict"
+    assert details == {
+        "index": 1,
+        "field": "code",
+        "message": "Asset code SOCK-01 already exists",
+    }
 
 
 @pytest.mark.asyncio
@@ -428,6 +601,15 @@ def test_command_schemas_reject_malformed_payloads() -> None:
             {"id": "1", "type": websocket.WS_ASSET_CREATE}
         )
 
+    with pytest.raises(vol.Invalid):
+        websocket.ws_asset_create_bulk._ws_schema(
+            {
+                "id": "2",
+                "type": websocket.WS_ASSET_CREATE_BULK,
+                "assets": [],
+            }
+        )
+
 
 def test_registers_all_commands_under_bindhome_namespace() -> None:
     hass = SimpleNamespace(data={})
@@ -436,6 +618,7 @@ def test_registers_all_commands_under_bindhome_namespace() -> None:
     assert set(hass.data["websocket_api"]) == {
         websocket.WS_REGISTRY_GET,
         websocket.WS_ASSET_CREATE,
+        websocket.WS_ASSET_CREATE_BULK,
         websocket.WS_ASSET_UPDATE,
         websocket.WS_ASSET_DELETE,
         websocket.WS_RELATION_CREATE,
