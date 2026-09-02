@@ -22,6 +22,30 @@ Current Home Assistant entity
 Current physical hardware
 ```
 
+### Home Assistant is the infrastructure source of truth
+
+BindHome is not a parallel home-automation platform.
+
+Home Assistant owns and remains authoritative for:
+
+- entities and their current state;
+- devices;
+- areas and floors;
+- domains and entity platforms;
+- services and service routing;
+- supported features and runtime capabilities;
+- integration-specific behaviour.
+
+BindHome references those Home Assistant objects and adds only the concepts
+needed to preserve the stable physical and functional identity of the home,
+such as infrastructure assets, topology relations and bindings between a stable
+capability and the Home Assistant entity that currently implements it.
+
+When Home Assistant already provides a registry, service, capability model or
+runtime behaviour, BindHome uses it rather than maintaining a parallel copy.
+In particular, BindHome must not maintain domain-to-capability compatibility
+matrices or duplicate Home Assistant supported-feature knowledge.
+
 ## Core objects
 
 ### Asset
@@ -88,14 +112,21 @@ Home Assistant access is isolated behind the `EntityProbe` protocol
 (`HomeAssistantEntityProbe` for production, `StaticEntityProbe` for tests), so the
 resolver and its tests need no running Home Assistant instance.
 
-### Compatibility checks
+### Home Assistant capability and service authority
 
-`CapabilityCompatibility` provides advisory, vendor-neutral checks based only on
-generic Home Assistant entity domains (for example `dimming` expects the `light`
-domain). Verdicts are tri-state: `COMPATIBLE`, `INCOMPATIBLE`, or `UNKNOWN` for
-unmapped capabilities or un-parseable entity ids. Compatibility never blocks
-resolution and contains no manufacturer or protocol knowledge; the domain map is
-extensible via `register()`.
+The resolver does not maintain its own operational compatibility model. Its
+responsibility is limited to BindHome concerns: resolving the stable
+asset/capability/role key, checking that the binding references an entity known
+to Home Assistant, and reporting its runtime state.
+
+When an operation is executed, BindHome resolves the binding to a Home
+Assistant `entity_id` and delegates through Home Assistant's own generic service
+infrastructure. Home Assistant then determines the target domain, whether the
+operation is supported, and how the integration implements it.
+
+This keeps BindHome independent of Home Assistant's evolving domain and feature
+catalogue and avoids duplicating infrastructure knowledge already owned by Home
+Assistant.
 
 ## Infrastructure query layer
 

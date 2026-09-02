@@ -7,7 +7,6 @@ from typing import Any
 
 from homeassistant.components.light import ColorMode, LightEntity
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -17,14 +16,11 @@ from .manager import BindHomeManager
 from .models import Asset
 from .resolver import (
     BindingResolver,
-    CapabilityCompatibility,
-    Compatibility,
     Resolution,
     ResolutionStatus,
 )
 
 _CAPABILITY = "on_off"
-_SUPPORTED_DOMAINS = frozenset({"switch", "light"})
 
 
 async def async_setup_entry(
@@ -188,20 +184,9 @@ class BindHomeLight(LightEntity):
         if resolution.status is not ResolutionStatus.RESOLVED or entity_id is None:
             return
 
-        compatibility = CapabilityCompatibility().check(_CAPABILITY, entity_id)
-        domain = entity_id.split(".", 1)[0] if "." in entity_id else ""
-        if (
-            compatibility.verdict is Compatibility.INCOMPATIBLE
-            or domain not in _SUPPORTED_DOMAINS
-        ):
-            return
-
-        try:
-            await self.hass.services.async_call(
-                domain,
-                service,
-                {"entity_id": entity_id},
-                blocking=True,
-            )
-        except HomeAssistantError:
-            return
+        await self.hass.services.async_call(
+            "homeassistant",
+            service,
+            {"entity_id": entity_id},
+            blocking=True,
+        )
