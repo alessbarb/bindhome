@@ -8,9 +8,7 @@ from custom_components.bindhome.resolver import (
     AssetNotFoundError,
     BindingNotFoundError,
     BindingResolver,
-    CapabilityCompatibility,
     CapabilityNotDeclaredError,
-    Compatibility,
     EntityProbe,
     HomeAssistantEntityProbe,
     InvalidResolveRequestError,
@@ -263,41 +261,3 @@ def test_multiple_capabilities_resolve_to_different_entities() -> None:
         resolver.resolve_entity_id(asset.id, "power_measurement")
         == "sensor.relay_power"
     )
-
-
-# --- compatibility -------------------------------------------------------
-
-
-def test_compatibility_success() -> None:
-    compat = CapabilityCompatibility()
-    result = compat.check("on_off", "switch.relay")
-    assert result.verdict is Compatibility.COMPATIBLE
-    assert bool(result) is True
-
-
-def test_compatibility_rejection() -> None:
-    compat = CapabilityCompatibility()
-    result = compat.check("dimming", "switch.relay")
-    assert result.verdict is Compatibility.INCOMPATIBLE
-    assert bool(result) is False
-
-
-def test_compatibility_unknown_for_unmapped_capability() -> None:
-    compat = CapabilityCompatibility()
-    result = compat.check("irrigation_flow", "valve.garden")
-    assert result.verdict is Compatibility.UNKNOWN
-    assert bool(result) is True  # advisory: never rejects extensible capabilities
-
-
-def test_compatibility_unknown_for_entity_without_domain() -> None:
-    compat = CapabilityCompatibility()
-    assert compat.check("on_off", "garbage").verdict is Compatibility.UNKNOWN
-
-
-def test_compatibility_is_extensible() -> None:
-    compat = CapabilityCompatibility()
-    compat.register("irrigation_flow", {"valve"})
-    ok = compat.check("irrigation_flow", "valve.garden")
-    bad = compat.check("irrigation_flow", "sensor.x")
-    assert ok.verdict is Compatibility.COMPATIBLE
-    assert bad.verdict is Compatibility.INCOMPATIBLE

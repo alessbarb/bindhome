@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 from homeassistant.components.light import ColorMode
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.setup import async_setup_component
 
 from custom_components.bindhome.light import BindHomeLight
 from custom_components.bindhome.models import Asset, Binding
@@ -45,6 +46,11 @@ def _logical_light(
     )
 
 
+async def _setup_homeassistant_turn_services(hass: HomeAssistant) -> None:
+    """Set up HA's own generic turn_on/turn_off routing."""
+    assert await async_setup_component(hass, "homeassistant", {})
+
+
 async def test_logical_light_forwards_to_replaced_binding_and_keeps_identity(
     hass: HomeAssistant,
 ) -> None:
@@ -52,6 +58,7 @@ async def test_logical_light_forwards_to_replaced_binding_and_keeps_identity(
     asset = _asset(registry, ["on_off"])
     _binding(registry, asset, "switch.hardware_a")
     hass.states.async_set("switch.hardware_a", "off")
+
     calls: list[ServiceCall] = []
 
     async def capture(call: ServiceCall) -> None:
@@ -59,20 +66,26 @@ async def test_logical_light_forwards_to_replaced_binding_and_keeps_identity(
 
     hass.services.async_register("switch", "turn_on", capture)
     hass.services.async_register("switch", "turn_off", capture)
+    await _setup_homeassistant_turn_services(hass)
+
     logical = _logical_light(hass, registry, asset)
     unique_id = logical.unique_id
 
     await logical.async_turn_on()
+
     assert calls[-1].domain == "switch"
-    assert calls[-1].data == {"entity_id": "switch.hardware_a"}
+    assert calls[-1].service == "turn_on"
+    assert calls[-1].data == {"entity_id": ["switch.hardware_a"]}
 
     _binding(registry, asset, "switch.hardware_b")
     hass.states.async_set("switch.hardware_b", "off")
+
     await logical.async_turn_off()
 
     assert calls[-1].domain == "switch"
     assert calls[-1].service == "turn_off"
-    assert calls[-1].data == {"entity_id": "switch.hardware_b"}
+    assert calls[-1].data == {"entity_id": ["switch.hardware_b"]}
+
     assert logical.unique_id == unique_id
     assert asset.id == logical.asset_id
 
@@ -110,22 +123,62 @@ async def test_logical_light_is_safely_unavailable_for_degraded_binding(
     assert logical.is_on is None
 
 
-async def test_logical_light_does_not_forward_missing_or_unsupported_binding(
+async def test_logical_light_does_not_forward_missing_binding(
     hass: HomeAssistant,
 ) -> None:
     registry = BindHomeRegistry()
     asset = _asset(registry, ["on_off"])
+
     calls = AsyncMock()
     hass.services.async_register("switch", "turn_on", calls)
+
     logical = _logical_light(hass, registry, asset)
 
     await logical.async_turn_on()
+
     assert calls.await_count == 0
 
-    _binding(registry, asset, "fan.unsupported")
-    hass.states.async_set("fan.unsupported", "off")
+
+async def test_logical_light_delegates_fan_binding_to_home_assistant(
+    hass: HomeAssistant,
+) -> None:
+    registry = BindHomeRegistry()
+    asset = _asset(registry, ["on_off"])
+    _binding(registry, asset, "fan.ceiling")
+    hass.states.async_set("fan.ceiling", "off")
+
+    calls: list[ServiceCall] = []
+
+    async def capture(call: ServiceCall) -> None:
+        calls.append(call)
+
+    hass.services.async_register("fan", "turn_on", capture)
+    await _setup_homeassistant_turn_services(hass)
+
+    logical = _logical_light(hass, registry, asset)
+
     await logical.async_turn_on()
-    assert calls.await_count == 0
+
+    assert len(calls) == 1
+    assert calls[0].domain == "fan"
+    assert calls[0].service == "turn_on"
+    assert calls[0].data == {"entity_id": ["fan.ceiling"]}
+
+
+async def test_logical_light_leaves_unsupported_target_to_home_assistant(
+    hass: HomeAssistant,
+) -> None:
+    registry = BindHomeRegistry()
+    asset = _asset(registry, ["on_off"])
+    _binding(registry, asset, "sensor.temperature")
+    hass.states.async_set("sensor.temperature", "21.5")
+    await _setup_homeassistant_turn_services(hass)
+
+    logical = _logical_light(hass, registry, asset)
+
+    # BindHome deliberately does not maintain a parallel compatibility
+    # catalogue. HA owns service support and handles unsupported targets.
+    await logical.async_turn_on()
 
 
 async def test_assets_without_on_off_are_not_eligible() -> None:
