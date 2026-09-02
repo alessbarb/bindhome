@@ -219,7 +219,7 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
         <button class="primary" @click=${this._beginEdit}>${this.t("connection.change")}</button>
         <button class="danger" @click=${() => (this._confirmDisconnect = true)} ?disabled=${this._saving}>${this.t("connection.disconnect")}</button>
       </div>
-      ${this._confirmDisconnect ? html`<div class="confirm" role="alertdialog" aria-label=${this.t("connection.confirm_disconnect")}><span>${this.t("connection.confirm_disconnect")}</span><button @click=${() => (this._confirmDisconnect = false)} ?disabled=${this._saving}>${this.t("common.cancel")}</button><button class="danger" @click=${this._disconnect} ?disabled=${this._saving}>${this.t("connection.disconnect")}</button></div>` : nothing}
+      ${this._confirmDisconnect ? html`<div class="confirm" role="alertdialog" aria-label=${this.t("connection.confirm_disconnect")}><span>${this.t("connection.confirm_disconnect")}</span><button @click=${() => (this._confirmDisconnect = false)} ?disabled=${this._saving}>${this.t("editor.cancel")}</button><button class="danger" @click=${this._disconnect} ?disabled=${this._saving}>${this.t("connection.disconnect")}</button></div>` : nothing}
     `;
   }
 
@@ -229,7 +229,7 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
       <div class="picker">
         <label>${this.t("connection.search_label")}<input aria-label=${this.t("connection.search_label")} .value=${this._search} @input=${(event) => (this._search = event.target.value)} /></label>
         ${candidates.length ? candidates.map((candidate) => html`<button class="candidate ${candidate.entityId === this._selectedEntityId ? "selected" : ""}" aria-pressed=${candidate.entityId === this._selectedEntityId} @click=${() => this._select(candidate.entityId)}><span class="entity">${candidate.name}</span><span class="candidate-meta">${candidate.entityId}${candidate.areaName ? ` · ${candidate.areaName}` : ""}${candidate.deviceName ? ` · ${candidate.deviceName}` : ""} · ${this._candidateStateLabel(candidate)}${candidate.disabled ? ` · ${this.t("connection.disabled")}` : ""}${candidate.hidden ? ` · ${this.t("connection.hidden")}` : ""}</span></button>`) : html`<div class="muted">${this.t("connection.no_matches")}</div>`}
-        <div class="actions"><button @click=${this._cancelEdit} ?disabled=${this._saving}>${this.t("common.cancel")}</button><button class="primary" @click=${this._save} ?disabled=${this._saving || !this._selectedEntityId}>${this._saving ? this.t("connection.saving") : this.t("common.save")}</button></div>
+        <div class="actions"><button @click=${this._cancelEdit} ?disabled=${this._saving}>${this.t("editor.cancel")}</button><button class="primary" @click=${this._save} ?disabled=${this._saving || !this._selectedEntityId}>${this._saving ? this.t("connection.saving") : this.t("common.save")}</button></div>
       </div>
     `;
   }

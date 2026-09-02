@@ -413,3 +413,25 @@ test("candidate selection updates aria-pressed, including disabled and hidden ro
   assert.equal(editor.shadowRoot.textContent.includes("connection.disabled"), true);
   assert.equal(editor.shadowRoot.textContent.includes("connection.hidden"), true);
 });
+
+test("picker Cancel uses the established Spanish translation key", async () => {
+  const editor = createEditor(async () => ({}));
+  editor.t = spanishT;
+  await settle(editor);
+  editor.shadowRoot.querySelector("button.primary").click();
+  await settle(editor);
+  const text = editor.shadowRoot.textContent;
+  assert.match(text, /Cancelar/);
+  assert.doesNotMatch(text, /common\.cancel/);
+});
+
+test("picker Cancel uses the established English translation key", async () => {
+  const editor = createEditor(async () => ({}));
+  editor.t = englishT;
+  await settle(editor);
+  editor.shadowRoot.querySelector("button.primary").click();
+  await settle(editor);
+  const text = editor.shadowRoot.textContent;
+  assert.match(text, /Cancel/);
+  assert.doesNotMatch(text, /common\.cancel/);
+});
