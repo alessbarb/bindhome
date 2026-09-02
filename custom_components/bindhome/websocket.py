@@ -30,6 +30,7 @@ from .manager import (
     BulkAssetCreateError,
 )
 from .models import ModelValidationError
+from .presets import list_creation_presets
 from .query import Direction
 from .registry import (
     RegistryConflictError,
@@ -50,6 +51,7 @@ WS_BINDING_SET = f"{DOMAIN}/bindings/set"
 WS_BINDING_DELETE = f"{DOMAIN}/bindings/delete"
 WS_REPRESENTATION_SET = f"{DOMAIN}/representations/set"
 WS_REPRESENTATION_DELETE = f"{DOMAIN}/representations/delete"
+WS_PRESET_LIST = f"{DOMAIN}/presets/list"
 WS_ASSET_GET = f"{DOMAIN}/assets/get"
 WS_ASSET_LIST = f"{DOMAIN}/assets/list"
 WS_RELATION_LIST = f"{DOMAIN}/relations/list"
@@ -422,6 +424,23 @@ async def ws_representation_delete(
 
 
 @require_admin
+@websocket_command({vol.Required("type"): WS_PRESET_LIST})
+@async_response
+async def ws_preset_list(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Return built-in creation presets in deterministic UX order."""
+    del hass
+
+    connection.send_result(
+        msg["id"],
+        {"presets": [preset.to_dict() for preset in list_creation_presets()]},
+    )
+
+
+@require_admin
 @websocket_command(
     {vol.Required("type"): WS_ASSET_GET, vol.Required("asset_id"): cv.string}
 )
@@ -588,6 +607,7 @@ def async_register_websocket_commands(hass: HomeAssistant) -> None:
         ws_binding_delete,
         ws_representation_set,
         ws_representation_delete,
+        ws_preset_list,
         ws_asset_get,
         ws_asset_list,
         ws_relation_list,

@@ -715,6 +715,7 @@ def test_registers_all_commands_under_bindhome_namespace() -> None:
         websocket.WS_BINDING_DELETE,
         websocket.WS_REPRESENTATION_SET,
         websocket.WS_REPRESENTATION_DELETE,
+        websocket.WS_PRESET_LIST,
         websocket.WS_ASSET_GET,
         websocket.WS_ASSET_LIST,
         websocket.WS_RELATION_LIST,
@@ -756,6 +757,41 @@ def _sample_registry() -> BindHomeRegistry:
         )
     )
     return registry
+
+
+@pytest.mark.asyncio
+async def test_preset_list_returns_read_only_catalogue_without_manager() -> None:
+    connection = FakeConnection()
+
+    await call(
+        websocket.ws_preset_list,
+        SimpleNamespace(),
+        connection,
+        {"id": "presets"},
+    )
+
+    assert len(connection.results) == 1
+
+    message_id, result = connection.results[0]
+
+    assert message_id == "presets"
+    assert len(result["presets"]) == 29
+
+    first = result["presets"][0]
+    assert first == {
+        "preset_id": "light_point",
+        "group": "electrical",
+        "asset_type": "light_point",
+        "default_name": "Light point",
+        "suggested_capabilities": ["on_off"],
+    }
+
+    assert all(
+        "representation" not in preset
+        and "binding" not in preset
+        and "entity_id" not in preset
+        for preset in result["presets"]
+    )
 
 
 @pytest.mark.asyncio
