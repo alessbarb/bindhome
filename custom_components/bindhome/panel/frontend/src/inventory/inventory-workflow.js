@@ -37,6 +37,7 @@ export class BindHomeInventoryWorkflow extends LitElement {
     _saveError: { state: true },
     _saving: { state: true },
     _success: { state: true },
+    _confirmRoomChange: { state: true },
   };
 
   constructor() {
@@ -54,11 +55,12 @@ export class BindHomeInventoryWorkflow extends LitElement {
     this._saveError = null;
     this._saving = false;
     this._success = null;
+    this._confirmRoomChange = false;
     this._controller = null;
   }
 
   willUpdate(changed) {
-    if (changed.has("presets") && this._draftState.presets.size === 0 && this.presets.length) {
+    if (changed.has("presets") && this.presets.length && this._activeDrafts.length === 0) {
       this._draftState = createDraftState(this.presets);
       this._openGroups = new Set([this.presets[0].group]);
     }
@@ -206,8 +208,10 @@ export class BindHomeInventoryWorkflow extends LitElement {
   }
   _updateDraft(key, changes) {
     if (this._saving) return;
+    const changedFields = Object.keys(changes);
+    const draftIndex = this._activeDrafts.findIndex((draft) => draft.key === key);
     this._draftState = updateDraft(this._draftState, key, changes);
-    this._saveError = null;
+    if (!this._saveError?.structured || (this._saveError.index === draftIndex && changedFields.includes(this._saveError.field))) this._saveError = null;
   }
   _removeCapability(draft, capability) {
     this._updateDraft(draft.key, { capabilities: draft.capabilities.filter((item) => item !== capability) });
@@ -252,12 +256,21 @@ export class BindHomeInventoryWorkflow extends LitElement {
     this._step = "success";
   }
 
-  _cancelBatch() {
-    if (this._activeDrafts.length && !globalThis.confirm("Discard this unsaved room inventory?")) return;
+  _backToQuantities() {
+    this._step = "quantity";
+  }
+  _requestRoomChange() {
+    if (this._activeDrafts.length) { this._confirmRoomChange = true; return; }
+    this._step = "select";
+  }
+  _discardAndChangeRoom() {
     this._draftState = createDraftState(this.presets);
     this._saveError = null;
     this._openDrafts = new Set();
-    this._step = "quantity";
+    this._confirmRoomChange = false;
+    this._floorId = "";
+    this._areaId = "";
+    this._step = "select";
   }
   _fieldId(draft, field) { return `${draft.key.replaceAll(":", "-")}-${field}`; }
   _fieldError(draftIndex, field) { return this._saveError?.structured && this._saveError.index === draftIndex && this._saveError.field === field; }
@@ -268,7 +281,7 @@ export class BindHomeInventoryWorkflow extends LitElement {
         <div class="context-item"><ha-icon icon="mdi:layers-outline"></ha-icon><span class="context-label">Floor</span><span class="context-value">${this._selectedFloor?.name ?? "No floor"}</span></div>
         <div class="context-item"><ha-icon icon="mdi:floor-plan"></ha-icon><span class="context-label">Area</span><span class="context-value">${this._selectedArea?.name}</span></div>
       </div>
-      <button class="button text" @click=${() => (this._step = "select")} ?disabled=${this._saving}>Change room</button>
+      <button class="button text" @click=${this._requestRoomChange} ?disabled=${this._saving}>Change room</button>
     </div></div>`;
   }
 
@@ -292,7 +305,7 @@ export class BindHomeInventoryWorkflow extends LitElement {
   _renderQuantity() {
     const grouped = new Map();
     for (const preset of this.presets) grouped.set(preset.group, [...(grouped.get(preset.group) ?? []), preset]);
-    return html`${this._renderContext()}<div class="content layout"><section><h1>What is physically installed here?</h1><p class="muted intro">Set a quantity above zero to create editable drafts. Zero creates nothing.</p>
+    return html`${this._renderContext()}${this._renderRoomChangeConfirmation()}<div class="content layout"><section><h1>What is physically installed here?</h1><p class="muted intro">Set a quantity above zero to create editable drafts. Zero creates nothing.</p>
       <details class="mobile-existing"><summary><strong>Existing in this room</strong><span class="muted">${this._areaAssets.length}</span></summary>${this._renderExisting()}</details>
       <div class="groups">${[...grouped].map(([group, presets]) => {
         const selected = presets.reduce((total, preset) => total + (this._draftState.quantities.get(preset.preset_id) ?? 0), 0);
@@ -322,12 +335,17 @@ export class BindHomeInventoryWorkflow extends LitElement {
   }
 
   _renderReview() {
-    return html`${this._renderContext()}<div class="content">${this._saveError ? html`<div class="alert" role="alert"><ha-icon icon="mdi:alert-circle-outline"></ha-icon><div><h3>Nothing was saved</h3><p class="muted helper">${this._saveError.structured ? "Correct the highlighted field and save the complete batch again." : this._saveError.message} All drafts have been preserved.</p></div></div>` : nothing}<div class="review-header"><div><h1>Review ${this._activeDrafts.length} generated drafts</h1><p class="muted intro">Every name and type is editable. Open a row to change its optional code or capabilities.</p></div></div><section class="existing-review"><div class="section-heading"><div><h2>Already registered</h2><p class="muted helper">Read-only and not included in this batch.</p></div><strong>${this._areaAssets.length}</strong></div></section><section class="drafts"><div class="section-heading"><div><h2>Being added now</h2><p class="muted helper">All drafts save together as one atomic batch.</p></div><strong>${this._activeDrafts.length}</strong></div><div>${this._activeDrafts.map((draft, index) => this._renderDraft(draft, index))}</div></section></div>${this._renderBottom("review")}`;
+    return html`${this._renderContext()}${this._renderRoomChangeConfirmation()}<div class="content">${this._saveError ? html`<div class="alert" role="alert"><ha-icon icon="mdi:alert-circle-outline"></ha-icon><div><h3>Nothing was saved</h3><p class="muted helper">${this._saveError.structured ? "Correct the highlighted field and save the complete batch again." : this._saveError.message} All drafts have been preserved.</p></div></div>` : nothing}<div class="review-header"><div><h1>Review ${this._activeDrafts.length} generated drafts</h1><p class="muted intro">Every name and type is editable. Open a row to change its optional code or capabilities.</p></div></div><section class="existing-review"><div class="section-heading"><div><h2>Already registered</h2><p class="muted helper">Read-only and not included in this batch.</p></div><strong>${this._areaAssets.length}</strong></div></section><section class="drafts"><div class="section-heading"><div><h2>Being added now</h2><p class="muted helper">All drafts save together as one atomic batch.</p></div><strong>${this._activeDrafts.length}</strong></div><div>${this._activeDrafts.map((draft, index) => this._renderDraft(draft, index))}</div></section></div>${this._renderBottom("review")}`;
+  }
+
+  _renderRoomChangeConfirmation() {
+    if (!this._confirmRoomChange) return nothing;
+    return html`<div class="content"><section class="alert" role="alertdialog" aria-labelledby="change-room-title" aria-describedby="change-room-description"><ha-icon icon="mdi:alert-outline"></ha-icon><div><h3 id="change-room-title">Discard this unsaved batch?</h3><p class="muted helper" id="change-room-description">Changing room clears every draft in the current batch. Nothing will be saved.</p><div class="actions"><button class="button secondary" @click=${() => (this._confirmRoomChange = false)}>Stay in this room</button><button class="button primary" @click=${this._discardAndChangeRoom}>Discard batch and change room</button></div></div></section></div>`;
   }
 
   _renderBottom(step) {
     const count = this._activeDrafts.length;
-    return html`<div class="bottom-bar" aria-busy=${this._saving}><div class="bottom-inner"><p class="muted bottom-copy">${step === "review" ? html`<strong>${count} assets</strong> save together or none are saved.` : html`<strong>${count} drafts</strong> will be reviewed before saving.`}</p>${step === "review" ? html`<div><button class="button secondary" @click=${this._cancelBatch} ?disabled=${this._saving}>Cancel</button> <button class="button primary" @click=${this._save} ?disabled=${this._saving || !count}>${this._saving ? "Saving…" : `Save ${count} assets`}</button></div>` : html`<button class="button primary" @click=${() => (this._step = "review")} ?disabled=${!count}>Review ${count} items</button>`}</div></div>`;
+    return html`<div class="bottom-bar" aria-busy=${this._saving}><div class="bottom-inner"><p class="muted bottom-copy">${step === "review" ? html`<strong>${count} assets</strong> save together or none are saved.` : html`<strong>${count} drafts</strong> will be reviewed before saving.`}</p>${step === "review" ? html`<div><button class="button secondary" @click=${this._backToQuantities} ?disabled=${this._saving}>Back to quantities</button> <button class="button primary" @click=${this._save} ?disabled=${this._saving || !count}>${this._saving ? "Saving…" : `Save ${count} assets`}</button></div>` : html`<button class="button primary" @click=${() => (this._step = "review")} ?disabled=${!count}>Review ${count} items</button>`}</div></div>`;
   }
 
   _renderSuccess() {
