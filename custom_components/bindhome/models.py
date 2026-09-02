@@ -89,6 +89,37 @@ class Asset:
         )
         return replace(self, capabilities=normalized)
 
+    def with_updates(
+        self,
+        *,
+        name: str,
+        asset_type: str,
+        code: str | None,
+        area_id: str | None,
+        capabilities: tuple[str, ...] | list[str],
+    ) -> Asset:
+        """Return an updated asset while preserving its stable identity."""
+        normalized_capabilities = tuple(
+            sorted(
+                {
+                    normalize_identifier(capability, "capability")
+                    for capability in capabilities
+                }
+            )
+        )
+        return replace(
+            self,
+            name=normalize_non_empty(name, "name"),
+            asset_type=normalize_identifier(asset_type, "asset_type"),
+            code=normalize_non_empty(code, "code") if code is not None else None,
+            area_id=(
+                normalize_non_empty(area_id, "area_id")
+                if area_id is not None
+                else None
+            ),
+            capabilities=normalized_capabilities,
+        )
+
     def to_dict(self) -> dict[str, Any]:
         """Serialize the asset."""
         return {
