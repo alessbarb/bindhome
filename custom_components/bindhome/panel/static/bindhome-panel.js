@@ -1,676 +1,135 @@
-(()=>{var H=globalThis,O=H.ShadowRoot&&(H.ShadyCSS===void 0||H.ShadyCSS.nativeShadow)&&"adoptedStyleSheets"in Document.prototype&&"replace"in CSSStyleSheet.prototype,B=Symbol(),X=new WeakMap,S=class{constructor(t,e,i){if(this._$cssResult$=!0,i!==B)throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");this.cssText=t,this.t=e}get styleSheet(){let t=this.o,e=this.t;if(O&&t===void 0){let i=e!==void 0&&e.length===1;i&&(t=X.get(e)),t===void 0&&((this.o=t=new CSSStyleSheet).replaceSync(this.cssText),i&&X.set(e,t))}return t}toString(){return this.cssText}},Y=o=>new S(typeof o=="string"?o:o+"",void 0,B),z=(o,...t)=>{let e=o.length===1?o[0]:t.reduce((i,s,r)=>i+(a=>{if(a._$cssResult$===!0)return a.cssText;if(typeof a=="number")return a;throw Error("Value passed to 'css' function must be a 'css' function result: "+a+". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.")})(s)+o[r+1],o[0]);return new S(e,o,B)},tt=(o,t)=>{if(O)o.adoptedStyleSheets=t.map(e=>e instanceof CSSStyleSheet?e:e.styleSheet);else for(let e of t){let i=document.createElement("style"),s=H.litNonce;s!==void 0&&i.setAttribute("nonce",s),i.textContent=e.cssText,o.appendChild(i)}},I=O?o=>o:o=>o instanceof CSSStyleSheet?(t=>{let e="";for(let i of t.cssRules)e+=i.cssText;return Y(e)})(o):o;var{is:ft,defineProperty:_t,getOwnPropertyDescriptor:yt,getOwnPropertyNames:vt,getOwnPropertySymbols:mt,getPrototypeOf:$t}=Object,U=globalThis,et=U.trustedTypes,xt=et?et.emptyScript:"",At=U.reactiveElementPolyfillSupport,E=(o,t)=>o,L={toAttribute(o,t){switch(t){case Boolean:o=o?xt:null;break;case Object:case Array:o=o==null?o:JSON.stringify(o)}return o},fromAttribute(o,t){let e=o;switch(t){case Boolean:e=o!==null;break;case Number:e=o===null?null:Number(o);break;case Object:case Array:try{e=JSON.parse(o)}catch{e=null}}return e}},it=(o,t)=>!ft(o,t),st={attribute:!0,type:String,converter:L,reflect:!1,useDefault:!1,hasChanged:it};Symbol.metadata??=Symbol("metadata"),U.litPropertyMetadata??=new WeakMap;var b=class extends HTMLElement{static addInitializer(t){this._$Ei(),(this.l??=[]).push(t)}static get observedAttributes(){return this.finalize(),this._$Eh&&[...this._$Eh.keys()]}static createProperty(t,e=st){if(e.state&&(e.attribute=!1),this._$Ei(),this.prototype.hasOwnProperty(t)&&((e=Object.create(e)).wrapped=!0),this.elementProperties.set(t,e),!e.noAccessor){let i=Symbol(),s=this.getPropertyDescriptor(t,i,e);s!==void 0&&_t(this.prototype,t,s)}}static getPropertyDescriptor(t,e,i){let{get:s,set:r}=yt(this.prototype,t)??{get(){return this[e]},set(a){this[e]=a}};return{get:s,set(a){let d=s?.call(this);r?.call(this,a),this.requestUpdate(t,d,i)},configurable:!0,enumerable:!0}}static getPropertyOptions(t){return this.elementProperties.get(t)??st}static _$Ei(){if(this.hasOwnProperty(E("elementProperties")))return;let t=$t(this);t.finalize(),t.l!==void 0&&(this.l=[...t.l]),this.elementProperties=new Map(t.elementProperties)}static finalize(){if(this.hasOwnProperty(E("finalized")))return;if(this.finalized=!0,this._$Ei(),this.hasOwnProperty(E("properties"))){let e=this.properties,i=[...vt(e),...mt(e)];for(let s of i)this.createProperty(s,e[s])}let t=this[Symbol.metadata];if(t!==null){let e=litPropertyMetadata.get(t);if(e!==void 0)for(let[i,s]of e)this.elementProperties.set(i,s)}this._$Eh=new Map;for(let[e,i]of this.elementProperties){let s=this._$Eu(e,i);s!==void 0&&this._$Eh.set(s,e)}this.elementStyles=this.finalizeStyles(this.styles)}static finalizeStyles(t){let e=[];if(Array.isArray(t)){let i=new Set(t.flat(1/0).reverse());for(let s of i)e.unshift(I(s))}else t!==void 0&&e.push(I(t));return e}static _$Eu(t,e){let i=e.attribute;return i===!1?void 0:typeof i=="string"?i:typeof t=="string"?t.toLowerCase():void 0}constructor(){super(),this._$Ep=void 0,this.isUpdatePending=!1,this.hasUpdated=!1,this._$Em=null,this._$Ev()}_$Ev(){this._$ES=new Promise(t=>this.enableUpdating=t),this._$AL=new Map,this._$E_(),this.requestUpdate(),this.constructor.l?.forEach(t=>t(this))}addController(t){(this._$EO??=new Set).add(t),this.renderRoot!==void 0&&this.isConnected&&t.hostConnected?.()}removeController(t){this._$EO?.delete(t)}_$E_(){let t=new Map,e=this.constructor.elementProperties;for(let i of e.keys())this.hasOwnProperty(i)&&(t.set(i,this[i]),delete this[i]);t.size>0&&(this._$Ep=t)}createRenderRoot(){let t=this.shadowRoot??this.attachShadow(this.constructor.shadowRootOptions);return tt(t,this.constructor.elementStyles),t}connectedCallback(){this.renderRoot??=this.createRenderRoot(),this.enableUpdating(!0),this._$EO?.forEach(t=>t.hostConnected?.())}enableUpdating(t){}disconnectedCallback(){this._$EO?.forEach(t=>t.hostDisconnected?.())}attributeChangedCallback(t,e,i){this._$AK(t,i)}_$ET(t,e){let i=this.constructor.elementProperties.get(t),s=this.constructor._$Eu(t,i);if(s!==void 0&&i.reflect===!0){let r=(i.converter?.toAttribute!==void 0?i.converter:L).toAttribute(e,i.type);this._$Em=t,r==null?this.removeAttribute(s):this.setAttribute(s,r),this._$Em=null}}_$AK(t,e){let i=this.constructor,s=i._$Eh.get(t);if(s!==void 0&&this._$Em!==s){let r=i.getPropertyOptions(s),a=typeof r.converter=="function"?{fromAttribute:r.converter}:r.converter?.fromAttribute!==void 0?r.converter:L;this._$Em=s;let d=a.fromAttribute(e,r.type);this[s]=d??this._$Ej?.get(s)??d,this._$Em=null}}requestUpdate(t,e,i,s=!1,r){if(t!==void 0){let a=this.constructor;if(s===!1&&(r=this[t]),i??=a.getPropertyOptions(t),!((i.hasChanged??it)(r,e)||i.useDefault&&i.reflect&&r===this._$Ej?.get(t)&&!this.hasAttribute(a._$Eu(t,i))))return;this.C(t,e,i)}this.isUpdatePending===!1&&(this._$ES=this._$EP())}C(t,e,{useDefault:i,reflect:s,wrapped:r},a){i&&!(this._$Ej??=new Map).has(t)&&(this._$Ej.set(t,a??e??this[t]),r!==!0||a!==void 0)||(this._$AL.has(t)||(this.hasUpdated||i||(e=void 0),this._$AL.set(t,e)),s===!0&&this._$Em!==t&&(this._$Eq??=new Set).add(t))}async _$EP(){this.isUpdatePending=!0;try{await this._$ES}catch(e){Promise.reject(e)}let t=this.scheduleUpdate();return t!=null&&await t,!this.isUpdatePending}scheduleUpdate(){return this.performUpdate()}performUpdate(){if(!this.isUpdatePending)return;if(!this.hasUpdated){if(this.renderRoot??=this.createRenderRoot(),this._$Ep){for(let[s,r]of this._$Ep)this[s]=r;this._$Ep=void 0}let i=this.constructor.elementProperties;if(i.size>0)for(let[s,r]of i){let{wrapped:a}=r,d=this[s];a!==!0||this._$AL.has(s)||d===void 0||this.C(s,void 0,r,d)}}let t=!1,e=this._$AL;try{t=this.shouldUpdate(e),t?(this.willUpdate(e),this._$EO?.forEach(i=>i.hostUpdate?.()),this.update(e)):this._$EM()}catch(i){throw t=!1,this._$EM(),i}t&&this._$AE(e)}willUpdate(t){}_$AE(t){this._$EO?.forEach(e=>e.hostUpdated?.()),this.hasUpdated||(this.hasUpdated=!0,this.firstUpdated(t)),this.updated(t)}_$EM(){this._$AL=new Map,this.isUpdatePending=!1}get updateComplete(){return this.getUpdateComplete()}getUpdateComplete(){return this._$ES}shouldUpdate(t){return!0}update(t){this._$Eq&&=this._$Eq.forEach(e=>this._$ET(e,this[e])),this._$EM()}updated(t){}firstUpdated(t){}};b.elementStyles=[],b.shadowRootOptions={mode:"open"},b[E("elementProperties")]=new Map,b[E("finalized")]=new Map,At?.({ReactiveElement:b}),(U.reactiveElementVersions??=[]).push("2.1.2");var Q=globalThis,rt=o=>o,M=Q.trustedTypes,at=M?M.createPolicy("lit-html",{createHTML:o=>o}):void 0,ht="$lit$",_=`lit$${Math.random().toFixed(9).slice(2)}$`,pt="?"+_,wt=`<${pt}>`,$=document,k=()=>$.createComment(""),R=o=>o===null||typeof o!="object"&&typeof o!="function",K=Array.isArray,St=o=>K(o)||typeof o?.[Symbol.iterator]=="function",D=`[ 	
-\f\r]`,C=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,ot=/-->/g,nt=/>/g,v=RegExp(`>|${D}(?:([^\\s"'>=/]+)(${D}*=${D}*(?:[^ 	
-\f\r"'\`<>=]|("|')|))|$)`,"g"),lt=/'/g,dt=/"/g,ut=/^(?:script|style|textarea|title)$/i,J=o=>(t,...e)=>({_$litType$:o,strings:t,values:e}),l=J(1),Ht=J(2),Ot=J(3),x=Symbol.for("lit-noChange"),p=Symbol.for("lit-nothing"),ct=new WeakMap,m=$.createTreeWalker($,129);function gt(o,t){if(!K(o)||!o.hasOwnProperty("raw"))throw Error("invalid template strings array");return at!==void 0?at.createHTML(t):t}var Et=(o,t)=>{let e=o.length-1,i=[],s,r=t===2?"<svg>":t===3?"<math>":"",a=C;for(let d=0;d<e;d++){let n=o[d],h,u,c=-1,g=0;for(;g<n.length&&(a.lastIndex=g,u=a.exec(n),u!==null);)g=a.lastIndex,a===C?u[1]==="!--"?a=ot:u[1]!==void 0?a=nt:u[2]!==void 0?(ut.test(u[2])&&(s=RegExp("</"+u[2],"g")),a=v):u[3]!==void 0&&(a=v):a===v?u[0]===">"?(a=s??C,c=-1):u[1]===void 0?c=-2:(c=a.lastIndex-u[2].length,h=u[1],a=u[3]===void 0?v:u[3]==='"'?dt:lt):a===dt||a===lt?a=v:a===ot||a===nt?a=C:(a=v,s=void 0);let f=a===v&&o[d+1].startsWith("/>")?" ":"";r+=a===C?n+wt:c>=0?(i.push(h),n.slice(0,c)+ht+n.slice(c)+_+f):n+_+(c===-2?d:f)}return[gt(o,r+(o[e]||"<?>")+(t===2?"</svg>":t===3?"</math>":"")),i]},T=class o{constructor({strings:t,_$litType$:e},i){let s;this.parts=[];let r=0,a=0,d=t.length-1,n=this.parts,[h,u]=Et(t,e);if(this.el=o.createElement(h,i),m.currentNode=this.el.content,e===2||e===3){let c=this.el.content.firstChild;c.replaceWith(...c.childNodes)}for(;(s=m.nextNode())!==null&&n.length<d;){if(s.nodeType===1){if(s.hasAttributes())for(let c of s.getAttributeNames())if(c.endsWith(ht)){let g=u[a++],f=s.getAttribute(c).split(_),P=/([.?@])?(.*)/.exec(g);n.push({type:1,index:r,name:P[2],strings:f,ctor:P[1]==="."?V:P[1]==="?"?W:P[1]==="@"?q:w}),s.removeAttribute(c)}else c.startsWith(_)&&(n.push({type:6,index:r}),s.removeAttribute(c));if(ut.test(s.tagName)){let c=s.textContent.split(_),g=c.length-1;if(g>0){s.textContent=M?M.emptyScript:"";for(let f=0;f<g;f++)s.append(c[f],k()),m.nextNode(),n.push({type:2,index:++r});s.append(c[g],k())}}}else if(s.nodeType===8)if(s.data===pt)n.push({type:2,index:r});else{let c=-1;for(;(c=s.data.indexOf(_,c+1))!==-1;)n.push({type:7,index:r}),c+=_.length-1}r++}}static createElement(t,e){let i=$.createElement("template");return i.innerHTML=t,i}};function A(o,t,e=o,i){if(t===x)return t;let s=i!==void 0?e._$Co?.[i]:e._$Cl,r=R(t)?void 0:t._$litDirective$;return s?.constructor!==r&&(s?._$AO?.(!1),r===void 0?s=void 0:(s=new r(o),s._$AT(o,e,i)),i!==void 0?(e._$Co??=[])[i]=s:e._$Cl=s),s!==void 0&&(t=A(o,s._$AS(o,t.values),s,i)),t}var j=class{constructor(t,e){this._$AV=[],this._$AN=void 0,this._$AD=t,this._$AM=e}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(t){let{el:{content:e},parts:i}=this._$AD,s=(t?.creationScope??$).importNode(e,!0);m.currentNode=s;let r=m.nextNode(),a=0,d=0,n=i[0];for(;n!==void 0;){if(a===n.index){let h;n.type===2?h=new N(r,r.nextSibling,this,t):n.type===1?h=new n.ctor(r,n.name,n.strings,this,t):n.type===6&&(h=new F(r,this,t)),this._$AV.push(h),n=i[++d]}a!==n?.index&&(r=m.nextNode(),a++)}return m.currentNode=$,s}p(t){let e=0;for(let i of this._$AV)i!==void 0&&(i.strings!==void 0?(i._$AI(t,i,e),e+=i.strings.length-2):i._$AI(t[e])),e++}},N=class o{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(t,e,i,s){this.type=2,this._$AH=p,this._$AN=void 0,this._$AA=t,this._$AB=e,this._$AM=i,this.options=s,this._$Cv=s?.isConnected??!0}get parentNode(){let t=this._$AA.parentNode,e=this._$AM;return e!==void 0&&t?.nodeType===11&&(t=e.parentNode),t}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(t,e=this){t=A(this,t,e),R(t)?t===p||t==null||t===""?(this._$AH!==p&&this._$AR(),this._$AH=p):t!==this._$AH&&t!==x&&this._(t):t._$litType$!==void 0?this.$(t):t.nodeType!==void 0?this.T(t):St(t)?this.k(t):this._(t)}O(t){return this._$AA.parentNode.insertBefore(t,this._$AB)}T(t){this._$AH!==t&&(this._$AR(),this._$AH=this.O(t))}_(t){this._$AH!==p&&R(this._$AH)?this._$AA.nextSibling.data=t:this.T($.createTextNode(t)),this._$AH=t}$(t){let{values:e,_$litType$:i}=t,s=typeof i=="number"?this._$AC(t):(i.el===void 0&&(i.el=T.createElement(gt(i.h,i.h[0]),this.options)),i);if(this._$AH?._$AD===s)this._$AH.p(e);else{let r=new j(s,this),a=r.u(this.options);r.p(e),this.T(a),this._$AH=r}}_$AC(t){let e=ct.get(t.strings);return e===void 0&&ct.set(t.strings,e=new T(t)),e}k(t){K(this._$AH)||(this._$AH=[],this._$AR());let e=this._$AH,i,s=0;for(let r of t)s===e.length?e.push(i=new o(this.O(k()),this.O(k()),this,this.options)):i=e[s],i._$AI(r),s++;s<e.length&&(this._$AR(i&&i._$AB.nextSibling,s),e.length=s)}_$AR(t=this._$AA.nextSibling,e){for(this._$AP?.(!1,!0,e);t!==this._$AB;){let i=rt(t).nextSibling;rt(t).remove(),t=i}}setConnected(t){this._$AM===void 0&&(this._$Cv=t,this._$AP?.(t))}},w=class{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(t,e,i,s,r){this.type=1,this._$AH=p,this._$AN=void 0,this.element=t,this.name=e,this._$AM=s,this.options=r,i.length>2||i[0]!==""||i[1]!==""?(this._$AH=Array(i.length-1).fill(new String),this.strings=i):this._$AH=p}_$AI(t,e=this,i,s){let r=this.strings,a=!1;if(r===void 0)t=A(this,t,e,0),a=!R(t)||t!==this._$AH&&t!==x,a&&(this._$AH=t);else{let d=t,n,h;for(t=r[0],n=0;n<r.length-1;n++)h=A(this,d[i+n],e,n),h===x&&(h=this._$AH[n]),a||=!R(h)||h!==this._$AH[n],h===p?t=p:t!==p&&(t+=(h??"")+r[n+1]),this._$AH[n]=h}a&&!s&&this.j(t)}j(t){t===p?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,t??"")}},V=class extends w{constructor(){super(...arguments),this.type=3}j(t){this.element[this.name]=t===p?void 0:t}},W=class extends w{constructor(){super(...arguments),this.type=4}j(t){this.element.toggleAttribute(this.name,!!t&&t!==p)}},q=class extends w{constructor(t,e,i,s,r){super(t,e,i,s,r),this.type=5}_$AI(t,e=this){if((t=A(this,t,e,0)??p)===x)return;let i=this._$AH,s=t===p&&i!==p||t.capture!==i.capture||t.once!==i.once||t.passive!==i.passive,r=t!==p&&(i===p||s);s&&this.element.removeEventListener(this.name,this,i),r&&this.element.addEventListener(this.name,this,t),this._$AH=t}handleEvent(t){typeof this._$AH=="function"?this._$AH.call(this.options?.host??this.element,t):this._$AH.handleEvent(t)}},F=class{constructor(t,e,i){this.element=t,this.type=6,this._$AN=void 0,this._$AM=e,this.options=i}get _$AU(){return this._$AM._$AU}_$AI(t){A(this,t)}};var Ct=Q.litHtmlPolyfillSupport;Ct?.(T,N),(Q.litHtmlVersions??=[]).push("3.3.3");var bt=(o,t,e)=>{let i=e?.renderBefore??t,s=i._$litPart$;if(s===void 0){let r=e?.renderBefore??null;i._$litPart$=s=new N(t.insertBefore(k(),r),r,void 0,e??{})}return s._$AI(o),s};var Z=globalThis,y=class extends b{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){let t=super.createRenderRoot();return this.renderOptions.renderBefore??=t.firstChild,t}update(t){let e=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(t),this._$Do=bt(e,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return x}};y._$litElement$=!0,y.finalized=!0,Z.litElementHydrateSupport?.({LitElement:y});var kt=Z.litElementPolyfillSupport;kt?.({LitElement:y});(Z.litElementVersions??=[]).push("4.2.2");var G=class extends y{static get properties(){return{hass:{type:Object},narrow:{type:Boolean},route:{type:Object},panel:{type:Object},_loading:{type:Boolean},_error:{type:String},_registry:{type:Object},_currentView:{type:String},_selectedAssetId:{type:String},_filterQuery:{type:String},_filterType:{type:String}}}static get styles(){return z`
-      :host {
-        display: block;
-        height: 100vh;
-        background-color: var(--primary-background-color, #fafafa);
-        color: var(--primary-text-color, #212121);
-        font-family: var(--paper-font-body1_-_font-family, Roboto, Noto, sans-serif);
-        box-sizing: border-box;
-      }
-
-      .panel-container {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        overflow: hidden;
-      }
-
-      header {
-        background-color: var(--primary-color, #03a9f4);
-        color: var(--text-primary-color, #ffffff);
-        padding: 12px 24px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.14);
-        z-index: 1;
-      }
-
-      .header-title {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-
-      .header-title h1 {
-        margin: 0;
-        font-size: 20px;
-        font-weight: 500;
-      }
-
-      .badge-v0 {
-        background: rgba(255, 255, 255, 0.2);
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 12px;
-        font-weight: bold;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-
-      nav {
-        display: flex;
-        gap: 4px;
-        background: var(--card-background-color, #ffffff);
-        border-bottom: 1px solid var(--divider-color, #e0e0e0);
-        padding: 0 16px;
-        overflow-x: auto;
-      }
-
-      nav button {
-        background: none;
-        border: none;
-        border-bottom: 3px solid transparent;
-        padding: 12px 16px;
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--secondary-text-color, #727272);
-        cursor: pointer;
-        white-space: nowrap;
-        transition: all 0.2s ease;
-      }
-
-      nav button:hover {
-        color: var(--primary-color, #03a9f4);
-      }
-
-      nav button.active {
-        color: var(--primary-color, #03a9f4);
-        border-bottom-color: var(--primary-color, #03a9f4);
-      }
-
-      main {
-        flex: 1;
-        overflow-y: auto;
-        padding: 24px;
-        max-width: 1200px;
-        width: 100%;
-        margin: 0 auto;
-        box-sizing: border-box;
-      }
-
-      @media (max-width: 600px) {
-        main {
-          padding: 12px;
-        }
-        header {
-          padding: 12px 16px;
-        }
-      }
-
-      /* Utility & Component Styles */
-      .card {
-        background: var(--card-background-color, #ffffff);
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
-        padding: 20px;
-        margin-bottom: 20px;
-      }
-
-      .card h2 {
-        margin-top: 0;
-        font-size: 18px;
-        color: var(--primary-text-color, #212121);
-      }
-
-      .grid-stats {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
-        margin-bottom: 24px;
-      }
-
-      .stat-card {
-        background: var(--card-background-color, #ffffff);
-        border: 1px solid var(--divider-color, #e0e0e0);
-        border-radius: 8px;
-        padding: 16px;
-        text-align: center;
-      }
-
-      .stat-value {
-        font-size: 32px;
-        font-weight: bold;
-        color: var(--primary-color, #03a9f4);
-      }
-
-      .stat-label {
-        font-size: 14px;
-        color: var(--secondary-text-color, #727272);
-        margin-top: 4px;
-      }
-
-      .badge {
-        display: inline-block;
-        padding: 3px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-weight: 500;
-        margin-right: 4px;
-        margin-bottom: 4px;
-      }
-
-      .badge-infra {
-        background-color: var(--accent-color, #e3f2fd);
-        color: var(--primary-color, #1565c0);
-        border: 1px solid rgba(21, 101, 192, 0.3);
-      }
-
-      .badge-ha {
-        background-color: #f3e5f5;
-        color: #7b1fa2;
-        border: 1px solid rgba(123, 31, 162, 0.3);
-      }
-
-      .badge-capability {
-        background-color: #e8f5e9;
-        color: #2e7d32;
-      }
-
-      .filter-bar {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-      }
-
-      .filter-bar input, .filter-bar select {
-        padding: 8px 12px;
-        border: 1px solid var(--divider-color, #ccc);
-        border-radius: 4px;
-        font-size: 14px;
-        background: var(--card-background-color, #fff);
-        color: var(--primary-text-color, #000);
-      }
-
-      .filter-bar input {
-        flex: 1;
-        min-width: 200px;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        text-align: left;
-      }
-
-      th, td {
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--divider-color, #e0e0e0);
-      }
-
-      th {
-        background-color: var(--table-row-alternative-background-color, #f5f5f5);
-        font-weight: 600;
-        font-size: 13px;
-        color: var(--secondary-text-color, #666);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-
-      tr:hover {
-        background-color: var(--table-row-hover-background-color, rgba(0,0,0,0.02));
-      }
-
-      .clickable-row {
-        cursor: pointer;
-      }
-
-      /* State views */
-      .center-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 300px;
-        text-align: center;
-      }
-
-      .spinner {
-        border: 4px solid rgba(0, 0, 0, 0.1);
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        border-left-color: var(--primary-color, #03a9f4);
-        animation: spin 1s linear infinite;
-        margin-bottom: 16px;
-      }
-
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-
-      .error-box {
-        background-color: #ffebee;
-        color: #c62828;
-        border: 1px solid #ef9a9a;
-        padding: 16px;
-        border-radius: 8px;
-        margin-bottom: 16px;
-        width: 100%;
-        box-sizing: border-box;
-      }
-
-      .empty-box {
-        background-color: #f5f5f5;
-        color: #616161;
-        border: 1px dashed #bdbdbd;
-        padding: 32px;
-        border-radius: 8px;
-        width: 100%;
-        box-sizing: border-box;
-      }
-
-      .btn {
-        background-color: var(--primary-color, #03a9f4);
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
-      }
-
-      .btn-secondary {
-        background-color: transparent;
-        color: var(--primary-color, #03a9f4);
-        border: 1px solid var(--primary-color, #03a9f4);
-      }
-
-      .detail-header {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        margin-bottom: 20px;
-      }
-
-      .detail-property {
-        margin-bottom: 12px;
-      }
-
-      .detail-property label {
-        font-size: 12px;
-        color: var(--secondary-text-color, #777);
-        text-transform: uppercase;
-        display: block;
-        margin-bottom: 4px;
-      }
-
-      .detail-property span {
-        font-size: 16px;
-        font-weight: 500;
-      }
-
-      .arrow {
-        color: var(--secondary-text-color, #999);
-        margin: 0 8px;
-      }
-
-      .asset-link {
-        color: var(--primary-color, #03a9f4);
-        text-decoration: none;
-        cursor: pointer;
-        font-weight: 500;
-      }
-
-      .asset-link:hover {
-        text-decoration: underline;
-      }
-    `}constructor(){super(),this._loading=!0,this._error=null,this._registry=null,this._currentView="overview",this._selectedAssetId=null,this._filterQuery="",this._filterType=""}connectedCallback(){super.connectedCallback(),this._fetchRegistry()}updated(t){t.has("hass")&&this.hass&&!this._registry&&!this._error&&this._loading&&this._fetchRegistry()}async _fetchRegistry(){if(this.hass){this._loading=!0,this._error=null;try{let t=await this.hass.callWS({type:"bindhome/registry/get"});this._registry=t,this._loading=!1}catch(t){this._loading=!1,this._error=t.message||"Failed to load BindHome registry via WebSocket."}}}_navigate(t,e=null){this._currentView=t,e&&(this._selectedAssetId=e)}render(){return l`
-      <div class="panel-container">
-        <header>
-          <div class="header-title">
-            <h1>BindHome Panel</h1>
-            <span class="badge-v0">Read-First V0</span>
-          </div>
-          <div>
-            <button class="btn btn-secondary" style="color: white; border-color: white;" @click=${this._fetchRegistry}>
-              Refresh
-            </button>
-          </div>
-        </header>
-
-        <nav>
-          <button
-            class=${this._currentView==="overview"?"active":""}
-            @click=${()=>this._navigate("overview")}
-          >
-            Overview
-          </button>
-          <button
-            class=${this._currentView==="assets"||this._currentView==="asset_detail"?"active":""}
-            @click=${()=>this._navigate("assets")}
-          >
-            Assets
-          </button>
-          <button
-            class=${this._currentView==="relations"?"active":""}
-            @click=${()=>this._navigate("relations")}
-          >
-            Relations
-          </button>
-          <button
-            class=${this._currentView==="bindings"?"active":""}
-            @click=${()=>this._navigate("bindings")}
-          >
-            Bindings
-          </button>
-        </nav>
-
-        <main>
-          ${this._renderContent()}
-        </main>
+(()=>{var Ot=Object.defineProperty;var Mt=(i,t,e)=>t in i?Ot(i,t,{enumerable:!0,configurable:!0,writable:!0,value:e}):i[t]=e;var f=(i,t,e)=>Mt(i,typeof t!="symbol"?t+"":t,e);var T=globalThis,B=T.ShadowRoot&&(T.ShadyCSS===void 0||T.ShadyCSS.nativeShadow)&&"adoptedStyleSheets"in Document.prototype&&"replace"in CSSStyleSheet.prototype,G=Symbol(),nt=new WeakMap,k=class{constructor(t,e,s){if(this._$cssResult$=!0,s!==G)throw Error("CSSResult is not constructable. Use `unsafeCSS` or `css` instead.");this.cssText=t,this.t=e}get styleSheet(){let t=this.o,e=this.t;if(B&&t===void 0){let s=e!==void 0&&e.length===1;s&&(t=nt.get(e)),t===void 0&&((this.o=t=new CSSStyleSheet).replaceSync(this.cssText),s&&nt.set(e,t))}return t}toString(){return this.cssText}},lt=i=>new k(typeof i=="string"?i:i+"",void 0,G),x=(i,...t)=>{let e=i.length===1?i[0]:t.reduce((s,r,o)=>s+(a=>{if(a._$cssResult$===!0)return a.cssText;if(typeof a=="number")return a;throw Error("Value passed to 'css' function must be a 'css' function result: "+a+". Use 'unsafeCSS' to pass non-literal values, but take care to ensure page security.")})(r)+i[o+1],i[0]);return new k(e,i,G)},dt=(i,t)=>{if(B)i.adoptedStyleSheets=t.map(e=>e instanceof CSSStyleSheet?e:e.styleSheet);else for(let e of t){let s=document.createElement("style"),r=T.litNonce;r!==void 0&&s.setAttribute("nonce",r),s.textContent=e.cssText,i.appendChild(s)}},V=B?i=>i:i=>i instanceof CSSStyleSheet?(t=>{let e="";for(let s of t.cssRules)e+=s.cssText;return lt(e)})(i):i;var{is:Ht,defineProperty:Ut,getOwnPropertyDescriptor:zt,getOwnPropertyNames:Tt,getOwnPropertySymbols:Bt,getPrototypeOf:qt}=Object,q=globalThis,ct=q.trustedTypes,Lt=ct?ct.emptyScript:"",jt=q.reactiveElementPolyfillSupport,C=(i,t)=>i,Q={toAttribute(i,t){switch(t){case Boolean:i=i?Lt:null;break;case Object:case Array:i=i==null?i:JSON.stringify(i)}return i},fromAttribute(i,t){let e=i;switch(t){case Boolean:e=i!==null;break;case Number:e=i===null?null:Number(i);break;case Object:case Array:try{e=JSON.parse(i)}catch{e=null}}return e}},ht=(i,t)=>!Ht(i,t),pt={attribute:!0,type:String,converter:Q,reflect:!1,useDefault:!1,hasChanged:ht};Symbol.metadata??=Symbol("metadata"),q.litPropertyMetadata??=new WeakMap;var v=class extends HTMLElement{static addInitializer(t){this._$Ei(),(this.l??=[]).push(t)}static get observedAttributes(){return this.finalize(),this._$Eh&&[...this._$Eh.keys()]}static createProperty(t,e=pt){if(e.state&&(e.attribute=!1),this._$Ei(),this.prototype.hasOwnProperty(t)&&((e=Object.create(e)).wrapped=!0),this.elementProperties.set(t,e),!e.noAccessor){let s=Symbol(),r=this.getPropertyDescriptor(t,s,e);r!==void 0&&Ut(this.prototype,t,r)}}static getPropertyDescriptor(t,e,s){let{get:r,set:o}=zt(this.prototype,t)??{get(){return this[e]},set(a){this[e]=a}};return{get:r,set(a){let d=r?.call(this);o?.call(this,a),this.requestUpdate(t,d,s)},configurable:!0,enumerable:!0}}static getPropertyOptions(t){return this.elementProperties.get(t)??pt}static _$Ei(){if(this.hasOwnProperty(C("elementProperties")))return;let t=qt(this);t.finalize(),t.l!==void 0&&(this.l=[...t.l]),this.elementProperties=new Map(t.elementProperties)}static finalize(){if(this.hasOwnProperty(C("finalized")))return;if(this.finalized=!0,this._$Ei(),this.hasOwnProperty(C("properties"))){let e=this.properties,s=[...Tt(e),...Bt(e)];for(let r of s)this.createProperty(r,e[r])}let t=this[Symbol.metadata];if(t!==null){let e=litPropertyMetadata.get(t);if(e!==void 0)for(let[s,r]of e)this.elementProperties.set(s,r)}this._$Eh=new Map;for(let[e,s]of this.elementProperties){let r=this._$Eu(e,s);r!==void 0&&this._$Eh.set(r,e)}this.elementStyles=this.finalizeStyles(this.styles)}static finalizeStyles(t){let e=[];if(Array.isArray(t)){let s=new Set(t.flat(1/0).reverse());for(let r of s)e.unshift(V(r))}else t!==void 0&&e.push(V(t));return e}static _$Eu(t,e){let s=e.attribute;return s===!1?void 0:typeof s=="string"?s:typeof t=="string"?t.toLowerCase():void 0}constructor(){super(),this._$Ep=void 0,this.isUpdatePending=!1,this.hasUpdated=!1,this._$Em=null,this._$Ev()}_$Ev(){this._$ES=new Promise(t=>this.enableUpdating=t),this._$AL=new Map,this._$E_(),this.requestUpdate(),this.constructor.l?.forEach(t=>t(this))}addController(t){(this._$EO??=new Set).add(t),this.renderRoot!==void 0&&this.isConnected&&t.hostConnected?.()}removeController(t){this._$EO?.delete(t)}_$E_(){let t=new Map,e=this.constructor.elementProperties;for(let s of e.keys())this.hasOwnProperty(s)&&(t.set(s,this[s]),delete this[s]);t.size>0&&(this._$Ep=t)}createRenderRoot(){let t=this.shadowRoot??this.attachShadow(this.constructor.shadowRootOptions);return dt(t,this.constructor.elementStyles),t}connectedCallback(){this.renderRoot??=this.createRenderRoot(),this.enableUpdating(!0),this._$EO?.forEach(t=>t.hostConnected?.())}enableUpdating(t){}disconnectedCallback(){this._$EO?.forEach(t=>t.hostDisconnected?.())}attributeChangedCallback(t,e,s){this._$AK(t,s)}_$ET(t,e){let s=this.constructor.elementProperties.get(t),r=this.constructor._$Eu(t,s);if(r!==void 0&&s.reflect===!0){let o=(s.converter?.toAttribute!==void 0?s.converter:Q).toAttribute(e,s.type);this._$Em=t,o==null?this.removeAttribute(r):this.setAttribute(r,o),this._$Em=null}}_$AK(t,e){let s=this.constructor,r=s._$Eh.get(t);if(r!==void 0&&this._$Em!==r){let o=s.getPropertyOptions(r),a=typeof o.converter=="function"?{fromAttribute:o.converter}:o.converter?.fromAttribute!==void 0?o.converter:Q;this._$Em=r;let d=a.fromAttribute(e,o.type);this[r]=d??this._$Ej?.get(r)??d,this._$Em=null}}requestUpdate(t,e,s,r=!1,o){if(t!==void 0){let a=this.constructor;if(r===!1&&(o=this[t]),s??=a.getPropertyOptions(t),!((s.hasChanged??ht)(o,e)||s.useDefault&&s.reflect&&o===this._$Ej?.get(t)&&!this.hasAttribute(a._$Eu(t,s))))return;this.C(t,e,s)}this.isUpdatePending===!1&&(this._$ES=this._$EP())}C(t,e,{useDefault:s,reflect:r,wrapped:o},a){s&&!(this._$Ej??=new Map).has(t)&&(this._$Ej.set(t,a??e??this[t]),o!==!0||a!==void 0)||(this._$AL.has(t)||(this.hasUpdated||s||(e=void 0),this._$AL.set(t,e)),r===!0&&this._$Em!==t&&(this._$Eq??=new Set).add(t))}async _$EP(){this.isUpdatePending=!0;try{await this._$ES}catch(e){Promise.reject(e)}let t=this.scheduleUpdate();return t!=null&&await t,!this.isUpdatePending}scheduleUpdate(){return this.performUpdate()}performUpdate(){if(!this.isUpdatePending)return;if(!this.hasUpdated){if(this.renderRoot??=this.createRenderRoot(),this._$Ep){for(let[r,o]of this._$Ep)this[r]=o;this._$Ep=void 0}let s=this.constructor.elementProperties;if(s.size>0)for(let[r,o]of s){let{wrapped:a}=o,d=this[r];a!==!0||this._$AL.has(r)||d===void 0||this.C(r,void 0,o,d)}}let t=!1,e=this._$AL;try{t=this.shouldUpdate(e),t?(this.willUpdate(e),this._$EO?.forEach(s=>s.hostUpdate?.()),this.update(e)):this._$EM()}catch(s){throw t=!1,this._$EM(),s}t&&this._$AE(e)}willUpdate(t){}_$AE(t){this._$EO?.forEach(e=>e.hostUpdated?.()),this.hasUpdated||(this.hasUpdated=!0,this.firstUpdated(t)),this.updated(t)}_$EM(){this._$AL=new Map,this.isUpdatePending=!1}get updateComplete(){return this.getUpdateComplete()}getUpdateComplete(){return this._$ES}shouldUpdate(t){return!0}update(t){this._$Eq&&=this._$Eq.forEach(e=>this._$ET(e,this[e])),this._$EM()}updated(t){}firstUpdated(t){}};v.elementStyles=[],v.shadowRootOptions={mode:"open"},v[C("elementProperties")]=new Map,v[C("finalized")]=new Map,jt?.({ReactiveElement:v}),(q.reactiveElementVersions??=[]).push("2.1.2");var et=globalThis,ut=i=>i,L=et.trustedTypes,gt=L?L.createPolicy("lit-html",{createHTML:i=>i}):void 0,xt="$lit$",b=`lit$${Math.random().toFixed(9).slice(2)}$`,yt="?"+b,Ft=`<${yt}>`,w=document,D=()=>w.createComment(""),R=i=>i===null||typeof i!="object"&&typeof i!="function",st=Array.isArray,Wt=i=>st(i)||typeof i?.[Symbol.iterator]=="function",K=`[ 	
+\f\r]`,N=/<(?:(!--|\/[^a-zA-Z])|(\/?[a-zA-Z][^>\s]*)|(\/?$))/g,mt=/-->/g,ft=/>/g,y=RegExp(`>|${K}(?:([^\\s"'>=/]+)(${K}*=${K}*(?:[^ 	
+\f\r"'\`<>=]|("|')|))|$)`,"g"),vt=/'/g,_t=/"/g,$t=/^(?:script|style|textarea|title)$/i,it=i=>(t,...e)=>({_$litType$:i,strings:t,values:e}),n=it(1),se=it(2),ie=it(3),A=Symbol.for("lit-noChange"),c=Symbol.for("lit-nothing"),bt=new WeakMap,$=w.createTreeWalker(w,129);function wt(i,t){if(!st(i)||!i.hasOwnProperty("raw"))throw Error("invalid template strings array");return gt!==void 0?gt.createHTML(t):t}var Gt=(i,t)=>{let e=i.length-1,s=[],r,o=t===2?"<svg>":t===3?"<math>":"",a=N;for(let d=0;d<e;d++){let l=i[d],h,u,p=-1,m=0;for(;m<l.length&&(a.lastIndex=m,u=a.exec(l),u!==null);)m=a.lastIndex,a===N?u[1]==="!--"?a=mt:u[1]!==void 0?a=ft:u[2]!==void 0?($t.test(u[2])&&(r=RegExp("</"+u[2],"g")),a=y):u[3]!==void 0&&(a=y):a===y?u[0]===">"?(a=r??N,p=-1):u[1]===void 0?p=-2:(p=a.lastIndex-u[2].length,h=u[1],a=u[3]===void 0?y:u[3]==='"'?_t:vt):a===_t||a===vt?a=y:a===mt||a===ft?a=N:(a=y,r=void 0);let _=a===y&&i[d+1].startsWith("/>")?" ":"";o+=a===N?l+Ft:p>=0?(s.push(h),l.slice(0,p)+xt+l.slice(p)+b+_):l+b+(p===-2?d:_)}return[wt(i,o+(i[e]||"<?>")+(t===2?"</svg>":t===3?"</math>":"")),s]},P=class i{constructor({strings:t,_$litType$:e},s){let r;this.parts=[];let o=0,a=0,d=t.length-1,l=this.parts,[h,u]=Gt(t,e);if(this.el=i.createElement(h,s),$.currentNode=this.el.content,e===2||e===3){let p=this.el.content.firstChild;p.replaceWith(...p.childNodes)}for(;(r=$.nextNode())!==null&&l.length<d;){if(r.nodeType===1){if(r.hasAttributes())for(let p of r.getAttributeNames())if(p.endsWith(xt)){let m=u[a++],_=r.getAttribute(p).split(b),z=/([.?@])?(.*)/.exec(m);l.push({type:1,index:o,name:z[2],strings:_,ctor:z[1]==="."?Z:z[1]==="?"?X:z[1]==="@"?Y:E}),r.removeAttribute(p)}else p.startsWith(b)&&(l.push({type:6,index:o}),r.removeAttribute(p));if($t.test(r.tagName)){let p=r.textContent.split(b),m=p.length-1;if(m>0){r.textContent=L?L.emptyScript:"";for(let _=0;_<m;_++)r.append(p[_],D()),$.nextNode(),l.push({type:2,index:++o});r.append(p[m],D())}}}else if(r.nodeType===8)if(r.data===yt)l.push({type:2,index:o});else{let p=-1;for(;(p=r.data.indexOf(b,p+1))!==-1;)l.push({type:7,index:o}),p+=b.length-1}o++}}static createElement(t,e){let s=w.createElement("template");return s.innerHTML=t,s}};function S(i,t,e=i,s){if(t===A)return t;let r=s!==void 0?e._$Co?.[s]:e._$Cl,o=R(t)?void 0:t._$litDirective$;return r?.constructor!==o&&(r?._$AO?.(!1),o===void 0?r=void 0:(r=new o(i),r._$AT(i,e,s)),s!==void 0?(e._$Co??=[])[s]=r:e._$Cl=r),r!==void 0&&(t=S(i,r._$AS(i,t.values),r,s)),t}var J=class{constructor(t,e){this._$AV=[],this._$AN=void 0,this._$AD=t,this._$AM=e}get parentNode(){return this._$AM.parentNode}get _$AU(){return this._$AM._$AU}u(t){let{el:{content:e},parts:s}=this._$AD,r=(t?.creationScope??w).importNode(e,!0);$.currentNode=r;let o=$.nextNode(),a=0,d=0,l=s[0];for(;l!==void 0;){if(a===l.index){let h;l.type===2?h=new I(o,o.nextSibling,this,t):l.type===1?h=new l.ctor(o,l.name,l.strings,this,t):l.type===6&&(h=new tt(o,this,t)),this._$AV.push(h),l=s[++d]}a!==l?.index&&(o=$.nextNode(),a++)}return $.currentNode=w,r}p(t){let e=0;for(let s of this._$AV)s!==void 0&&(s.strings!==void 0?(s._$AI(t,s,e),e+=s.strings.length-2):s._$AI(t[e])),e++}},I=class i{get _$AU(){return this._$AM?._$AU??this._$Cv}constructor(t,e,s,r){this.type=2,this._$AH=c,this._$AN=void 0,this._$AA=t,this._$AB=e,this._$AM=s,this.options=r,this._$Cv=r?.isConnected??!0}get parentNode(){let t=this._$AA.parentNode,e=this._$AM;return e!==void 0&&t?.nodeType===11&&(t=e.parentNode),t}get startNode(){return this._$AA}get endNode(){return this._$AB}_$AI(t,e=this){t=S(this,t,e),R(t)?t===c||t==null||t===""?(this._$AH!==c&&this._$AR(),this._$AH=c):t!==this._$AH&&t!==A&&this._(t):t._$litType$!==void 0?this.$(t):t.nodeType!==void 0?this.T(t):Wt(t)?this.k(t):this._(t)}O(t){return this._$AA.parentNode.insertBefore(t,this._$AB)}T(t){this._$AH!==t&&(this._$AR(),this._$AH=this.O(t))}_(t){this._$AH!==c&&R(this._$AH)?this._$AA.nextSibling.data=t:this.T(w.createTextNode(t)),this._$AH=t}$(t){let{values:e,_$litType$:s}=t,r=typeof s=="number"?this._$AC(t):(s.el===void 0&&(s.el=P.createElement(wt(s.h,s.h[0]),this.options)),s);if(this._$AH?._$AD===r)this._$AH.p(e);else{let o=new J(r,this),a=o.u(this.options);o.p(e),this.T(a),this._$AH=o}}_$AC(t){let e=bt.get(t.strings);return e===void 0&&bt.set(t.strings,e=new P(t)),e}k(t){st(this._$AH)||(this._$AH=[],this._$AR());let e=this._$AH,s,r=0;for(let o of t)r===e.length?e.push(s=new i(this.O(D()),this.O(D()),this,this.options)):s=e[r],s._$AI(o),r++;r<e.length&&(this._$AR(s&&s._$AB.nextSibling,r),e.length=r)}_$AR(t=this._$AA.nextSibling,e){for(this._$AP?.(!1,!0,e);t!==this._$AB;){let s=ut(t).nextSibling;ut(t).remove(),t=s}}setConnected(t){this._$AM===void 0&&(this._$Cv=t,this._$AP?.(t))}},E=class{get tagName(){return this.element.tagName}get _$AU(){return this._$AM._$AU}constructor(t,e,s,r,o){this.type=1,this._$AH=c,this._$AN=void 0,this.element=t,this.name=e,this._$AM=r,this.options=o,s.length>2||s[0]!==""||s[1]!==""?(this._$AH=Array(s.length-1).fill(new String),this.strings=s):this._$AH=c}_$AI(t,e=this,s,r){let o=this.strings,a=!1;if(o===void 0)t=S(this,t,e,0),a=!R(t)||t!==this._$AH&&t!==A,a&&(this._$AH=t);else{let d=t,l,h;for(t=o[0],l=0;l<o.length-1;l++)h=S(this,d[s+l],e,l),h===A&&(h=this._$AH[l]),a||=!R(h)||h!==this._$AH[l],h===c?t=c:t!==c&&(t+=(h??"")+o[l+1]),this._$AH[l]=h}a&&!r&&this.j(t)}j(t){t===c?this.element.removeAttribute(this.name):this.element.setAttribute(this.name,t??"")}},Z=class extends E{constructor(){super(...arguments),this.type=3}j(t){this.element[this.name]=t===c?void 0:t}},X=class extends E{constructor(){super(...arguments),this.type=4}j(t){this.element.toggleAttribute(this.name,!!t&&t!==c)}},Y=class extends E{constructor(t,e,s,r,o){super(t,e,s,r,o),this.type=5}_$AI(t,e=this){if((t=S(this,t,e,0)??c)===A)return;let s=this._$AH,r=t===c&&s!==c||t.capture!==s.capture||t.once!==s.once||t.passive!==s.passive,o=t!==c&&(s===c||r);r&&this.element.removeEventListener(this.name,this,s),o&&this.element.addEventListener(this.name,this,t),this._$AH=t}handleEvent(t){typeof this._$AH=="function"?this._$AH.call(this.options?.host??this.element,t):this._$AH.handleEvent(t)}},tt=class{constructor(t,e,s){this.element=t,this.type=6,this._$AN=void 0,this._$AM=e,this.options=s}get _$AU(){return this._$AM._$AU}_$AI(t){S(this,t)}};var Vt=et.litHtmlPolyfillSupport;Vt?.(P,I),(et.litHtmlVersions??=[]).push("3.3.3");var At=(i,t,e)=>{let s=e?.renderBefore??t,r=s._$litPart$;if(r===void 0){let o=e?.renderBefore??null;s._$litPart$=r=new I(t.insertBefore(D(),o),o,void 0,e??{})}return r._$AI(i),r};var rt=globalThis,g=class extends v{constructor(){super(...arguments),this.renderOptions={host:this},this._$Do=void 0}createRenderRoot(){let t=super.createRenderRoot();return this.renderOptions.renderBefore??=t.firstChild,t}update(t){let e=this.render();this.hasUpdated||(this.renderOptions.isConnected=this.isConnected),super.update(t),this._$Do=At(e,this.renderRoot,this.renderOptions)}connectedCallback(){super.connectedCallback(),this._$Do?.setConnected(!0)}disconnectedCallback(){super.disconnectedCallback(),this._$Do?.setConnected(!1)}render(){return A}};g._$litElement$=!0,g.finalized=!0,rt.litElementHydrateSupport?.({LitElement:g});var Qt=rt.litElementPolyfillSupport;Qt?.({LitElement:g});(rt.litElementVersions??=[]).push("4.2.2");function j(i){return{async getRegistry(){return i.callWS({type:"bindhome/registry/get"})},async listAssets(){return(await i.callWS({type:"bindhome/assets/list"})).assets??[]},async listPresets(){return(await i.callWS({type:"bindhome/presets/list"})).presets??[]},async createAssetsBulk(t){return i.callWS({type:"bindhome/assets/create_bulk",assets:t})}}}var F="__bindhome_no_floor__";function St(i){return{async listFloors(){return(await i.callWS({type:"config/floor_registry/list"})??[]).map(e=>({floor_id:e.floor_id,name:e.name,level:e.level??null,icon:e.icon??null}))},async listAreas(){return(await i.callWS({type:"config/area_registry/list"})??[]).map(e=>({area_id:e.area_id,name:e.name,floor_id:e.floor_id??null,icon:e.icon??null}))}}}function ot(i,t){return t===F?i.filter(e=>!e.floor_id):i.filter(e=>e.floor_id===t)}var O=class extends g{constructor(){super(),this.registry={},this.areas=[],this._tab="assets",this._selectedAssetId=null}_areaName(t){return this.areas.find(e=>e.area_id===t)?.name??(t?"Unknown Area":"No Area")}_assetName(t){return this.registry.assets?.find(e=>e.id===t)?.name??t}_renderAssets(){let t=this.registry.assets??[];if(!t.length)return n`<div class="empty">No infrastructure Assets are registered yet.</div>`;if(this._selectedAssetId){let e=t.find(s=>s.id===this._selectedAssetId);if(e)return n`<button class="link" @click=${()=>this._selectedAssetId=null}>← Back to Assets</button><section class="detail"><h2>${e.name}</h2><dl><dt>Type</dt><dd>${e.asset_type}</dd><dt>Code</dt><dd>${e.code||"Not set"}</dd><dt>Area</dt><dd>${this._areaName(e.area_id)}</dd><dt>Capabilities</dt><dd>${e.capabilities?.join(", ")||"None"}</dd></dl><details class="advanced"><summary>Advanced identifiers</summary><dl><dt>Stable Asset ID</dt><dd>${e.id}</dd><dt>Home Assistant Area ID</dt><dd>${e.area_id||"None"}</dd></dl></details></section>`}return n`<div class="table-wrap"><table><thead><tr><th>Name</th><th>Type</th><th>Area</th><th>Capabilities</th></tr></thead><tbody>${t.map(e=>n`<tr><td><button class="link" @click=${()=>this._selectedAssetId=e.id}>${e.name}</button></td><td>${e.asset_type}</td><td>${this._areaName(e.area_id)}</td><td>${e.capabilities?.join(", ")||"\u2014"}</td></tr>`)}</tbody></table></div>`}_renderRelations(){let t=this.registry.relations??[];return t.length?n`<div class="table-wrap"><table><thead><tr><th>Source</th><th>Relation</th><th>Target</th></tr></thead><tbody>${t.map(e=>n`<tr><td>${this._assetName(e.source_asset_id)}</td><td>${e.relation_type}</td><td>${this._assetName(e.target_asset_id)}</td></tr>`)}</tbody></table></div>`:n`<div class="empty">No topology Relations are registered.</div>`}_renderBindings(){let t=this.registry.bindings??[];return t.length?n`<div class="table-wrap"><table><thead><tr><th>Asset</th><th>Capability</th><th>Role</th><th>Home Assistant entity</th></tr></thead><tbody>${t.map(e=>n`<tr><td>${this._assetName(e.asset_id)}</td><td>${e.capability}</td><td>${e.role}</td><td>${e.entity_id}</td></tr>`)}</tbody></table></div>`:n`<div class="empty">No hardware Bindings are configured.</div>`}render(){return n`<div class="content"><h1>Infrastructure</h1><p class="muted">Inspect the stable Assets, topology Relations, and hardware Bindings already registered.</p><nav class="tabs" aria-label="Infrastructure views">${["assets","relations","bindings"].map(t=>n`<button class=${this._tab===t?"active":""} @click=${()=>{this._tab=t,this._selectedAssetId=null}}>${t[0].toUpperCase()+t.slice(1)}</button>`)}</nav>${this._tab==="assets"?this._renderAssets():this._tab==="relations"?this._renderRelations():this._renderBindings()}</div>`}};f(O,"properties",{registry:{attribute:!1},areas:{attribute:!1},_tab:{state:!0},_selectedAssetId:{state:!0}}),f(O,"styles",x`
+    :host{display:block}*{box-sizing:border-box}.content{max-width:1200px;margin:auto;padding:28px 24px}h1,h2,p{margin:0}h1{font-size:24px;font-weight:500}h2{font-size:20px;font-weight:500}.muted{color:var(--secondary-text-color)}.tabs{margin-top:20px;display:flex;border-bottom:1px solid var(--divider-color);overflow-x:auto}.tabs button{min-height:46px;padding:0 16px;border:0;border-bottom:3px solid transparent;color:var(--secondary-text-color);background:transparent;cursor:pointer;font:inherit}.tabs button.active{color:var(--primary-color);border-bottom-color:var(--primary-color)}.tabs button:focus-visible,.link:focus-visible{outline:2px solid var(--primary-color);outline-offset:2px}.table-wrap{margin-top:20px;overflow-x:auto;background:var(--card-background-color);border:1px solid var(--divider-color);border-radius:8px}table{width:100%;border-collapse:collapse;text-align:left}th,td{padding:12px 14px;border-bottom:1px solid var(--divider-color);vertical-align:top}th{font-size:12px;color:var(--secondary-text-color);background:var(--secondary-background-color)}tr:last-child td{border-bottom:0}.link{padding:0;border:0;color:var(--primary-color);background:transparent;cursor:pointer;font:inherit;font-weight:500;text-align:left}.empty{margin-top:20px;padding:28px;border:1px dashed var(--divider-color);border-radius:8px;text-align:center;color:var(--secondary-text-color)}.detail{margin-top:20px;padding:20px;border:1px solid var(--divider-color);border-radius:8px;background:var(--card-background-color)}.detail dl{display:grid;grid-template-columns:180px 1fr;gap:12px}.detail dt{color:var(--secondary-text-color)}.detail dd{margin:0;overflow-wrap:anywhere}.advanced{margin-top:20px;border-top:1px solid var(--divider-color);padding-top:14px}@media(max-width:600px){.content{padding:20px 12px}th,td{padding:10px}.detail dl{grid-template-columns:1fr;gap:4px}.detail dd{margin-bottom:10px}}
+  `);customElements.define("bindhome-infrastructure-inspector",O);function Kt(i,t){return{key:`draft:${i.preset_id}:${t}`,presetId:i.preset_id,name:`${i.default_name} ${t}`,asset_type:i.asset_type,code:null,capabilities:[...i.suggested_capabilities??[]]}}function M(i=[]){return{presetOrder:i.map(t=>t.preset_id),presets:new Map(i.map(t=>[t.preset_id,t])),quantities:new Map(i.map(t=>[t.preset_id,0])),retained:new Map(i.map(t=>[t.preset_id,[]]))}}function Et(i,t,e){let s=i.presets.get(t);if(!s)return i;let r=Math.max(0,Math.floor(Number(e)||0)),o=[...i.retained.get(t)??[]];for(;o.length<r;)o.push(Kt(s,o.length+1));return{...i,quantities:new Map(i.quantities).set(t,r),retained:new Map(i.retained).set(t,o)}}function kt(i,t,e){let s=new Map(i.retained);for(let[r,o]of s){let a=o.findIndex(l=>l.key===t);if(a===-1)continue;let d=[...o];d[a]={...d[a],...e},s.set(r,d);break}return{...i,retained:s}}function at(i){return i.presetOrder.flatMap(t=>{let e=i.quantities.get(t)??0;return(i.retained.get(t)??[]).slice(0,e)})}function Ct(i,t){return at(i).map(e=>{let s={name:e.name,asset_type:e.asset_type,area_id:t,capabilities:[...e.capabilities]};return e.code?.trim()&&(s.code=e.code.trim()),s})}function Nt(i,t){return(i??[]).filter(e=>e.area_id===t)}function Dt(i,t){let e=new Map(t.map(r=>[r.asset_type,r.group])),s=new Map;for(let r of i){let o=e.get(r.asset_type)??"other",a=s.get(o)??[];a.push(r),s.set(o,a)}return s}var Jt="The room inventory could not be saved. Nothing was saved.";function Rt(i){return[i?.message,i?.body?.message,i?.data?.message,i?.error].filter(t=>typeof t=="string")}function Pt(i){for(let e of Rt(i))try{let s=JSON.parse(e);if(Number.isInteger(s?.index)&&s.index>=0&&typeof s?.field=="string"&&typeof s?.message=="string")return{structured:!0,index:s.index,field:s.field,message:s.message}}catch{}return{structured:!1,index:null,field:null,message:Rt(i).find(e=>e.trim())??Jt}}var W=class{constructor(t){this.api=t,this.saving=!1}async save(t,e){if(this.saving)return{ok:!1,duplicate:!0};this.saving=!0;let s=Ct(t,e),r;try{r=await this.api.createAssetsBulk(s)}catch(o){return this.saving=!1,{ok:!1,duplicate:!1,error:Pt(o)}}try{let o=await this.api.listAssets();return{ok:!0,created:r.assets??[],assets:o,payload:s,refreshError:null}}catch(o){return{ok:!0,created:r.assets??[],assets:null,payload:s,refreshError:o}}finally{this.saving=!1}}};var It={electrical:"Electrical",network:"Network / communications",climate:"Climate",water:"Water",building:"Building",equipment:"Equipment",other:"Other / custom"},H=class extends g{constructor(){super(),this.presets=[],this.floors=[],this.areas=[],this.assets=[],this._step="select",this._floorId="",this._areaId="",this._draftState=M(),this._openGroups=new Set,this._openDrafts=new Set,this._saveError=null,this._saving=!1,this._success=null,this._controller=null}willUpdate(t){t.has("presets")&&this._draftState.presets.size===0&&this.presets.length&&(this._draftState=M(this.presets),this._openGroups=new Set([this.presets[0].group])),t.has("hass")&&this.hass&&(this._controller=new W(j(this.hass)))}get _selectedArea(){return this.areas.find(t=>t.area_id===this._areaId)}get _selectedFloor(){return this._floorId===F?null:this.floors.find(t=>t.floor_id===this._floorId)}get _areaAssets(){return Nt(this.assets,this._areaId)}get _activeDrafts(){return at(this._draftState)}_selectFloor(t){this._floorId=t.target.value,ot(this.areas,this._floorId).some(s=>s.area_id===this._areaId)||(this._areaId="")}_continue(){this._areaId&&(this._step="quantity")}_changeQuantity(t,e){if(this._saving)return;let s=this._draftState.quantities.get(t)??0;this._draftState=Et(this._draftState,t,s+e),this._saveError=null}_toggleGroup(t){let e=new Set(this._openGroups);e.has(t)?e.delete(t):e.add(t),this._openGroups=e}_toggleDraft(t){let e=new Set(this._openDrafts);e.has(t)?e.delete(t):e.add(t),this._openDrafts=e}_updateDraft(t,e){this._saving||(this._draftState=kt(this._draftState,t,e),this._saveError=null)}_removeCapability(t,e){this._updateDraft(t.key,{capabilities:t.capabilities.filter(s=>s!==e)})}_addCapability(t,e){let s=e.value.trim();!s||t.capabilities.includes(s)||(this._updateDraft(t.key,{capabilities:[...t.capabilities,s]}),e.value="")}async _save(){if(this._saving||!this._controller||!this._activeDrafts.length)return;this._saving=!0,this._saveError=null;let t=await this._controller.save(this._draftState,this._areaId);if(this._saving=!1,t.duplicate)return;if(!t.ok){if(this._saveError=t.error,this._step="review",t.error.structured){let s=this._activeDrafts[t.error.index];if(s){this._openDrafts=new Set([...this._openDrafts,s.key]),await this.updateComplete;let r=this.renderRoot.querySelector(`#${CSS.escape(this._fieldId(s,t.error.field))}`)??this.renderRoot.querySelector(".alert");r?.classList.contains("alert")&&r.setAttribute("tabindex","-1"),r?.scrollIntoView({behavior:"smooth",block:"center"}),r?.focus({preventScroll:!0})}}return}let e=t.assets??[...this.assets,...t.created];this.assets=e,this.dispatchEvent(new CustomEvent("assets-refreshed",{detail:e,bubbles:!0,composed:!0})),this._success={count:t.created.length,areaName:this._selectedArea?.name??"Selected area"},this._draftState=M(this.presets),this._openGroups=new Set([this.presets[0]?.group].filter(Boolean)),this._openDrafts=new Set,this._step="success"}_cancelBatch(){this._activeDrafts.length&&!globalThis.confirm("Discard this unsaved room inventory?")||(this._draftState=M(this.presets),this._saveError=null,this._openDrafts=new Set,this._step="quantity")}_fieldId(t,e){return`${t.key.replaceAll(":","-")}-${e}`}_fieldError(t,e){return this._saveError?.structured&&this._saveError.index===t&&this._saveError.field===e}_renderContext(){return n`<div class="context"><div class="context-inner">
+      <div class="context-values">
+        <div class="context-item"><ha-icon icon="mdi:layers-outline"></ha-icon><span class="context-label">Floor</span><span class="context-value">${this._selectedFloor?.name??"No floor"}</span></div>
+        <div class="context-item"><ha-icon icon="mdi:floor-plan"></ha-icon><span class="context-label">Area</span><span class="context-value">${this._selectedArea?.name}</span></div>
       </div>
-    `}_renderContent(){if(this._loading)return l`
-        <div class="center-state">
-          <div class="spinner"></div>
-          <p>Connecting to BindHome WebSocket API...</p>
-        </div>
-      `;if(this._error)return l`
-        <div class="center-state">
-          <div class="error-box">
-            <h3>WebSocket Connection Error</h3>
-            <p>${this._error}</p>
-          </div>
-          <button class="btn" @click=${this._fetchRegistry}>Retry Connection</button>
-        </div>
-      `;if(!this._registry)return l`
-        <div class="center-state">
-          <div class="error-box">
-            <p>No registry data available.</p>
-          </div>
-        </div>
-      `;switch(this._currentView){case"overview":return this._renderOverview();case"assets":return this._renderAssets();case"asset_detail":return this._renderAssetDetail();case"relations":return this._renderRelations();case"bindings":return this._renderBindings();default:return this._renderOverview()}}_renderOverview(){let t=this._registry.assets?this._registry.assets.length:0,e=this._registry.relations?this._registry.relations.length:0,i=this._registry.bindings?this._registry.bindings.length:0;return l`
-      <div class="grid-stats">
-        <div class="stat-card">
-          <div class="stat-value">${t}</div>
-          <div class="stat-label">Infrastructure Assets</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${e}</div>
-          <div class="stat-label">Topology Relations</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">${i}</div>
-          <div class="stat-label">Hardware Bindings</div>
-        </div>
-      </div>
-
-      ${t===0&&e===0&&i===0?l`
-            <div class="empty-box center-state">
-              <h3>Empty Registry</h3>
-              <p>No assets, relations, or bindings have been registered in BindHome yet.</p>
-            </div>
-          `:l`
-            <div class="card">
-              <h2>Architecture Principle</h2>
-              <p>
-                BindHome models <strong>stable physical home infrastructure</strong> independently from replaceable Home Assistant hardware entities.
-              </p>
-              <div style="margin-top: 16px;">
-                <span class="badge badge-infra">Stable Infrastructure Identity</span>
-                <span class="arrow">&rarr;</span>
-                <span class="badge badge-capability">Capability & Role</span>
-                <span class="arrow">&rarr;</span>
-                <span class="badge badge-ha">Replaceable HA Hardware Entity</span>
-              </div>
-            </div>
-
-            <div class="card">
-              <h2>Recent Assets</h2>
-              ${t===0?l`<p>No assets found.</p>`:l`
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Name</th>
-                          <th>Code</th>
-                          <th>Type</th>
-                          <th>Area</th>
-                          <th>Capabilities</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        ${this._registry.assets.slice(0,5).map(r=>l`
-                            <tr class="clickable-row" @click=${()=>this._navigate("asset_detail",r.id)}>
-                              <td><strong>${r.name}</strong></td>
-                              <td>${r.code||"-"}</td>
-                              <td><span class="badge badge-infra">${r.asset_type}</span></td>
-                              <td>${r.area_id||"-"}</td>
-                              <td>
-                                ${(r.capabilities||[]).map(a=>l`<span class="badge badge-capability">${a}</span>`)}
-                              </td>
-                            </tr>
-                          `)}
-                      </tbody>
-                    </table>
-                  `}
-            </div>
-          `}
-    `}_renderAssets(){let t=this._registry.assets||[];if(t.length===0)return l`
-        <div class="empty-box center-state">
-          <h3>No Assets Registered</h3>
-          <p>There are no stable infrastructure assets in the registry.</p>
-        </div>
-      `;let e=Array.from(new Set(t.map(s=>s.asset_type))),i=t.filter(s=>{let r=this._filterQuery.toLowerCase().trim(),a=!r||s.name.toLowerCase().includes(r)||s.code&&s.code.toLowerCase().includes(r)||s.asset_type.toLowerCase().includes(r),d=!this._filterType||s.asset_type===this._filterType;return a&&d});return l`
-      <div class="card">
-        <h2>Infrastructure Assets</h2>
-        <div class="filter-bar">
-          <input
-            type="text"
-            placeholder="Filter by name, code, or type..."
-            .value=${this._filterQuery}
-            @input=${s=>this._filterQuery=s.target.value}
-          />
-          <select
-            .value=${this._filterType}
-            @change=${s=>this._filterType=s.target.value}
-          >
-            <option value="">All Asset Types</option>
-            ${e.map(s=>l`<option value=${s}>${s}</option>`)}
-          </select>
-        </div>
-
-        ${i.length===0?l`<p>No assets match the current filter criteria.</p>`:l`
-              <table>
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Code</th>
-                    <th>Type</th>
-                    <th>Area ID</th>
-                    <th>Capabilities</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${i.map(s=>l`
-                      <tr class="clickable-row" @click=${()=>this._navigate("asset_detail",s.id)}>
-                        <td><strong>${s.name}</strong></td>
-                        <td>${s.code||"-"}</td>
-                        <td><span class="badge badge-infra">${s.asset_type}</span></td>
-                        <td>${s.area_id||"-"}</td>
-                        <td>
-                          ${(s.capabilities||[]).map(r=>l`<span class="badge badge-capability">${r}</span>`)}
-                        </td>
-                      </tr>
-                    `)}
-                </tbody>
-              </table>
-            `}
-      </div>
-    `}_renderAssetDetail(){let t=this._registry.assets||[],e=t.find(a=>a.id===this._selectedAssetId);if(!e)return l`
-        <div class="center-state">
-          <div class="error-box">
-            <h3>Asset Not Found</h3>
-            <p>The requested asset ID "${this._selectedAssetId}" does not exist in the registry.</p>
-          </div>
-          <button class="btn" @click=${()=>this._navigate("assets")}>Back to Assets List</button>
-        </div>
-      `;let i=(this._registry.relations||[]).filter(a=>a.source_asset_id===e.id||a.target_asset_id===e.id),s=(this._registry.bindings||[]).filter(a=>a.asset_id===e.id),r=a=>{let d=t.find(n=>n.id===a);return d?d.name:a};return l`
-      <div class="detail-header">
-        <button class="btn btn-secondary" @click=${()=>this._navigate("assets")}>&larr; Back</button>
-        <h2 style="margin: 0;">Asset: ${e.name}</h2>
-      </div>
-
-      <div class="card">
-        <h2>Infrastructure Specification</h2>
-        <div class="detail-property">
-          <label>Stable Infrastructure ID</label>
-          <span>${e.id}</span>
-        </div>
-        <div class="detail-property">
-          <label>Asset Name</label>
-          <span>${e.name}</span>
-        </div>
-        <div class="detail-property">
-          <label>Human Code</label>
-          <span>${e.code||"None"}</span>
-        </div>
-        <div class="detail-property">
-          <label>Asset Type</label>
-          <span><span class="badge badge-infra">${e.asset_type}</span></span>
-        </div>
-        <div class="detail-property">
-          <label>Area ID</label>
-          <span>${e.area_id||"None"}</span>
-        </div>
-        <div class="detail-property">
-          <label>Capabilities</label>
-          <div>
-            ${(e.capabilities||[]).length===0?l`<span>None</span>`:e.capabilities.map(a=>l`<span class="badge badge-capability">${a}</span>`)}
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Topology Relations</h2>
-        ${i.length===0?l`<p>No topology relations connected to this asset.</p>`:l`
-              <table>
-                <thead>
-                  <tr>
-                    <th>Direction</th>
-                    <th>Relation Type</th>
-                    <th>Connected Asset</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${i.map(a=>{let d=a.source_asset_id===e.id,n=d?a.target_asset_id:a.source_asset_id;return l`
-                      <tr>
-                        <td>${d?"Outgoing (\u2192)":"Incoming (\u2190)"}</td>
-                        <td><strong>${a.relation_type}</strong></td>
-                        <td>
-                          <span
-                            class="asset-link"
-                            @click=${()=>this._navigate("asset_detail",n)}
-                          >
-                            ${r(n)}
-                          </span>
-                        </td>
-                      </tr>
-                    `})}
-                </tbody>
-              </table>
-            `}
-      </div>
-
-      <div class="card">
-        <h2>Hardware Bindings</h2>
-        ${s.length===0?l`<p>No hardware bindings set for this asset.</p>`:l`
-              <table>
-                <thead>
-                  <tr>
-                    <th>Capability</th>
-                    <th>Role</th>
-                    <th>Bound HA Entity</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${s.map(a=>l`
-                      <tr>
-                        <td><span class="badge badge-capability">${a.capability}</span></td>
-                        <td>${a.role}</td>
-                        <td><span class="badge badge-ha">${a.entity_id}</span></td>
-                      </tr>
-                    `)}
-                </tbody>
-              </table>
-            `}
-      </div>
-    `}_renderRelations(){let t=this._registry.relations||[],e=this._registry.assets||[];if(t.length===0)return l`
-        <div class="empty-box center-state">
-          <h3>No Topology Relations</h3>
-          <p>There are no directed relations connecting assets in the registry.</p>
-        </div>
-      `;let i=s=>{let r=e.find(a=>a.id===s);return r?r.name:s};return l`
-      <div class="card">
-        <h2>Topology Relations</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Source Asset</th>
-              <th>Relation Type</th>
-              <th>Target Asset</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${t.map(s=>l`
-                <tr>
-                  <td>
-                    <span class="asset-link" @click=${()=>this._navigate("asset_detail",s.source_asset_id)}>
-                      ${i(s.source_asset_id)}
-                    </span>
-                  </td>
-                  <td><strong>${s.relation_type}</strong></td>
-                  <td>
-                    <span class="asset-link" @click=${()=>this._navigate("asset_detail",s.target_asset_id)}>
-                      ${i(s.target_asset_id)}
-                    </span>
-                  </td>
-                </tr>
-              `)}
-          </tbody>
-        </table>
-      </div>
-    `}_renderBindings(){let t=this._registry.bindings||[],e=this._registry.assets||[];if(t.length===0)return l`
-        <div class="empty-box center-state">
-          <h3>No Hardware Bindings</h3>
-          <p>No Home Assistant entities have been bound to asset capabilities.</p>
-        </div>
-      `;let i=s=>{let r=e.find(a=>a.id===s);return r?r.name:s};return l`
-      <div class="card">
-        <h2>Hardware Bindings</h2>
-        <p style="font-size: 14px; color: var(--secondary-text-color, #666); margin-bottom: 16px;">
-          Bindings map generic asset capabilities to specific, replaceable Home Assistant entities.
-        </p>
-        <table>
-          <thead>
-            <tr>
-              <th>Infrastructure Asset</th>
-              <th>Capability</th>
-              <th>Role</th>
-              <th>Bound Home Assistant Entity</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${t.map(s=>l`
-                <tr>
-                  <td>
-                    <span class="asset-link" @click=${()=>this._navigate("asset_detail",s.asset_id)}>
-                      ${i(s.asset_id)}
-                    </span>
-                  </td>
-                  <td><span class="badge badge-capability">${s.capability}</span></td>
-                  <td>${s.role}</td>
-                  <td><span class="badge badge-ha">${s.entity_id}</span></td>
-                </tr>
-              `)}
-          </tbody>
-        </table>
-      </div>
-    `}};customElements.define("bindhome-panel",G);})();
+      <button class="button text" @click=${()=>this._step="select"} ?disabled=${this._saving}>Change room</button>
+    </div></div>`}_renderSelection(){let t=[...this.floors,{floor_id:F,name:"No floor"}],e=ot(this.areas,this._floorId);return n`<div class="content selection">
+      <h1>Inventory this room</h1><p class="muted intro">Choose a Home Assistant Floor and Area before recording physical infrastructure.</p>
+      <div class="field-block"><label for="floor">Floor</label><select id="floor" .value=${this._floorId} @change=${this._selectFloor}><option value="">Select a floor</option>${t.map(s=>n`<option value=${s.floor_id}>${s.name}</option>`)}</select><p class="muted helper">Areas without a floor remain available under No floor.</p></div>
+      <div class="field-block"><label for="area">Area</label><select id="area" .value=${this._areaId} @change=${s=>this._areaId=s.target.value} ?disabled=${!this._floorId}><option value="">Select an area</option>${e.map(s=>n`<option value=${s.area_id}>${s.name}</option>`)}</select>${this._floorId&&!e.length?n`<p class="muted helper">This floor has no Areas. Create one in Home Assistant Settings.</p>`:c}</div>
+      <div class="actions"><button class="button primary" @click=${this._continue} ?disabled=${!this._areaId}>Continue to quantities</button></div>
+    </div>`}_renderExisting(){let t=Dt(this._areaAssets,this.presets);return this._areaAssets.length?n`<div class="existing-summary">${[...t].map(([e,s])=>n`<div class="existing-group"><div class="existing-heading"><strong>${It[e]??e}</strong><span class="muted">${s.length}</span></div><ul class="existing-list">${s.map(r=>n`<li>${r.name}</li>`)}</ul></div>`)}</div>`:n`<p class="muted helper">No BindHome Assets are registered in this room yet.</p>`}_renderQuantity(){let t=new Map;for(let e of this.presets)t.set(e.group,[...t.get(e.group)??[],e]);return n`${this._renderContext()}<div class="content layout"><section><h1>What is physically installed here?</h1><p class="muted intro">Set a quantity above zero to create editable drafts. Zero creates nothing.</p>
+      <details class="mobile-existing"><summary><strong>Existing in this room</strong><span class="muted">${this._areaAssets.length}</span></summary>${this._renderExisting()}</details>
+      <div class="groups">${[...t].map(([e,s])=>{let r=s.reduce((a,d)=>a+(this._draftState.quantities.get(d.preset_id)??0),0),o=this._openGroups.has(e);return n`<section class="group"><button class="group-toggle" @click=${()=>this._toggleGroup(e)} aria-expanded=${o}><span class="group-title"><ha-icon icon=${o?"mdi:chevron-down":"mdi:chevron-right"}></ha-icon>${It[e]??e}</span><span class="muted">${r} selected</span></button>${o?s.map(a=>{let d=this._draftState.quantities.get(a.preset_id)??0;return n`<div class="quantity-row"><div><div class="preset-name">${a.default_name}</div>${a.suggested_capabilities?.length?n`<div class="suggestions">Suggested: ${a.suggested_capabilities.join(", ")}</div>`:c}</div><div class="stepper"><button aria-label=${`Decrease ${a.default_name} quantity`} @click=${()=>this._changeQuantity(a.preset_id,-1)} ?disabled=${d===0||this._saving}><ha-icon icon="mdi:minus"></ha-icon></button><output aria-live="polite">${d}</output><button aria-label=${`Increase ${a.default_name} quantity`} @click=${()=>this._changeQuantity(a.preset_id,1)} ?disabled=${this._saving}><ha-icon icon="mdi:plus"></ha-icon></button></div></div>`}):c}</section>`})}</div></section><aside class="rail"><h2>Existing in this room</h2><p class="muted helper">Registered Assets remain unchanged.</p>${this._renderExisting()}<div class="draft-count"><span class="muted">Being added now</span><strong>${this._activeDrafts.length} assets</strong><p class="muted helper">Drafts are not saved until the complete batch passes validation.</p></div></aside></div>${this._renderBottom("quantity")}`}_renderDraft(t,e){let s=this._openDrafts.has(t.key)||["name","asset_type","code","capabilities"].some(o=>this._fieldError(e,o)),r=this._saveError?.structured&&this._saveError.index===e;return n`<article class="draft-row ${r?"error":""}" data-draft-index=${e}><div class="draft-summary"><span class="draft-number">${e+1}</span><div class="draft-title"><strong>${t.name}</strong><span>${t.asset_type}</span></div><button class="draft-toggle" aria-label=${`${s?"Collapse":"Edit"} ${t.name}`} aria-expanded=${s} @click=${()=>this._toggleDraft(t.key)}><ha-icon icon=${s?"mdi:chevron-up":"mdi:chevron-down"}></ha-icon></button></div>${s?n`<div class="draft-fields">
+      ${this._renderInput(t,e,"name","Name",t.name)}
+      ${this._renderInput(t,e,"asset_type","Asset type",t.asset_type)}
+      ${this._renderInput(t,e,"code","Code (optional)",t.code??"")}
+      <div class="capabilities"><label>Capabilities</label><div class="capability-list">${t.capabilities.length?t.capabilities.map(o=>n`<span class="capability">${o}<button aria-label=${`Remove capability ${o}`} @click=${()=>this._removeCapability(t,o)} ?disabled=${this._saving}><ha-icon icon="mdi:close"></ha-icon></button></span>`):n`<span class="muted helper">No capabilities</span>`}</div><div class="add-capability"><label>Custom capability<input id=${this._fieldId(t,"capabilities")} placeholder="e.g. power_measurement" aria-invalid=${this._fieldError(e,"capabilities")} aria-describedby=${this._fieldError(e,"capabilities")?`${this._fieldId(t,"capabilities")}-error`:c} @keydown=${o=>{o.key==="Enter"&&(o.preventDefault(),this._addCapability(t,o.target))}}></label><button class="button secondary" @click=${o=>this._addCapability(t,o.currentTarget.previousElementSibling.querySelector("input"))} ?disabled=${this._saving}>Add</button></div>${this._fieldError(e,"capabilities")?n`<p class="field-error" id=${`${this._fieldId(t,"capabilities")}-error`}>${this._saveError.message}</p>`:c}</div>
+    </div>`:c}</article>`}_renderInput(t,e,s,r,o){let a=this._fieldError(e,s),d=this._fieldId(t,s);return n`<label for=${d}>${r}<input id=${d} .value=${o} aria-invalid=${a} aria-describedby=${a?`${d}-error`:c} @input=${l=>this._updateDraft(t.key,{[s]:s==="code"?l.target.value||null:l.target.value})} ?disabled=${this._saving}>${a?n`<span class="field-error" id=${`${d}-error`}>${this._saveError.message}</span>`:c}</label>`}_renderReview(){return n`${this._renderContext()}<div class="content">${this._saveError?n`<div class="alert" role="alert"><ha-icon icon="mdi:alert-circle-outline"></ha-icon><div><h3>Nothing was saved</h3><p class="muted helper">${this._saveError.structured?"Correct the highlighted field and save the complete batch again.":this._saveError.message} All drafts have been preserved.</p></div></div>`:c}<div class="review-header"><div><h1>Review ${this._activeDrafts.length} generated drafts</h1><p class="muted intro">Every name and type is editable. Open a row to change its optional code or capabilities.</p></div></div><section class="existing-review"><div class="section-heading"><div><h2>Already registered</h2><p class="muted helper">Read-only and not included in this batch.</p></div><strong>${this._areaAssets.length}</strong></div></section><section class="drafts"><div class="section-heading"><div><h2>Being added now</h2><p class="muted helper">All drafts save together as one atomic batch.</p></div><strong>${this._activeDrafts.length}</strong></div><div>${this._activeDrafts.map((t,e)=>this._renderDraft(t,e))}</div></section></div>${this._renderBottom("review")}`}_renderBottom(t){let e=this._activeDrafts.length;return n`<div class="bottom-bar" aria-busy=${this._saving}><div class="bottom-inner"><p class="muted bottom-copy">${t==="review"?n`<strong>${e} assets</strong> save together or none are saved.`:n`<strong>${e} drafts</strong> will be reviewed before saving.`}</p>${t==="review"?n`<div><button class="button secondary" @click=${this._cancelBatch} ?disabled=${this._saving}>Cancel</button> <button class="button primary" @click=${this._save} ?disabled=${this._saving||!e}>${this._saving?"Saving\u2026":`Save ${e} assets`}</button></div>`:n`<button class="button primary" @click=${()=>this._step="review"} ?disabled=${!e}>Review ${e} items</button>`}</div></div>`}_renderSuccess(){return n`${this._renderContext()}<div class="content success"><div><ha-icon icon="mdi:check-circle-outline"></ha-icon><h1>${this._success.count} assets created</h1><p class="intro">${this._success.areaName}</p><p class="muted intro">Only physical inventory was created. No devices or automations were created.</p><div class="actions"><button class="button primary" @click=${()=>this._step="quantity"}>Back to room inventory</button><button class="button secondary" @click=${()=>this.dispatchEvent(new CustomEvent("view-infrastructure",{bubbles:!0,composed:!0}))}>View inventory</button></div></div></div>`}render(){return!this.floors.length&&!this.areas.length?n`<div class="content selection"><h1>Inventory this room</h1><p class="muted intro">No Home Assistant Floors or Areas are available. Create an Area in Home Assistant Settings, then refresh BindHome.</p></div>`:this._step==="select"?this._renderSelection():this._step==="quantity"?this._renderQuantity():this._step==="review"?this._renderReview():this._renderSuccess()}};f(H,"properties",{hass:{attribute:!1},presets:{attribute:!1},floors:{attribute:!1},areas:{attribute:!1},assets:{attribute:!1},_step:{state:!0},_floorId:{state:!0},_areaId:{state:!0},_draftState:{state:!0},_openGroups:{state:!0},_openDrafts:{state:!0},_saveError:{state:!0},_saving:{state:!0},_success:{state:!0}}),f(H,"styles",x`
+    :host { display: block; min-height: 100%; color: var(--primary-text-color); }
+    * { box-sizing: border-box; }
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    .content { max-width: 1200px; margin: 0 auto; padding: 28px 24px 104px; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: 24px; line-height: 32px; font-weight: 500; }
+    h2 { font-size: 20px; line-height: 28px; font-weight: 500; }
+    h3 { font-size: 16px; line-height: 24px; font-weight: 500; }
+    .muted { color: var(--secondary-text-color); }
+    .intro { margin-top: 6px; line-height: 22px; }
+    .context { position: sticky; top: 0; z-index: 4; background: var(--card-background-color); border-bottom: 1px solid var(--divider-color); }
+    .context-inner { max-width: 1200px; min-height: 66px; margin: auto; padding: 10px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .context-values { display: flex; align-items: center; gap: 28px; }
+    .context-item { display: grid; grid-template-columns: 24px auto; column-gap: 10px; align-items: center; }
+    .context-item ha-icon { grid-row: 1 / 3; color: var(--secondary-text-color); }
+    .context-label { font-size: 12px; color: var(--secondary-text-color); }
+    .context-value { font-size: 15px; font-weight: 500; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 32px; align-items: start; }
+    .selection { max-width: 720px; }
+    .field-block { padding: 24px 0; border-bottom: 1px solid var(--divider-color); }
+    label { display: block; font-size: 14px; font-weight: 500; }
+    input, select { width: 100%; min-height: 44px; margin-top: 8px; padding: 9px 12px; color: var(--primary-text-color); background: var(--card-background-color); border: 1px solid var(--divider-color); border-radius: 8px; }
+    input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
+    input[aria-invalid="true"] { border-color: var(--error-color, #db4437); outline: 2px solid var(--error-color, #db4437); }
+    .helper, .field-error { margin-top: 6px; font-size: 13px; line-height: 18px; }
+    .field-error { color: var(--error-color, #db4437); }
+    .actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+    .button { min-height: 44px; padding: 0 18px; border-radius: 8px; border: 1px solid transparent; background: none; cursor: pointer; font-weight: 500; }
+    .button.primary { color: var(--text-primary-color, #fff); background: var(--primary-color); }
+    .button.secondary { color: var(--primary-color); border-color: var(--primary-color); }
+    .button.text { color: var(--primary-color); }
+    .button:disabled { cursor: not-allowed; opacity: .5; }
+    .groups { margin-top: 26px; border-top: 1px solid var(--divider-color); }
+    .group { border-bottom: 1px solid var(--divider-color); }
+    .group-toggle { width: 100%; min-height: 56px; padding: 8px 4px; display: flex; align-items: center; gap: 10px; justify-content: space-between; border: 0; background: transparent; cursor: pointer; text-align: left; }
+    .group-title { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+    .quantity-row { min-height: 68px; margin-left: 28px; padding: 10px 4px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-top: 1px solid var(--divider-color); }
+    .preset-name { line-height: 22px; font-weight: 500; }
+    .suggestions { margin-top: 2px; font-size: 12px; color: var(--secondary-text-color); }
+    .stepper { height: 44px; display: grid; grid-template-columns: 44px 48px 44px; flex: none; border: 1px solid var(--divider-color); border-radius: 8px; overflow: hidden; background: var(--card-background-color); }
+    .stepper button { border: 0; background: transparent; cursor: pointer; }
+    .stepper button:hover { background: var(--secondary-background-color); }
+    .stepper output { display: grid; place-items: center; border-inline: 1px solid var(--divider-color); font-weight: 500; }
+    .rail { position: sticky; top: 92px; padding-left: 24px; border-left: 1px solid var(--divider-color); }
+    .existing-summary { margin-top: 14px; border-block: 1px solid var(--divider-color); }
+    .existing-group { padding: 13px 0; border-bottom: 1px solid var(--divider-color); }
+    .existing-group:last-child { border-bottom: 0; }
+    .existing-heading { display: flex; justify-content: space-between; gap: 12px; }
+    .existing-list { margin: 6px 0 0; padding-left: 18px; color: var(--secondary-text-color); font-size: 13px; }
+    .draft-count { margin-top: 20px; padding: 14px; border: 1px solid var(--divider-color); border-radius: 8px; background: var(--card-background-color); }
+    .draft-count strong { display: block; margin-top: 4px; font-size: 22px; font-weight: 500; }
+    .bottom-bar { position: fixed; z-index: 6; left: var(--mdc-drawer-width, 0); right: 0; bottom: 0; padding: 10px 24px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--divider-color); background: var(--card-background-color); box-shadow: 0 -2px 4px rgba(0,0,0,.08); }
+    .bottom-inner { max-width: 1200px; margin: auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .review-header, .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; }
+    .existing-review { margin-top: 24px; padding: 16px 0; border-block: 1px solid var(--divider-color); }
+    .drafts { margin-top: 28px; }
+    .draft-row { border-bottom: 1px solid var(--divider-color); scroll-margin-top: 92px; }
+    .draft-row.error { margin: 8px 0; padding: 0 12px; border: 2px solid var(--error-color, #db4437); border-radius: 8px; }
+    .draft-summary { min-height: 62px; display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+    .draft-number { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; background: var(--secondary-background-color); color: var(--secondary-text-color); font-size: 13px; }
+    .draft-title { overflow: hidden; }
+    .draft-title strong, .draft-title span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .draft-title span { margin-top: 2px; font-size: 12px; color: var(--secondary-text-color); }
+    .draft-toggle { width: 44px; height: 44px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+    .draft-fields { padding: 0 0 20px 46px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .capabilities { grid-column: 1 / -1; }
+    .capability-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .capability { min-height: 36px; display: inline-flex; align-items: center; gap: 4px; padding-left: 10px; border: 1px solid var(--divider-color); border-radius: 8px; background: var(--secondary-background-color); }
+    .capability button { width: 36px; height: 36px; border: 0; background: transparent; cursor: pointer; }
+    .add-capability { display: flex; align-items: end; gap: 8px; margin-top: 10px; }
+    .add-capability label { flex: 1; }
+    .alert { margin-bottom: 20px; padding: 15px; display: flex; gap: 12px; border: 1px solid var(--error-color, #db4437); border-radius: 8px; background: var(--card-background-color); }
+    .alert ha-icon { color: var(--error-color, #db4437); }
+    .success { min-height: 55vh; display: grid; place-items: center; text-align: center; }
+    .success ha-icon { --mdc-icon-size: 52px; color: var(--success-color, var(--primary-color)); }
+    .success h1 { margin-top: 14px; }
+    .success .actions { justify-content: center; }
+    .mobile-existing { display: none; }
+    @media (max-width: 700px) {
+      .content { padding: 20px 14px 104px; }
+      .context-inner { padding: 8px 14px; min-height: 58px; }
+      .context-values { gap: 14px; min-width: 0; }
+      .context-item { grid-template-columns: auto; }
+      .context-item ha-icon, .context-label { display: none; }
+      .context-value { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .layout { display: block; }
+      .rail { display: none; }
+      .mobile-existing { display: block; margin-top: 20px; border-block: 1px solid var(--divider-color); }
+      .mobile-existing summary { min-height: 52px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+      .mobile-existing .existing-summary { margin: 0 0 12px; border-top: 1px solid var(--divider-color); border-bottom: 0; }
+      .quantity-row { min-height: 62px; margin-left: 0; gap: 8px; }
+      .suggestions { display: none; }
+      .stepper { grid-template-columns: 44px 40px 44px; }
+      .bottom-bar { left: 0; padding-inline: 12px; }
+      .bottom-copy { display: none; }
+      .bottom-inner .button.primary { flex: 1; }
+      .review-header { align-items: start; }
+      .draft-fields { padding-left: 0; grid-template-columns: 1fr; }
+      .capabilities { grid-column: auto; }
+      .add-capability { align-items: stretch; flex-direction: column; }
+      .add-capability .button { align-self: start; }
+      .success .actions { flex-direction: column; }
+      .success .button { width: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+  `);customElements.define("bindhome-inventory-workflow",H);var U=class extends g{constructor(){super(),this._view="inventory",this._loading=!0,this._error=null,this._presets=[],this._floors=[],this._areas=[],this._assets=[],this._registry=null,this._loadedForHass=null}updated(t){t.has("hass")&&this.hass&&this.hass!==this._loadedForHass&&this._load()}async _load(){this._loadedForHass=this.hass,this._loading=!0,this._error=null;let t=j(this.hass),e=St(this.hass);try{let[s,r,o,a,d]=await Promise.all([t.listPresets(),t.listAssets(),t.getRegistry(),e.listFloors(),e.listAreas()]);this._presets=s,this._assets=r,this._registry=o,this._floors=a,this._areas=d}catch(s){this._error=s?.message||"BindHome could not load its inventory data."}finally{this._loading=!1}}_assetsRefreshed(t){this._assets=t.detail,this._registry&&(this._registry={...this._registry,assets:t.detail})}render(){let t;return this._loading?t=n`<div class="state" aria-busy="true"><div class="state-content"><div class="spinner"></div><p>Loading BindHome inventory…</p></div></div>`:this._error?t=n`<div class="state"><div class="state-content"><h2>BindHome could not load</h2><p>${this._error}</p><button class="retry" @click=${this._load}>Retry</button></div></div>`:this._view==="inventory"?t=n`<bindhome-inventory-workflow .hass=${this.hass} .presets=${this._presets} .floors=${this._floors} .areas=${this._areas} .assets=${this._assets} @assets-refreshed=${this._assetsRefreshed} @view-infrastructure=${()=>this._view="infrastructure"}></bindhome-inventory-workflow>`:t=n`<bindhome-infrastructure-inspector .registry=${this._registry??{}} .areas=${this._areas}></bindhome-infrastructure-inspector>`,n`<div class="shell"><header><div class="brand"><ha-icon icon="mdi:home-switch"></ha-icon><h1>BindHome</h1></div><button class="refresh" aria-label="Refresh BindHome data" @click=${this._load} ?disabled=${this._loading}><ha-icon icon="mdi:refresh"></ha-icon></button></header><nav aria-label="BindHome sections"><button class=${this._view==="inventory"?"active":""} @click=${()=>this._view="inventory"}>Inventory</button><button class=${this._view==="infrastructure"?"active":""} @click=${()=>this._view="infrastructure"}>Infrastructure</button></nav><main>${t}</main></div>`}};f(U,"properties",{hass:{attribute:!1},narrow:{type:Boolean},route:{attribute:!1},panel:{attribute:!1},_view:{state:!0},_loading:{state:!0},_error:{state:!0},_presets:{state:!0},_floors:{state:!0},_areas:{state:!0},_assets:{state:!0},_registry:{state:!0}}),f(U,"styles",x`
+    :host{display:block;height:100%;min-height:100vh;color:var(--primary-text-color,#212121);background:var(--primary-background-color,#fafafa);font-family:var(--paper-font-body1_-_font-family,Roboto,Noto,sans-serif)}*{box-sizing:border-box}.shell{min-height:100vh;display:flex;flex-direction:column}header{min-height:60px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 24px;border-bottom:1px solid var(--divider-color,#e0e0e0);background:var(--card-background-color,#fff)}.brand{display:flex;align-items:center;gap:10px}.brand ha-icon{color:var(--primary-color);--mdc-icon-size:28px}.brand h1{margin:0;font-size:20px;font-weight:500}nav{min-height:52px;display:flex;gap:4px;padding:0 20px;border-bottom:1px solid var(--divider-color,#e0e0e0);background:var(--card-background-color,#fff);overflow-x:auto}nav button{min-height:52px;padding:0 16px;border:0;border-bottom:3px solid transparent;background:transparent;color:var(--secondary-text-color);font:inherit;font-size:14px;font-weight:500;cursor:pointer}nav button.active{color:var(--primary-color);border-bottom-color:var(--primary-color)}nav button:focus-visible,.refresh:focus-visible{outline:2px solid var(--primary-color);outline-offset:-3px}main{flex:1;min-height:0}.refresh{width:44px;height:44px;border:0;border-radius:8px;color:var(--primary-color);background:transparent;cursor:pointer}.state{min-height:60vh;display:grid;place-items:center;padding:24px;text-align:center}.state-content{max-width:520px}.state h2{margin:0;font-size:22px;font-weight:500}.state p{color:var(--secondary-text-color);line-height:22px}.retry{min-height:44px;padding:0 18px;border:0;border-radius:8px;color:var(--text-primary-color,#fff);background:var(--primary-color);font:inherit;font-weight:500;cursor:pointer}.spinner{width:40px;height:40px;margin:0 auto 16px;border:4px solid var(--divider-color);border-top-color:var(--primary-color);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:600px){header{min-height:54px;padding:5px 14px}nav{padding:0 8px}nav button{padding-inline:12px}}@media(prefers-reduced-motion:reduce){.spinner{animation-duration:1.8s}}
+  `);customElements.define("bindhome-panel",U);})();
 /*! Bundled license information:
 
 @lit/reactive-element/css-tag.js:
