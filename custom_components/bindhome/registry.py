@@ -44,12 +44,32 @@ class BindHomeRegistry:
         self.assets[asset.id] = asset
         return asset
 
-    def update_asset_capabilities(
-        self, asset_id: str, capabilities: tuple[str, ...] | list[str]
+    def update_asset(
+        self,
+        asset_id: str,
+        *,
+        name: str,
+        asset_type: str,
+        code: str | None,
+        area_id: str | None,
+        capabilities: tuple[str, ...] | list[str],
     ) -> Asset:
-        """Replace an asset capability set if no binding would become orphaned."""
+        """Update an asset while preserving its stable identity."""
         asset = self.get_asset(asset_id)
-        updated = asset.with_capabilities(capabilities)
+        updated = asset.with_updates(
+            name=name,
+            asset_type=asset_type,
+            code=code,
+            area_id=area_id,
+            capabilities=capabilities,
+        )
+
+        if updated.code and any(
+            existing.id != asset_id and existing.code == updated.code
+            for existing in self.assets.values()
+        ):
+            raise RegistryConflictError(f"Asset code {updated.code} already exists")
+
         removed = set(asset.capabilities) - set(updated.capabilities)
         if removed:
             blocking = [
@@ -61,8 +81,23 @@ class BindHomeRegistry:
                 raise RegistryConflictError(
                     "Cannot remove capabilities that still have active bindings"
                 )
+
         self.assets[asset_id] = updated
         return updated
+
+    def update_asset_capabilities(
+        self, asset_id: str, capabilities: tuple[str, ...] | list[str]
+    ) -> Asset:
+        """Replace capabilities while preserving the existing asset metadata."""
+        asset = self.get_asset(asset_id)
+        return self.update_asset(
+            asset_id,
+            name=asset.name,
+            asset_type=asset.asset_type,
+            code=asset.code,
+            area_id=asset.area_id,
+            capabilities=capabilities,
+        )
 
     def delete_asset(self, asset_id: str) -> None:
         """Delete an unreferenced asset."""

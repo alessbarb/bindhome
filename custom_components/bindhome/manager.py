@@ -5,7 +5,9 @@ from __future__ import annotations
 import asyncio
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 
+from .const import SIGNAL_REGISTRY_CHANGED
 from .models import Asset, Binding, Relation
 from .registry import BindHomeRegistry
 from .resolver import BindingResolver, HomeAssistantEntityProbe
@@ -26,6 +28,11 @@ class BindHomeManager:
     def resolver(self) -> BindingResolver:
         """Return a resolver bound to the current registry and Home Assistant."""
         return BindingResolver(self.registry, self._probe)
+
+    async def _async_persist_and_notify(self) -> None:
+        """Persist the registry and notify runtime consumers."""
+        await self._store.async_save(self.registry)
+        async_dispatcher_send(self.hass, SIGNAL_REGISTRY_CHANGED)
 
     async def async_load(self) -> None:
         """Load persisted registry state."""
@@ -51,14 +58,37 @@ class BindHomeManager:
                     capabilities=capabilities,
                 )
             )
-            await self._store.async_save(self.registry)
+            await self._async_persist_and_notify()
+            return asset
+
+    async def async_update_asset(
+        self,
+        *,
+        asset_id: str,
+        name: str,
+        asset_type: str,
+        code: str | None,
+        area_id: str | None,
+        capabilities: list[str],
+    ) -> Asset:
+        """Update and persist an asset without changing its identity."""
+        async with self._mutation_lock:
+            asset = self.registry.update_asset(
+                asset_id,
+                name=name,
+                asset_type=asset_type,
+                code=code,
+                area_id=area_id,
+                capabilities=capabilities,
+            )
+            await self._async_persist_and_notify()
             return asset
 
     async def async_delete_asset(self, asset_id: str) -> None:
         """Delete and persist an asset."""
         async with self._mutation_lock:
             self.registry.delete_asset(asset_id)
-            await self._store.async_save(self.registry)
+            await self._async_persist_and_notify()
 
     async def async_add_relation(
         self, *, source_asset_id: str, relation_type: str, target_asset_id: str
@@ -72,14 +102,14 @@ class BindHomeManager:
                     target_asset_id=target_asset_id,
                 )
             )
-            await self._store.async_save(self.registry)
+            await self._async_persist_and_notify()
             return relation
 
     async def async_remove_relation(self, relation_id: str) -> None:
         """Remove and persist a topology relation."""
         async with self._mutation_lock:
             self.registry.remove_relation(relation_id)
-            await self._store.async_save(self.registry)
+            await self._async_persist_and_notify()
 
     async def async_set_binding(
         self,
@@ -99,11 +129,11 @@ class BindHomeManager:
                     role=role,
                 )
             )
-            await self._store.async_save(self.registry)
+            await self._async_persist_and_notify()
             return binding
 
     async def async_remove_binding(self, binding_id: str) -> None:
         """Remove and persist a binding."""
         async with self._mutation_lock:
             self.registry.remove_binding(binding_id)
-            await self._store.async_save(self.registry)
+            await self._async_persist_and_notify()

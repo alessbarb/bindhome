@@ -47,6 +47,7 @@ class FakeManager:
             "bindings": [],
         }
         self.async_create_asset = AsyncMock()
+        self.async_update_asset = AsyncMock()
         self.async_delete_asset = AsyncMock()
         self.async_add_relation = AsyncMock()
         self.async_remove_relation = AsyncMock()
@@ -150,6 +151,109 @@ async def test_asset_create_rejects_invalid_area() -> None:
 
     assert connection.errors == [("1", "not_found", "missing")]
     manager.async_create_asset.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_asset_update_is_partial_and_preserves_unspecified_fields() -> None:
+    manager = FakeManager()
+    existing = Asset(
+        id="asset-1",
+        name="Old name",
+        asset_type="light_point",
+        code="LGT-01",
+        area_id=None,
+        capabilities=("on_off",),
+    )
+    updated = Asset(
+        id=existing.id,
+        name="New name",
+        asset_type=existing.asset_type,
+        code=existing.code,
+        area_id=existing.area_id,
+        capabilities=existing.capabilities,
+    )
+
+    manager.registry.get_asset.return_value = existing
+    manager.async_update_asset.return_value = updated
+
+    connection = FakeConnection()
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(websocket, "validate_area", Mock())
+
+        await call(
+            websocket.ws_asset_update,
+            hass_for(manager),
+            connection,
+            {
+                "id": "1",
+                "asset_id": existing.id,
+                "name": "New name",
+            },
+        )
+
+    manager.async_update_asset.assert_awaited_once_with(
+        asset_id=existing.id,
+        name="New name",
+        asset_type="light_point",
+        code="LGT-01",
+        area_id=None,
+        capabilities=["on_off"],
+    )
+    assert connection.results == [("1", {"asset": updated.to_dict()})]
+
+
+@pytest.mark.asyncio
+async def test_asset_update_can_clear_optional_references() -> None:
+    manager = FakeManager()
+    existing = Asset(
+        id="asset-1",
+        name="Light",
+        asset_type="light_point",
+        code="LGT-01",
+        area_id="living_room",
+        capabilities=("on_off",),
+    )
+    updated = Asset(
+        id=existing.id,
+        name=existing.name,
+        asset_type=existing.asset_type,
+        code=None,
+        area_id=None,
+        capabilities=existing.capabilities,
+    )
+
+    manager.registry.get_asset.return_value = existing
+    manager.async_update_asset.return_value = updated
+    connection = FakeConnection()
+    hass = hass_for(manager)
+
+    with pytest.MonkeyPatch.context() as patch:
+        validate = Mock()
+        patch.setattr(websocket, "validate_area", validate)
+
+        await call(
+            websocket.ws_asset_update,
+            hass,
+            connection,
+            {
+                "id": "1",
+                "asset_id": existing.id,
+                "code": None,
+                "area_id": None,
+            },
+        )
+
+    validate.assert_called_once_with(hass, None)
+
+    manager.async_update_asset.assert_awaited_once_with(
+        asset_id=existing.id,
+        name="Light",
+        asset_type="light_point",
+        code=None,
+        area_id=None,
+        capabilities=["on_off"],
+    )
 
 
 @pytest.mark.asyncio
@@ -332,6 +436,7 @@ def test_registers_all_commands_under_bindhome_namespace() -> None:
     assert set(hass.data["websocket_api"]) == {
         websocket.WS_REGISTRY_GET,
         websocket.WS_ASSET_CREATE,
+        websocket.WS_ASSET_UPDATE,
         websocket.WS_ASSET_DELETE,
         websocket.WS_RELATION_CREATE,
         websocket.WS_RELATION_DELETE,
