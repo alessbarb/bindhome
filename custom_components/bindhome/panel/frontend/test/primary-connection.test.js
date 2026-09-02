@@ -405,13 +405,151 @@ test("candidate selection updates aria-pressed, including disabled and hidden ro
   disabled.click();
   await settle(editor);
   assert.equal(editor._selectedEntityId, "switch.disabled");
-  assert.equal(disabled.getAttribute("aria-pressed"), "true");
-  hidden.click();
+  editor._changeSelection();
+  await settle(editor);
+  const disabledAgain = [...editor.shadowRoot.querySelectorAll("button.candidate")].find((button) => button.textContent.includes("Disabled"));
+  assert.equal(disabledAgain.getAttribute("aria-pressed"), "true");
+  const hiddenAgain = [...editor.shadowRoot.querySelectorAll("button.candidate")].find((button) => button.textContent.includes("Hidden"));
+  hiddenAgain.click();
   await settle(editor);
   assert.equal(editor._selectedEntityId, "switch.hidden");
-  assert.equal(hidden.getAttribute("aria-pressed"), "true");
+  editor._changeSelection();
+  await settle(editor);
+  const hiddenSelected = [...editor.shadowRoot.querySelectorAll("button.candidate")].find((button) => button.textContent.includes("Hidden"));
+  assert.equal(hiddenSelected.getAttribute("aria-pressed"), "true");
   assert.equal(editor.shadowRoot.textContent.includes("connection.disabled"), true);
   assert.equal(editor.shadowRoot.textContent.includes("connection.hidden"), true);
+});
+
+test("picker is search-first, bounded, and collapses results after selection", async () => {
+  const editor = createEditor(async () => ({}));
+  editor.t = englishT;
+  editor.entityRegistry = Array.from({ length: 25 }, (_, index) => ({
+    entity_id: `switch.entity_${index}`,
+    name: `Entity ${index}`,
+    area_id: index === 0 ? "living" : "office",
+  }));
+  editor.hass.states = {};
+  await settle(editor);
+  editor._beginEdit();
+  await settle(editor);
+  assert.ok(editor.shadowRoot.querySelectorAll("button.candidate").length <= 8);
+  const input = editor.shadowRoot.querySelector("input");
+  input.value = "entity";
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  await settle(editor);
+  assert.equal(editor.shadowRoot.querySelectorAll("button.candidate").length, 20);
+  assert.match(editor.shadowRoot.textContent, /Showing 20 of 25 results/);
+  input.value = "entity_24";
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  await settle(editor);
+  const result = editor.shadowRoot.querySelector("button.candidate");
+  result.click();
+  await settle(editor);
+  assert.equal(editor._selectedEntityId, "switch.entity_24");
+  assert.equal(editor.shadowRoot.querySelectorAll("button.candidate").length, 0);
+  assert.match(editor.shadowRoot.textContent, /switch.entity_24/);
+  editor.shadowRoot.querySelector("button:not(.primary)").click();
+  await settle(editor);
+  assert.ok(editor.shadowRoot.querySelectorAll("button.candidate").length > 0);
+});
+
+test("selected draft remains visible when a same-identity catalogue refresh removes it", async () => {
+  const calls = [];
+  const editor = createEditor(async (message) => { calls.push(message); return {}; });
+  editor.status = { status: "resolved", entity_id: "switch.persisted", binding: { id: "binding-b", role: "primary", entity_id: "switch.persisted" } };
+  editor.entityRegistry = [
+    { entity_id: "switch.persisted", name: "Backend B" },
+    { entity_id: "switch.candidate", name: "Backend A" },
+  ];
+  await settle(editor);
+  editor._beginEdit();
+  editor._select("switch.candidate");
+  await settle(editor);
+  assert.match(editor.shadowRoot.textContent, /switch.candidate/);
+  editor.entityRegistry = [{ entity_id: "switch.persisted", name: "Backend B" }];
+  await settle(editor);
+  assert.equal(editor._selectionMode, "selected");
+  assert.equal(editor._selectedEntityId, "switch.candidate");
+  assert.match(editor.shadowRoot.textContent, /Backend B/);
+  assert.match(editor.shadowRoot.textContent, /switch.candidate/);
+  assert.ok([...editor.shadowRoot.querySelectorAll("button")].some((button) => button.textContent.includes("connection.change_selection")));
+  assert.ok([...editor.shadowRoot.querySelectorAll("button")].some((button) => button.textContent.includes("editor.cancel")));
+  assert.equal(calls.length, 0);
+  editor._changeSelection();
+  await settle(editor);
+  assert.ok(editor.shadowRoot.querySelectorAll("button.candidate").length > 0);
+});
+
+test("selecting the persisted entity again disables Save", async () => {
+  const editor = createEditor(async () => ({}));
+  editor.status = { status: "resolved", entity_id: "switch.persisted", binding: { id: "binding-b", role: "primary", entity_id: "switch.persisted" } };
+  editor.entityRegistry = [
+    { entity_id: "switch.persisted", name: "Backend B" },
+    { entity_id: "switch.other", name: "Backend A" },
+  ];
+  await settle(editor);
+  editor._beginEdit();
+  await settle(editor);
+  const rows = () => [...editor.shadowRoot.querySelectorAll("button.candidate")];
+  rows().find((button) => button.textContent.includes("Backend A")).click();
+  await settle(editor);
+  assert.equal([...editor.shadowRoot.querySelectorAll("button")].find((button) => button.textContent.includes("common.save")).disabled, false);
+  editor.shadowRoot.querySelector("button:not(.primary)").click();
+  await settle(editor);
+  rows().find((button) => button.textContent.includes("Backend B")).click();
+  await settle(editor);
+  assert.equal(editor._selectedEntityId, "switch.persisted");
+  assert.equal([...editor.shadowRoot.querySelectorAll("button")].find((button) => button.textContent.includes("common.save")).disabled, true);
+});
+
+test("only the final B-to-A-to-C selection is submitted", async () => {
+  const calls = [];
+  const editor = createEditor(async (message) => { calls.push(message); return {}; });
+  editor.status = { status: "resolved", entity_id: "switch.persisted", binding: { id: "binding-b", role: "primary", entity_id: "switch.persisted" } };
+  editor.entityRegistry = [
+    { entity_id: "switch.persisted", name: "Backend B" },
+    { entity_id: "switch.a", name: "Backend A" },
+    { entity_id: "switch.c", name: "Backend C" },
+  ];
+  await settle(editor);
+  editor._beginEdit();
+  await settle(editor);
+  const rows = () => [...editor.shadowRoot.querySelectorAll("button.candidate")];
+  rows().find((button) => button.textContent.includes("Backend A")).click();
+  await settle(editor);
+  editor.shadowRoot.querySelector("button:not(.primary)").click();
+  await settle(editor);
+  rows().find((button) => button.textContent.includes("Backend C")).click();
+  await settle(editor);
+  await editor._save();
+  assert.deepEqual(calls, [{ type: "bindhome/bindings/set", asset_id: "asset-a", capability: "on_off", entity_id: "switch.c", role: "primary" }]);
+});
+
+test("result truncation is omitted when all matches fit", async () => {
+  const editor = createEditor(async () => ({}));
+  editor.t = englishT;
+  editor.entityRegistry = Array.from({ length: 10 }, (_, index) => ({ entity_id: `switch.entity_${index}`, name: `Entity ${index}` }));
+  editor.hass.states = {};
+  await settle(editor);
+  editor._beginEdit();
+  await settle(editor);
+  const input = editor.shadowRoot.querySelector("input");
+  input.value = "entity";
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  await settle(editor);
+  assert.equal(editor.shadowRoot.querySelectorAll("button.candidate").length, 10);
+  assert.doesNotMatch(editor.shadowRoot.textContent, /Showing 10 of 10/);
+});
+
+test("Save is disabled for an unchanged persisted selection", async () => {
+  const editor = createEditor(async () => ({}));
+  editor.status = { status: "resolved", entity_id: "switch.relay", binding: { id: "binding-1", role: "primary", entity_id: "switch.relay" } };
+  await settle(editor);
+  editor._beginEdit();
+  await settle(editor);
+  const save = [...editor.shadowRoot.querySelectorAll("button")].find((button) => button.textContent.includes("common.save"));
+  assert.equal(save.disabled, true);
 });
 
 test("picker Cancel uses the established Spanish translation key", async () => {

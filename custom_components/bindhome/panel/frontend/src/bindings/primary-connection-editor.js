@@ -5,6 +5,9 @@ import { normalizeWsError } from "../api/normalize-ws-error.js";
 import { pluralKey } from "../i18n/localize.js";
 import { normalizeEntityCandidates, searchEntityCandidates } from "./entity-catalogue.js";
 
+const SUGGESTION_LIMIT = 8;
+const RESULT_LIMIT = 20;
+
 function capabilityLabel(t, capability) {
   const key = `capabilities.${capability}`;
   const translated = t(key);
@@ -19,7 +22,7 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
     entityRegistry: { attribute: false }, deviceRegistry: { attribute: false },
     refreshBindingData: { attribute: false }, _editing: { state: true }, _search: { state: true },
     _selectedEntityId: { state: true }, _saving: { state: true }, _error: { state: true },
-    _confirmDisconnect: { state: true },
+    _confirmDisconnect: { state: true }, _selectionMode: { state: true },
   };
 
   constructor() {
@@ -39,6 +42,7 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
     this._saving = false;
     this._error = null;
     this._confirmDisconnect = false;
+    this._selectionMode = "search";
     this._bindingIdentity = null;
     this._operation = 0;
     this._committedDisconnectId = null;
@@ -57,6 +61,9 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
     button:disabled { cursor: wait; opacity: .6; }
     input { width: 100%; min-height: 44px; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--divider-color); border-radius: 7px; background: var(--card-background-color); color: inherit; font: inherit; }
     .picker { display: grid; gap: 8px; margin-top: 10px; }
+    .current, .selected-summary { display: grid; gap: 3px; padding: 10px; border: 1px solid var(--divider-color); border-radius: 7px; background: var(--secondary-background-color); }
+    .suggestions-heading { color: var(--secondary-text-color); font-size: 13px; font-weight: 500; }
+    .result-count { font-size: 12px; }
     .candidate { display: grid; gap: 2px; width: 100%; min-height: 52px; text-align: left; }
     .candidate.selected { outline: 2px solid var(--primary-color); outline-offset: -2px; }
     .candidate-meta { color: var(--secondary-text-color); font-size: 12px; overflow-wrap: anywhere; }
@@ -84,6 +91,7 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
       this._error = null;
       this._confirmDisconnect = false;
       this._saving = false;
+      this._selectionMode = "search";
       this._committedDisconnectId = null;
       this._operation += 1;
     }
@@ -128,6 +136,7 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
     this._search = "";
     this._error = null;
     this._confirmDisconnect = false;
+    this._selectionMode = "search";
   }
 
   _cancelEdit() {
@@ -137,12 +146,19 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
     this._search = "";
     this._error = null;
     this._confirmDisconnect = false;
+    this._selectionMode = "search";
   }
 
   _select(entityId) {
     if (this._saving) return;
     this._selectedEntityId = entityId;
     this._error = null;
+    this._selectionMode = "selected";
+  }
+
+  _changeSelection() {
+    if (this._saving) return;
+    this._selectionMode = "search";
   }
 
   async _save() {
@@ -150,11 +166,12 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
     this._saving = true;
     this._error = null;
     const operation = ++this._operation;
+    const selectedEntityId = this._selectedEntityId;
     try {
       await createBindHomeApi(this.hass).setBinding({
         assetId: this.asset.id,
         capability: this.capability,
-        entityId: this._selectedEntityId,
+        entityId: selectedEntityId,
         role: "primary",
       });
       if (operation !== this._operation) return;
@@ -224,12 +241,21 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
   }
 
   _renderEditor() {
-    const candidates = searchEntityCandidates(this._candidates(), this._search, this.asset?.area_id);
+    const allMatches = searchEntityCandidates(this._candidates(), this._search, this.asset?.area_id);
+    const limitedCandidates = allMatches.slice(0, this._search ? RESULT_LIMIT : SUGGESTION_LIMIT);
+    const currentEntityId = this._currentEntityId();
+    const selectedCandidate = this._candidates().find((candidate) => candidate.entityId === this._selectedEntityId);
+    const unchanged = Boolean(currentEntityId && currentEntityId === this._selectedEntityId);
     return html`
       <div class="picker">
-        <label>${this.t("connection.search_label")}<input aria-label=${this.t("connection.search_label")} .value=${this._search} @input=${(event) => (this._search = event.target.value)} /></label>
-        ${candidates.length ? candidates.map((candidate) => html`<button class="candidate ${candidate.entityId === this._selectedEntityId ? "selected" : ""}" aria-pressed=${candidate.entityId === this._selectedEntityId} @click=${() => this._select(candidate.entityId)}><span class="entity">${candidate.name}</span><span class="candidate-meta">${candidate.entityId}${candidate.areaName ? ` · ${candidate.areaName}` : ""}${candidate.deviceName ? ` · ${candidate.deviceName}` : ""} · ${this._candidateStateLabel(candidate)}${candidate.disabled ? ` · ${this.t("connection.disabled")}` : ""}${candidate.hidden ? ` · ${this.t("connection.hidden")}` : ""}</span></button>`) : html`<div class="muted">${this.t("connection.no_matches")}</div>`}
-        <div class="actions"><button @click=${this._cancelEdit} ?disabled=${this._saving}>${this.t("editor.cancel")}</button><button class="primary" @click=${this._save} ?disabled=${this._saving || !this._selectedEntityId}>${this._saving ? this.t("connection.saving") : this.t("common.save")}</button></div>
+        ${currentEntityId ? html`<div class="current"><strong>${this.t("connection.current")}</strong><div class="entity">${this._currentCandidate()?.name ?? currentEntityId}</div><div class="technical">${currentEntityId}</div></div>` : nothing}
+        <label>${this.t("connection.search_label")}<input aria-label=${this.t("connection.search_label")} .value=${this._search} @input=${(event) => { this._search = event.target.value; this._selectionMode = "search"; }} /></label>
+        ${this._selectionMode === "selected" ? html`<div class="selected-summary" aria-live="polite"><strong>${this.t("connection.selected")}</strong><div class="entity">✓ ${selectedCandidate?.name ?? this._selectedEntityId}</div><div class="technical">${selectedCandidate?.entityId ?? this._selectedEntityId}${selectedCandidate?.areaName ? ` · ${selectedCandidate.areaName}` : ""}${selectedCandidate ? ` · ${this._candidateStateLabel(selectedCandidate)}` : ` · ${this.t("connection.no_runtime")}`}</div><button @click=${this._changeSelection} ?disabled=${this._saving}>${this.t("connection.change_selection")}</button></div>` : html`
+          ${!this._search && limitedCandidates.length ? html`<div class="suggestions-heading">${this.t("connection.suggestions")}</div>` : nothing}
+          ${limitedCandidates.length ? limitedCandidates.map((candidate) => html`<button class="candidate ${candidate.entityId === this._selectedEntityId ? "selected" : ""}" aria-pressed=${candidate.entityId === this._selectedEntityId} @click=${() => this._select(candidate.entityId)}><span class="entity">${candidate.name}</span><span class="candidate-meta">${candidate.entityId}${candidate.areaName ? ` · ${candidate.areaName}` : ""}${candidate.deviceName ? ` · ${candidate.deviceName}` : ""} · ${this._candidateStateLabel(candidate)}${candidate.disabled ? ` · ${this.t("connection.disabled")}` : ""}${candidate.hidden ? ` · ${this.t("connection.hidden")}` : ""}</span></button>`) : html`<div class="muted">${this.t("connection.no_matches")}</div>`}
+          ${allMatches.length > limitedCandidates.length ? html`<div class="muted result-count">${this.t("connection.showing_results", { shown: limitedCandidates.length, total: allMatches.length })}</div>` : nothing}
+        `}
+        <div class="actions"><button @click=${this._cancelEdit} ?disabled=${this._saving}>${this.t("editor.cancel")}</button><button class="primary" @click=${this._save} ?disabled=${this._saving || !this._selectedEntityId || unchanged}>${this._saving ? this.t("connection.saving") : this.t("common.save")}</button></div>
       </div>
     `;
   }
