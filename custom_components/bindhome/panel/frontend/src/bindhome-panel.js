@@ -11,7 +11,7 @@ export class BindHomePanel extends LitElement {
     _view: { state: true }, _loading: { state: true }, _error: { state: true }, _presets: { state: true },
     _floors: { state: true }, _areas: { state: true }, _assets: { state: true }, _registry: { state: true }, _bindingStatuses: { state: true }, _entityRegistry: { state: true }, _deviceRegistry: { state: true }, _refreshError: { state: true }, _t: { state: true },
   };
-  constructor() { super(); this._view = "inventory"; this._loading = true; this._error = null; this._refreshError = null; this._presets = []; this._floors = []; this._areas = []; this._assets = []; this._registry = null; this._bindingStatuses = { records: [], summary: {} }; this._entityRegistry = []; this._deviceRegistry = []; this._initialized = false; this._loadPromise = null; this._translationLanguage = null; this._t = createLocalizer(); }
+  constructor() { super(); this._view = "inventory"; this._loading = true; this._error = null; this._refreshError = null; this._presets = []; this._floors = []; this._areas = []; this._assets = []; this._registry = null; this._bindingStatuses = { records: [], summary: {} }; this._entityRegistry = []; this._deviceRegistry = []; this._initialized = false; this._loadPromise = null; this._translationLanguage = null; this._dataGeneration = 0; this._t = createLocalizer(); }
   static styles = css`
     :host{display:block;height:100%;min-height:100vh;color:var(--primary-text-color,#212121);background:var(--primary-background-color,#fafafa);font-family:var(--paper-font-body1_-_font-family,Roboto,Noto,sans-serif)}*{box-sizing:border-box}.shell{min-height:100vh;display:flex;flex-direction:column}header{min-height:60px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:8px 24px;border-bottom:1px solid var(--divider-color,#e0e0e0);background:var(--card-background-color,#fff)}.brand{display:flex;align-items:center;gap:10px}.brand ha-icon{color:var(--primary-color);--mdc-icon-size:28px}.brand h1{margin:0;font-size:20px;font-weight:500}nav{min-height:52px;display:flex;gap:4px;padding:0 20px;border-bottom:1px solid var(--divider-color,#e0e0e0);background:var(--card-background-color,#fff);overflow-x:auto}nav button{min-height:52px;padding:0 16px;border:0;border-bottom:3px solid transparent;background:transparent;color:var(--secondary-text-color);font:inherit;font-size:14px;font-weight:500;cursor:pointer}nav button.active{color:var(--primary-color);border-bottom-color:var(--primary-color)}nav button:focus-visible,.refresh:focus-visible{outline:2px solid var(--primary-color);outline-offset:-3px}main{flex:1;min-height:0}.view[hidden]{display:none}.refresh{width:44px;height:44px;border:0;border-radius:8px;color:var(--primary-color);background:transparent;cursor:pointer}.refresh-error{margin:12px 24px 0;padding:12px;border:1px solid var(--error-color,#db4437);border-radius:8px}.state{min-height:60vh;display:grid;place-items:center;padding:24px;text-align:center}.state-content{max-width:520px}.state h2{margin:0;font-size:22px;font-weight:500}.state p{color:var(--secondary-text-color);line-height:22px}.retry{min-height:44px;padding:0 18px;border:0;border-radius:8px;color:var(--text-primary-color,#fff);background:var(--primary-color);font:inherit;font-weight:500;cursor:pointer}.spinner{width:40px;height:40px;margin:0 auto 16px;border:4px solid var(--divider-color);border-top-color:var(--primary-color);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:600px){header{min-height:54px;padding:5px 14px}nav{padding:0 8px}nav button{padding-inline:12px}.refresh-error{margin-inline:14px}}@media(prefers-reduced-motion:reduce){.spinner{animation-duration:1.8s}}
   `;
@@ -26,6 +26,7 @@ export class BindHomePanel extends LitElement {
   }
   async _load(initial = false) {
     if (!this.hass || this._loadPromise) return this._loadPromise;
+    const generation = ++this._dataGeneration;
     if (initial) this._loading = true;
     this._error = null; this._refreshError = null;
     const currentHass = this.hass; const bindhome = createBindHomeApi(currentHass); const ha = createHomeAssistantApi(currentHass);
@@ -33,12 +34,26 @@ export class BindHomePanel extends LitElement {
     this._loadPromise = Promise.all([bindhome.listPresets(), bindhome.listAssets(), bindhome.getRegistry(), bindhome.listBindingStatuses(), ha.listFloors(), ha.listAreas(), ha.listEntityRegistry(), ha.listDeviceRegistry(), loadPanelTranslations(currentHass, language)]);
     try {
       const [presets, assets, registry, bindingStatuses, floors, areas, entityRegistry, deviceRegistry, translator] = await this._loadPromise;
+      if (generation !== this._dataGeneration) return;
       this._presets = presets; this._assets = assets; this._registry = registry; this._bindingStatuses = bindingStatuses; this._floors = floors; this._areas = areas; this._entityRegistry = entityRegistry; this._deviceRegistry = deviceRegistry; this._t = translator; this._translationLanguage = language;
     } catch (error) {
       const message = error?.message || this._t("shell.load_error_detail");
       if (initial || !this._initialized) this._error = message; else this._refreshError = message;
     }
     finally { this._initialized = true; this._loading = false; this._loadPromise = null; }
+  }
+  async _refreshBindingData() {
+    if (!this.hass) return;
+    const generation = ++this._dataGeneration;
+    const api = createBindHomeApi(this.hass);
+    const [registry, bindingStatuses] = await Promise.all([
+      api.getRegistry(),
+      api.listBindingStatuses(),
+    ]);
+    if (generation !== this._dataGeneration) return;
+    this._registry = registry;
+    this._assets = registry.assets ?? this._assets;
+    this._bindingStatuses = bindingStatuses;
   }
   _assetsRefreshed(event) { this._assets = event.detail; if (this._registry) this._registry = { ...this._registry, assets: event.detail }; }
   render() {
@@ -62,6 +77,7 @@ export class BindHomePanel extends LitElement {
           .bindingStatuses=${this._bindingStatuses}
           .entityRegistry=${this._entityRegistry}
           .deviceRegistry=${this._deviceRegistry}
+          .refreshBindingData=${() => this._refreshBindingData()}
           @assets-refreshed=${this._assetsRefreshed}
         ></bindhome-inventory-section>
       </section>

@@ -19,6 +19,7 @@ export class BindHomeInventoryBrowser extends LitElement {
     bindingStatuses: { attribute: false },
     entityRegistry: { attribute: false },
     deviceRegistry: { attribute: false },
+    refreshBindingData: { attribute: false },
     t: { attribute: false },
     _selectedKey: { state: true },
     _selectedAssetId: { state: true },
@@ -36,6 +37,7 @@ export class BindHomeInventoryBrowser extends LitElement {
     this.bindingStatuses = { records: [], summary: {} };
     this.entityRegistry = [];
     this.deviceRegistry = [];
+    this.refreshBindingData = null;
     this.t = (key) => key;
     this._selectedKey = "";
     this._selectedAssetId = null;
@@ -803,6 +805,7 @@ export class BindHomeInventoryBrowser extends LitElement {
           .bindingStatuses=${this.bindingStatuses}
           .entityRegistry=${this.entityRegistry}
           .deviceRegistry=${this.deviceRegistry}
+          .refreshBindingData=${this.refreshBindingData}
           @close=${this._closeAsset}
           @editing-changed=${this
             ._handleEditingChanged}

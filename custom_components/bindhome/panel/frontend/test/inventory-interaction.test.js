@@ -133,6 +133,127 @@ test("routine hass replacement does not reload or unmount an edited room batch",
   assert.equal(workflow._activeDrafts[0].name, "Edited socket");
 });
 
+test("binding refresh reloads only BindHome registry and status data", async () => {
+  const calls = [];
+  const callWS = async (message) => {
+    calls.push(message.type);
+    if (message.type === "bindhome/presets/list") return { presets };
+    if (message.type === "bindhome/assets/list") return { assets: [] };
+    if (message.type === "bindhome/registry/get") return { assets: [], relations: [], bindings: [] };
+    if (message.type === "bindhome/bindings/status") return { records: [], summary: {} };
+    if (message.type === "config/entity_registry/list") return [];
+    if (message.type === "config/device_registry/list") return [];
+    if (message.type === "config/floor_registry/list") return [{ floor_id: "ground", name: "Ground floor" }];
+    if (message.type === "config/area_registry/list") return [{ area_id: "living", name: "Living room", floor_id: "ground" }];
+    if (message.type === "frontend/get_translations") return { resources: englishResources };
+    throw new Error(`Unexpected call: ${message.type}`);
+  };
+  const panel = document.createElement("bindhome-panel");
+  panel.hass = { callWS, states: {} };
+  document.body.append(panel);
+  await settle(panel);
+  const before = calls.length;
+  await panel._refreshBindingData();
+  assert.deepEqual(calls.slice(before), ["bindhome/registry/get", "bindhome/bindings/status"]);
+});
+
+test("out-of-order binding refreshes cannot overwrite the newest snapshot", async () => {
+  const pending = [];
+  const panel = document.createElement("bindhome-panel");
+  panel.hass = {
+    callWS: (message) => new Promise((resolve) => pending.push({ message, resolve })),
+    states: {},
+  };
+  panel._initialized = true;
+  const first = panel._refreshBindingData();
+  const second = panel._refreshBindingData();
+  const resolveFor = (index, value) => pending[index].resolve(value);
+  resolveFor(2, { assets: [{ id: "new" }] });
+  resolveFor(3, { records: [{ asset_id: "new", capability: "on_off", role: "primary" }] });
+  resolveFor(0, { assets: [{ id: "old" }] });
+  resolveFor(1, { records: [{ asset_id: "old", capability: "on_off", role: "primary" }] });
+  await Promise.all([first, second]);
+  assert.deepEqual(panel._registry.assets, [{ id: "new" }]);
+  assert.deepEqual(panel._bindingStatuses.records, [{ asset_id: "new", capability: "on_off", role: "primary" }]);
+});
+
+test("a newer full load wins over an older narrow refresh", async () => {
+  const deferred = [];
+  const callWS = (message) => {
+    if (message.type === "bindhome/registry/get" || message.type === "bindhome/bindings/status") {
+      return new Promise((resolve) => deferred.push({ type: message.type, resolve }));
+    }
+    if (message.type === "bindhome/presets/list") return Promise.resolve({ presets });
+    if (message.type === "bindhome/assets/list") return Promise.resolve({ assets: [] });
+    if (message.type === "config/entity_registry/list" || message.type === "config/device_registry/list") return Promise.resolve([]);
+    if (message.type === "config/floor_registry/list") return Promise.resolve([]);
+    if (message.type === "config/area_registry/list") return Promise.resolve([]);
+    if (message.type === "frontend/get_translations") return Promise.resolve({ resources: englishResources });
+    throw new Error(`Unexpected call: ${message.type}`);
+  };
+  const panel = document.createElement("bindhome-panel");
+  panel.hass = { callWS, states: {} };
+  panel._initialized = true;
+  const narrow = panel._refreshBindingData();
+  const full = panel._load(false);
+  deferred.find((entry, index) => index === 2 && entry.type === "bindhome/registry/get").resolve({ assets: [{ id: "full" }] });
+  deferred.find((entry, index) => index === 3 && entry.type === "bindhome/bindings/status").resolve({ records: [{ asset_id: "full" }] });
+  await full;
+  deferred[0].resolve({ assets: [{ id: "narrow" }] });
+  deferred[1].resolve({ records: [{ asset_id: "narrow" }] });
+  await narrow;
+  assert.deepEqual(panel._registry.assets, [{ id: "full" }]);
+  assert.deepEqual(panel._bindingStatuses.records, [{ asset_id: "full" }]);
+});
+
+test("a newer narrow refresh wins over an older full load", async () => {
+  const deferred = [];
+  const callWS = (message) => {
+    if (message.type === "bindhome/registry/get" || message.type === "bindhome/bindings/status") {
+      return new Promise((resolve, reject) => deferred.push({ type: message.type, resolve, reject }));
+    }
+    if (message.type === "bindhome/presets/list") return Promise.resolve({ presets });
+    if (message.type === "bindhome/assets/list") return Promise.resolve({ assets: [] });
+    if (message.type === "config/entity_registry/list" || message.type === "config/device_registry/list") return Promise.resolve([]);
+    if (message.type === "config/floor_registry/list" || message.type === "config/area_registry/list") return Promise.resolve([]);
+    if (message.type === "frontend/get_translations") return Promise.resolve({ resources: englishResources });
+    throw new Error(`Unexpected call: ${message.type}`);
+  };
+  const panel = document.createElement("bindhome-panel");
+  panel.hass = { callWS, states: {} };
+  panel._initialized = true;
+  const full = panel._load(false);
+  const narrow = panel._refreshBindingData();
+  deferred[2].resolve({ assets: [{ id: "narrow" }] });
+  deferred[3].resolve({ records: [{ asset_id: "narrow" }] });
+  await narrow;
+  deferred[0].resolve({ assets: [{ id: "full" }] });
+  deferred[1].resolve({ records: [{ asset_id: "full" }] });
+  await full;
+  assert.deepEqual(panel._registry.assets, [{ id: "narrow" }]);
+  assert.deepEqual(panel._bindingStatuses.records, [{ asset_id: "narrow" }]);
+});
+
+test("a newer failed refresh prevents an older refresh from applying", async () => {
+  const deferred = [];
+  const panel = document.createElement("bindhome-panel");
+  panel.hass = {
+    callWS: (message) => new Promise((resolve, reject) => deferred.push({ type: message.type, resolve, reject })),
+    states: {},
+  };
+  panel._initialized = true;
+  const first = panel._refreshBindingData();
+  const second = panel._refreshBindingData();
+  deferred[2].reject(new Error("new refresh failed"));
+  deferred[3].reject(new Error("new refresh failed"));
+  await assert.rejects(second, /new refresh failed/);
+  deferred[0].resolve({ assets: [{ id: "old" }] });
+  deferred[1].resolve({ records: [{ asset_id: "old" }] });
+  await first;
+  assert.equal(panel._registry, null);
+  assert.deepEqual(panel._bindingStatuses.records, []);
+});
+
 test("changing HA language localizes presentation without touching an active batch", async () => {
   const calls = [];
   const callWS = async (message) => {
