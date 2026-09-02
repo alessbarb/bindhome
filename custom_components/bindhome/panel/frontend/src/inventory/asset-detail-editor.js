@@ -38,6 +38,9 @@ export class BindHomeAssetDetailEditor
     areas: { attribute: false },
     floors: { attribute: false },
     registry: { attribute: false },
+    bindingStatuses: { attribute: false },
+    entityRegistry: { attribute: false },
+    deviceRegistry: { attribute: false },
 
     _editing: { state: true },
     _draft: { state: true },
@@ -58,6 +61,9 @@ export class BindHomeAssetDetailEditor
     this.areas = [];
     this.floors = [];
     this.registry = {};
+    this.bindingStatuses = { records: [], summary: {} };
+    this.entityRegistry = [];
+    this.deviceRegistry = [];
 
     this._editing = false;
     this._draft = null;

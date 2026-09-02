@@ -82,6 +82,9 @@ test("routine hass replacement does not reload or unmount an edited room batch",
     if (message.type === "bindhome/presets/list") return { presets };
     if (message.type === "bindhome/assets/list") return { assets: [] };
     if (message.type === "bindhome/registry/get") return { assets: [], relations: [], bindings: [] };
+    if (message.type === "bindhome/bindings/status") return { records: [], summary: {} };
+    if (message.type === "config/entity_registry/list") return [];
+    if (message.type === "config/device_registry/list") return [];
     if (message.type === "config/floor_registry/list") return [{ floor_id: "ground", name: "Ground floor" }];
     if (message.type === "config/area_registry/list") return [{ area_id: "living", name: "Living room", floor_id: "ground" }];
     if (message.type === "frontend/get_translations") return { resources: englishResources };
@@ -138,6 +141,9 @@ test("changing HA language localizes presentation without touching an active bat
     if (message.type === "bindhome/presets/list") return { presets };
     if (message.type === "bindhome/assets/list") return { assets: [] };
     if (message.type === "bindhome/registry/get") return { assets: [], relations: [], bindings: [] };
+    if (message.type === "bindhome/bindings/status") return { records: [], summary: {} };
+    if (message.type === "config/entity_registry/list") return [];
+    if (message.type === "config/device_registry/list") return [];
     if (message.type === "config/floor_registry/list") return [{ floor_id: "ground", name: "Ground floor user name" }];
     if (message.type === "config/area_registry/list") return [{ area_id: "living", name: "Living room user name", floor_id: "ground" }];
     throw new Error(`Unexpected call: ${message.type}`);

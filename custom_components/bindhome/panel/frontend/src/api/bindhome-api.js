@@ -22,6 +22,29 @@ export function createBindHomeApi(hass) {
       return response.presets ?? [];
     },
 
+    async listBindingStatuses() {
+      return hass.callWS({
+        type: "bindhome/bindings/status",
+      });
+    },
+
+    async setBinding({ assetId, capability, entityId, role = "primary" }) {
+      return hass.callWS({
+        type: "bindhome/bindings/set",
+        asset_id: assetId,
+        capability,
+        entity_id: entityId,
+        role,
+      });
+    },
+
+    async deleteBinding(bindingId) {
+      return hass.callWS({
+        type: "bindhome/bindings/delete",
+        binding_id: bindingId,
+      });
+    },
+
     async createAssetsBulk(assets) {
       return hass.callWS({
         type: "bindhome/assets/create_bulk",

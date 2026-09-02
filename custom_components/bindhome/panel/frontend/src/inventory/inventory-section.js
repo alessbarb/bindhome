@@ -12,6 +12,9 @@ export class BindHomeInventorySection extends LitElement {
     floors: { attribute: false },
     areas: { attribute: false },
     assets: { attribute: false },
+    bindingStatuses: { attribute: false },
+    entityRegistry: { attribute: false },
+    deviceRegistry: { attribute: false },
     _active: { state: true },
   };
 
@@ -24,6 +27,9 @@ export class BindHomeInventorySection extends LitElement {
     this.floors = [];
     this.areas = [];
     this.assets = [];
+    this.bindingStatuses = { records: [], summary: {} };
+    this.entityRegistry = [];
+    this.deviceRegistry = [];
     this._active = "browse";
   }
 
@@ -175,6 +181,9 @@ export class BindHomeInventorySection extends LitElement {
           .areas=${this.areas}
           .assets=${this.assets}
           .registry=${this.registry}
+          .bindingStatuses=${this.bindingStatuses}
+          .entityRegistry=${this.entityRegistry}
+          .deviceRegistry=${this.deviceRegistry}
           @assets-refreshed=${this
             ._forwardAssetsRefreshed}
         ></bindhome-inventory-browser>

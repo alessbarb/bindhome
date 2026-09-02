@@ -16,6 +16,9 @@ export class BindHomeInventoryBrowser extends LitElement {
     assets: { attribute: false },
     presets: { attribute: false },
     registry: { attribute: false },
+    bindingStatuses: { attribute: false },
+    entityRegistry: { attribute: false },
+    deviceRegistry: { attribute: false },
     t: { attribute: false },
     _selectedKey: { state: true },
     _selectedAssetId: { state: true },
@@ -30,6 +33,9 @@ export class BindHomeInventoryBrowser extends LitElement {
     this.assets = [];
     this.presets = [];
     this.registry = {};
+    this.bindingStatuses = { records: [], summary: {} };
+    this.entityRegistry = [];
+    this.deviceRegistry = [];
     this.t = (key) => key;
     this._selectedKey = "";
     this._selectedAssetId = null;
@@ -794,6 +800,9 @@ export class BindHomeInventoryBrowser extends LitElement {
           .areas=${this.areas}
           .floors=${this.floors}
           .registry=${this.registry}
+          .bindingStatuses=${this.bindingStatuses}
+          .entityRegistry=${this.entityRegistry}
+          .deviceRegistry=${this.deviceRegistry}
           @close=${this._closeAsset}
           @editing-changed=${this
             ._handleEditingChanged}
