@@ -4,10 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node build.js"
+    "build": "node build.js",
+    "test": "node --test test/*.test.js"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "happy-dom": "^20.13.1"
   },
   "dependencies": {
     "lit": "^3.3.3"
