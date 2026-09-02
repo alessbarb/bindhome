@@ -32,7 +32,7 @@ The infrastructure identity remains unchanged.
 
 ## Current scope
 
-The initial backend provides:
+The current implementation provides:
 
 - stable infrastructure assets;
 - Home Assistant Area references;
@@ -40,11 +40,18 @@ The initial backend provides:
 - capabilities attached to assets;
 - capability-to-Home-Assistant-entity bindings;
 - persistent storage managed by Home Assistant;
-- Home Assistant actions for initial CRUD operations;
+- Home Assistant actions for registry mutations;
+- CRUD and query WebSocket APIs;
+- binding resolution with configuration/runtime status;
+- dynamic logical entity reconciliation;
+- a logical `light` platform;
+- a dedicated BindHome panel;
 - system health counters;
 - import/export-ready registry serialization.
 
-Logical proxy entities and the dedicated BindHome UI are intentionally planned as the next layers rather than being mixed into the first backend commit.
+The next functional foundations focus on high-volume home inventory,
+transactional bulk creation, explicit logical representations, and an
+inventory-first user experience.
 
 ## Data model
 
@@ -89,6 +96,7 @@ The integration is configured through the UI and supports one config entry per H
 The first backend exposes actions for creating and maintaining the registry:
 
 - `bindhome.create_asset`
+- `bindhome.update_asset`
 - `bindhome.delete_asset`
 - `bindhome.add_relation`
 - `bindhome.remove_relation`
