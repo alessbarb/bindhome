@@ -121,257 +121,149 @@
       "bindings": "Bindings"
     }
   },
-  "panel": {
-    "common": {
-      "floor": "Floor",
-      "area": "Area",
-      "no_floor": "No floor",
-      "retry": "Retry",
-      "add": "Add",
-      "not_set": "Not set",
-      "none": "None"
-    },
-    "nav": {
-      "inventory": "Inventory",
-      "infrastructure": "Infrastructure"
-    },
-    "shell": {
-      "loading": "Loading BindHome inventory…",
-      "load_error": "BindHome could not load",
-      "load_error_detail": "BindHome could not load its inventory data.",
-      "refresh_label": "Refresh BindHome data",
-      "sections_label": "BindHome sections",
-      "refresh_error": "Refresh failed. Your current work was preserved."
-    },
-    "groups": {
-      "electrical": "Electrical",
-      "network": "Network / communications",
-      "climate": "Climate",
-      "water": "Water",
-      "building": "Building",
-      "equipment": "Equipment",
-      "other": "Other / custom"
-    },
-    "counts": {
-      "asset": {
-        "one": "{count} asset",
-        "other": "{count} assets"
-      },
-      "draft": {
-        "one": "{count} draft",
-        "other": "{count} drafts"
-      },
-      "item": {
-        "one": "{count} item",
-        "other": "{count} items"
-      },
-      "selected": {
-        "one": "{count} selected",
-        "other": "{count} selected"
-      }
-    },
-    "inventory": {
-      "title": "Inventory this room",
-      "selection_intro": "Choose a Home Assistant Floor and Area before recording physical infrastructure.",
-      "select_floor": "Select a floor",
-      "select_area": "Select an area",
-      "no_floor_helper": "Areas without a floor remain available under No floor.",
-      "no_areas": "This floor has no Areas. Create one in Home Assistant Settings.",
-      "continue": "Continue to quantities",
-      "change_room": "Change room",
-      "selected_area": "Selected area",
-      "quantity_title": "What is physically installed here?",
-      "quantity_intro": "Set a quantity above zero to create editable drafts. Zero creates nothing.",
-      "existing": "Existing in this room",
-      "existing_unchanged": "Registered Assets remain unchanged.",
-      "no_existing": "No BindHome Assets are registered in this room yet.",
-      "being_added": "Being added now",
-      "suggested": "Suggested: {capabilities}",
-      "not_saved_yet": "Drafts are not saved until the complete batch passes validation.",
-      "no_floor_area": "No Home Assistant Floors or Areas are available. Create an Area in Home Assistant Settings, then refresh BindHome."
-    },
-    "actions": {
-      "expand_group": "Expand {group}",
-      "collapse_group": "Collapse {group}",
-      "increase_quantity": "Increase {name} quantity",
-      "decrease_quantity": "Decrease {name} quantity",
-      "edit_draft": "Edit {name}",
-      "collapse_draft": "Collapse {name}",
-      "remove_capability": "Remove capability {capability}"
-    },
-    "fields": {
-      "name": "Name",
-      "type": "Type",
-      "asset_type": "Asset type",
-      "code": "Code",
-      "code_optional": "Code (optional)",
-      "capabilities": "Capabilities",
-      "capability": "Capability",
-      "no_capabilities": "No capabilities",
-      "custom_capability": "Custom capability",
-      "capability_placeholder": "e.g. power_measurement",
-      "source": "Source",
-      "relation": "Relation",
-      "target": "Target",
-      "asset": "Asset",
-      "role": "Role",
-      "ha_entity": "Home Assistant entity"
-    },
-    "review": {
-      "title": {
-        "one": "Review {count} generated draft",
-        "other": "Review {count} generated drafts"
-      },
-      "intro": "Every name and type is editable. Open a row to change its optional code or capabilities.",
-      "registered": "Already registered",
-      "registered_helper": "Read-only and not included in this batch.",
-      "atomic_batch": "All drafts save together as one atomic batch.",
-      "back_quantities": "Back to quantities",
-      "saving": "Saving…",
-      "save": {
-        "one": "Save {count} asset",
-        "other": "Save {count} assets"
-      },
-      "review_items": {
-        "one": "Review {count} item",
-        "other": "Review {count} items"
-      },
-      "save_explanation": {
-        "one": "{count} asset saves alone or nothing is saved.",
-        "other": "{count} assets save together or none are saved."
-      },
-      "before_save": {
-        "one": "{count} draft will be reviewed before saving.",
-        "other": "{count} drafts will be reviewed before saving."
-      }
-    },
-    "discard": {
-      "title": "Discard this unsaved batch?",
-      "description": "Changing room clears every draft in the current batch. Nothing will be saved.",
-      "stay": "Stay in this room",
-      "confirm": "Discard batch and change room"
-    },
-    "errors": {
-      "nothing_saved": "Nothing was saved",
-      "correct_field": "Correct the highlighted field and save the complete batch again.",
-      "drafts_preserved": "All drafts have been preserved.",
-      "batch_fallback": "The room inventory could not be saved. Nothing was saved."
-    },
-    "success": {
-      "created": {
-        "one": "{count} asset created",
-        "other": "{count} assets created"
-      },
-      "explanation": "Only physical inventory was created. No devices or automations were created.",
-      "back": "Back to room inventory",
-      "view": "View inventory"
-    },
-    "infrastructure": {
-      "intro": "Inspect the stable Assets, topology Relations, and hardware Bindings already registered.",
-      "views_label": "Infrastructure views",
-      "tabs": {
-        "assets": "Assets",
-        "relations": "Relations",
-        "bindings": "Bindings"
-      },
-      "no_assets": "No infrastructure Assets are registered yet.",
-      "no_relations": "No topology Relations are registered.",
-      "no_bindings": "No hardware Bindings are configured.",
-      "back_assets": "Back to Assets",
-      "advanced": "Advanced identifiers",
-      "asset_id": "Stable Asset ID",
-      "area_id": "Home Assistant Area ID",
-      "unknown_area": "Unknown Area",
-      "no_area": "No Area"
-    },
-    "presets": {
-      "light_point": {
-        "name": "Light point"
-      },
-      "socket": {
-        "name": "Socket"
-      },
-      "switch": {
-        "name": "Switch"
-      },
-      "electrical_panel": {
-        "name": "Electrical panel"
-      },
-      "circuit": {
-        "name": "Circuit"
-      },
-      "junction_box": {
-        "name": "Junction box"
-      },
-      "ethernet_outlet": {
-        "name": "Ethernet outlet"
-      },
-      "telephone_outlet": {
-        "name": "Telephone outlet"
-      },
-      "antenna_outlet": {
-        "name": "Antenna outlet"
-      },
-      "wifi_access_point": {
-        "name": "Wi-Fi access point"
-      },
-      "radiator": {
-        "name": "Radiator"
-      },
-      "thermostat": {
-        "name": "Thermostat"
-      },
-      "fan": {
-        "name": "Fan"
-      },
-      "air_conditioning_unit": {
-        "name": "Air-conditioning unit"
-      },
-      "tap": {
-        "name": "Tap"
-      },
-      "shutoff_valve": {
-        "name": "Shut-off valve"
-      },
-      "valve": {
-        "name": "Valve"
-      },
-      "drain": {
-        "name": "Drain"
-      },
-      "manifold": {
-        "name": "Manifold"
-      },
-      "door": {
-        "name": "Door"
-      },
-      "window": {
-        "name": "Window"
-      },
-      "blind": {
-        "name": "Blind"
-      },
-      "skylight": {
-        "name": "Skylight"
-      },
-      "boiler": {
-        "name": "Boiler"
-      },
-      "water_heater": {
-        "name": "Water heater"
-      },
-      "pump": {
-        "name": "Pump"
-      },
-      "freezer": {
-        "name": "Freezer"
-      },
-      "appliance": {
-        "name": "Appliance"
-      },
-      "machine": {
-        "name": "Machine"
-      }
-    }
+  "common": {
+    "panel_common_floor": "Floor",
+    "panel_common_area": "Area",
+    "panel_common_no_floor": "No floor",
+    "panel_common_retry": "Retry",
+    "panel_common_add": "Add",
+    "panel_common_not_set": "Not set",
+    "panel_common_none": "None",
+    "panel_nav_inventory": "Inventory",
+    "panel_nav_infrastructure": "Infrastructure",
+    "panel_shell_loading": "Loading BindHome inventory…",
+    "panel_shell_load_error": "BindHome could not load",
+    "panel_shell_load_error_detail": "BindHome could not load its inventory data.",
+    "panel_shell_refresh_label": "Refresh BindHome data",
+    "panel_shell_sections_label": "BindHome sections",
+    "panel_shell_refresh_error": "Refresh failed. Your current work was preserved.",
+    "panel_groups_electrical": "Electrical",
+    "panel_groups_network": "Network / communications",
+    "panel_groups_climate": "Climate",
+    "panel_groups_water": "Water",
+    "panel_groups_building": "Building",
+    "panel_groups_equipment": "Equipment",
+    "panel_groups_other": "Other / custom",
+    "panel_counts_asset_one": "{count} asset",
+    "panel_counts_asset_other": "{count} assets",
+    "panel_counts_draft_one": "{count} draft",
+    "panel_counts_draft_other": "{count} drafts",
+    "panel_counts_item_one": "{count} item",
+    "panel_counts_item_other": "{count} items",
+    "panel_counts_selected_one": "{count} selected",
+    "panel_counts_selected_other": "{count} selected",
+    "panel_inventory_title": "Inventory this room",
+    "panel_inventory_selection_intro": "Choose a Home Assistant Floor and Area before recording physical infrastructure.",
+    "panel_inventory_select_floor": "Select a floor",
+    "panel_inventory_select_area": "Select an area",
+    "panel_inventory_no_floor_helper": "Areas without a floor remain available under No floor.",
+    "panel_inventory_no_areas": "This floor has no Areas. Create one in Home Assistant Settings.",
+    "panel_inventory_continue": "Continue to quantities",
+    "panel_inventory_change_room": "Change room",
+    "panel_inventory_selected_area": "Selected area",
+    "panel_inventory_quantity_title": "What is physically installed here?",
+    "panel_inventory_quantity_intro": "Set a quantity above zero to create editable drafts. Zero creates nothing.",
+    "panel_inventory_existing": "Existing in this room",
+    "panel_inventory_existing_unchanged": "Registered Assets remain unchanged.",
+    "panel_inventory_no_existing": "No BindHome Assets are registered in this room yet.",
+    "panel_inventory_being_added": "Being added now",
+    "panel_inventory_suggested": "Suggested: {capabilities}",
+    "panel_inventory_not_saved_yet": "Drafts are not saved until the complete batch passes validation.",
+    "panel_inventory_no_floor_area": "No Home Assistant Floors or Areas are available. Create an Area in Home Assistant Settings, then refresh BindHome.",
+    "panel_actions_expand_group": "Expand {group}",
+    "panel_actions_collapse_group": "Collapse {group}",
+    "panel_actions_increase_quantity": "Increase {name} quantity",
+    "panel_actions_decrease_quantity": "Decrease {name} quantity",
+    "panel_actions_edit_draft": "Edit {name}",
+    "panel_actions_collapse_draft": "Collapse {name}",
+    "panel_actions_remove_capability": "Remove capability {capability}",
+    "panel_fields_name": "Name",
+    "panel_fields_type": "Type",
+    "panel_fields_asset_type": "Asset type",
+    "panel_fields_code": "Code",
+    "panel_fields_code_optional": "Code (optional)",
+    "panel_fields_capabilities": "Capabilities",
+    "panel_fields_capability": "Capability",
+    "panel_fields_no_capabilities": "No capabilities",
+    "panel_fields_custom_capability": "Custom capability",
+    "panel_fields_capability_placeholder": "e.g. power_measurement",
+    "panel_fields_source": "Source",
+    "panel_fields_relation": "Relation",
+    "panel_fields_target": "Target",
+    "panel_fields_asset": "Asset",
+    "panel_fields_role": "Role",
+    "panel_fields_ha_entity": "Home Assistant entity",
+    "panel_review_title_one": "Review {count} generated draft",
+    "panel_review_title_other": "Review {count} generated drafts",
+    "panel_review_intro": "Every name and type is editable. Open a row to change its optional code or capabilities.",
+    "panel_review_registered": "Already registered",
+    "panel_review_registered_helper": "Read-only and not included in this batch.",
+    "panel_review_atomic_batch": "All drafts save together as one atomic batch.",
+    "panel_review_back_quantities": "Back to quantities",
+    "panel_review_saving": "Saving…",
+    "panel_review_save_one": "Save {count} asset",
+    "panel_review_save_other": "Save {count} assets",
+    "panel_review_review_items_one": "Review {count} item",
+    "panel_review_review_items_other": "Review {count} items",
+    "panel_review_save_explanation_one": "{count} asset saves alone or nothing is saved.",
+    "panel_review_save_explanation_other": "{count} assets save together or none are saved.",
+    "panel_review_before_save_one": "{count} draft will be reviewed before saving.",
+    "panel_review_before_save_other": "{count} drafts will be reviewed before saving.",
+    "panel_discard_title": "Discard this unsaved batch?",
+    "panel_discard_description": "Changing room clears every draft in the current batch. Nothing will be saved.",
+    "panel_discard_stay": "Stay in this room",
+    "panel_discard_confirm": "Discard batch and change room",
+    "panel_errors_nothing_saved": "Nothing was saved",
+    "panel_errors_correct_field": "Correct the highlighted field and save the complete batch again.",
+    "panel_errors_drafts_preserved": "All drafts have been preserved.",
+    "panel_errors_batch_fallback": "The room inventory could not be saved. Nothing was saved.",
+    "panel_success_created_one": "{count} asset created",
+    "panel_success_created_other": "{count} assets created",
+    "panel_success_explanation": "Only physical inventory was created. No devices or automations were created.",
+    "panel_success_back": "Back to room inventory",
+    "panel_success_view": "View inventory",
+    "panel_infrastructure_intro": "Inspect the stable Assets, topology Relations, and hardware Bindings already registered.",
+    "panel_infrastructure_views_label": "Infrastructure views",
+    "panel_infrastructure_tabs_assets": "Assets",
+    "panel_infrastructure_tabs_relations": "Relations",
+    "panel_infrastructure_tabs_bindings": "Bindings",
+    "panel_infrastructure_no_assets": "No infrastructure Assets are registered yet.",
+    "panel_infrastructure_no_relations": "No topology Relations are registered.",
+    "panel_infrastructure_no_bindings": "No hardware Bindings are configured.",
+    "panel_infrastructure_back_assets": "Back to Assets",
+    "panel_infrastructure_advanced": "Advanced identifiers",
+    "panel_infrastructure_asset_id": "Stable Asset ID",
+    "panel_infrastructure_area_id": "Home Assistant Area ID",
+    "panel_infrastructure_unknown_area": "Unknown Area",
+    "panel_infrastructure_no_area": "No Area",
+    "panel_presets_light_point_name": "Light point",
+    "panel_presets_socket_name": "Socket",
+    "panel_presets_switch_name": "Switch",
+    "panel_presets_electrical_panel_name": "Electrical panel",
+    "panel_presets_circuit_name": "Circuit",
+    "panel_presets_junction_box_name": "Junction box",
+    "panel_presets_ethernet_outlet_name": "Ethernet outlet",
+    "panel_presets_telephone_outlet_name": "Telephone outlet",
+    "panel_presets_antenna_outlet_name": "Antenna outlet",
+    "panel_presets_wifi_access_point_name": "Wi-Fi access point",
+    "panel_presets_radiator_name": "Radiator",
+    "panel_presets_thermostat_name": "Thermostat",
+    "panel_presets_fan_name": "Fan",
+    "panel_presets_air_conditioning_unit_name": "Air-conditioning unit",
+    "panel_presets_tap_name": "Tap",
+    "panel_presets_shutoff_valve_name": "Shut-off valve",
+    "panel_presets_valve_name": "Valve",
+    "panel_presets_drain_name": "Drain",
+    "panel_presets_manifold_name": "Manifold",
+    "panel_presets_door_name": "Door",
+    "panel_presets_window_name": "Window",
+    "panel_presets_blind_name": "Blind",
+    "panel_presets_skylight_name": "Skylight",
+    "panel_presets_boiler_name": "Boiler",
+    "panel_presets_water_heater_name": "Water heater",
+    "panel_presets_pump_name": "Pump",
+    "panel_presets_freezer_name": "Freezer",
+    "panel_presets_appliance_name": "Appliance",
+    "panel_presets_machine_name": "Machine"
   }
 }

@@ -24,15 +24,13 @@ await import("../src/inventory/inventory-workflow.js");
 await import("../src/bindhome-panel.js");
 const { createLocalizer } = await import("../src/i18n/localize.js");
 
-const translationJson = JSON.parse(readFileSync(new URL("../../../translations/en.json", import.meta.url)));
-function flatten(object, prefix = "component.bindhome.panel", result = {}) {
-  for (const [key, value] of Object.entries(object)) typeof value === "object" ? flatten(value, `${prefix}.${key}`, result) : (result[`${prefix}.${key}`] = value);
-  return result;
+function panelResources(language) {
+  const json = JSON.parse(readFileSync(new URL(`../../../translations/${language}.json`, import.meta.url)));
+  return Object.fromEntries(Object.entries(json.common).filter(([key]) => key.startsWith("panel_")).map(([key, value]) => [`component.bindhome.common.${key}`, value]));
 }
-const englishResources = flatten(translationJson.panel);
+const englishResources = panelResources("en");
 const englishT = createLocalizer(englishResources, englishResources);
-const spanishJson = JSON.parse(readFileSync(new URL("../../../translations/es.json", import.meta.url)));
-const spanishResources = flatten(spanishJson.panel);
+const spanishResources = panelResources("es");
 
 const presets = [
   { preset_id: "light_point", group: "electrical", asset_type: "light_point", default_name: "Light point", suggested_capabilities: ["on_off"] },

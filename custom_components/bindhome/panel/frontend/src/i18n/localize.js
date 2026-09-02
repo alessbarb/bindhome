@@ -1,11 +1,11 @@
-const PREFIX = "component.bindhome.panel.";
+const PREFIX = "component.bindhome.common.panel_";
 
 export async function loadPanelTranslations(hass, language) {
   const fetch = async (requestedLanguage) => {
     const response = await hass.callWS({
       type: "frontend/get_translations",
       language: requestedLanguage,
-      category: "panel",
+      category: "common",
       integration: ["bindhome"],
     });
     return response?.resources ?? {};
@@ -21,7 +21,7 @@ export async function loadPanelTranslations(hass, language) {
 
 export function createLocalizer(resources = {}, english = {}) {
   return (key, variables = {}) => {
-    const resourceKey = `${PREFIX}${key}`;
+    const resourceKey = `${PREFIX}${key.replaceAll(".", "_")}`;
     const template = resources[resourceKey] ?? english[resourceKey] ?? key;
     return template.replace(/\{(\w+)\}/g, (match, name) => variables[name] ?? match);
   };

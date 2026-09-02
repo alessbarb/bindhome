@@ -5,13 +5,8 @@ import { createLocalizer, presetDisplayName } from "../src/i18n/localize.js";
 import { activeDrafts, createDraftState, serializeActiveDrafts, setPresetQuantity } from "../src/inventory/draft-state.js";
 
 function resources(language) {
-  const source = JSON.parse(readFileSync(new URL(`../../../translations/${language}.json`, import.meta.url))).panel;
-  const result = {};
-  const flatten = (object, prefix = "component.bindhome.panel") => Object.entries(object).forEach(([key, value]) => {
-    if (typeof value === "object") flatten(value, `${prefix}.${key}`); else result[`${prefix}.${key}`] = value;
-  });
-  flatten(source);
-  return result;
+  const source = JSON.parse(readFileSync(new URL(`../../../translations/${language}.json`, import.meta.url))).common;
+  return Object.fromEntries(Object.entries(source).filter(([key]) => key.startsWith("panel_")).map(([key, value]) => [`component.bindhome.common.${key}`, value]));
 }
 
 const en = resources("en");
