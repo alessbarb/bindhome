@@ -9,7 +9,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 from .const import SIGNAL_REGISTRY_CHANGED
-from .models import Asset, Binding, ModelValidationError, Relation
+from .models import (
+    Asset,
+    Binding,
+    ModelValidationError,
+    Relation,
+    Representation,
+)
 from .registry import (
     BindHomeRegistry,
     RegistryError,
@@ -99,6 +105,9 @@ class BindHomeManager:
 
         self.registry.bindings.clear()
         self.registry.bindings.update(staged.bindings)
+
+        self.registry.representations.clear()
+        self.registry.representations.update(staged.representations)
 
     async def async_load(self) -> None:
         """Load persisted registry state."""
@@ -239,4 +248,27 @@ class BindHomeManager:
         """Remove and persist a binding."""
         async with self._mutation_lock:
             self.registry.remove_binding(binding_id)
+            await self._async_persist_and_notify()
+
+    async def async_set_representation(
+        self,
+        *,
+        asset_id: str,
+        platform: str,
+    ) -> Representation:
+        """Create and persist an Asset's logical representation."""
+        async with self._mutation_lock:
+            representation = self.registry.set_representation(
+                Representation.create(
+                    asset_id=asset_id,
+                    platform=platform,
+                )
+            )
+            await self._async_persist_and_notify()
+            return representation
+
+    async def async_remove_representation(self, asset_id: str) -> None:
+        """Remove and persist an Asset's logical representation."""
+        async with self._mutation_lock:
+            self.registry.remove_representation(asset_id)
             await self._async_persist_and_notify()

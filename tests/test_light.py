@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.setup import async_setup_component
 
 from custom_components.bindhome.light import BindHomeLight
-from custom_components.bindhome.models import Asset, Binding
+from custom_components.bindhome.models import Asset, Binding, Representation
 from custom_components.bindhome.registry import BindHomeRegistry
 from custom_components.bindhome.resolver import (
     BindingResolver,
@@ -181,11 +181,40 @@ async def test_logical_light_leaves_unsupported_target_to_home_assistant(
     await logical.async_turn_on()
 
 
-async def test_assets_without_on_off_are_not_eligible() -> None:
+async def test_light_eligibility_requires_explicit_representation_and_on_off() -> None:
     registry = BindHomeRegistry()
-    asset = _asset(registry, ["dimming"])
 
-    assert BindHomeLight.is_eligible(asset) is False
+    eligible_asset = _asset(registry, ["on_off"])
+    eligible_representation = Representation.create(
+        asset_id=eligible_asset.id,
+        platform="light",
+    )
+
+    assert (
+        BindHomeLight.is_eligible(
+            eligible_asset,
+            eligible_representation,
+        )
+        is True
+    )
+
+    passive_asset = Asset.create(
+        name="Passive point",
+        asset_type="light_point",
+        capabilities=["dimming"],
+    )
+    passive_representation = Representation.create(
+        asset_id=passive_asset.id,
+        platform="light",
+    )
+
+    assert (
+        BindHomeLight.is_eligible(
+            passive_asset,
+            passive_representation,
+        )
+        is False
+    )
 
 
 async def test_logical_light_exposes_valid_on_off_light_attributes(

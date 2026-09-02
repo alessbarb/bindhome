@@ -48,6 +48,8 @@ WS_RELATION_CREATE = f"{DOMAIN}/relations/create"
 WS_RELATION_DELETE = f"{DOMAIN}/relations/delete"
 WS_BINDING_SET = f"{DOMAIN}/bindings/set"
 WS_BINDING_DELETE = f"{DOMAIN}/bindings/delete"
+WS_REPRESENTATION_SET = f"{DOMAIN}/representations/set"
+WS_REPRESENTATION_DELETE = f"{DOMAIN}/representations/delete"
 WS_ASSET_GET = f"{DOMAIN}/assets/get"
 WS_ASSET_LIST = f"{DOMAIN}/assets/list"
 WS_RELATION_LIST = f"{DOMAIN}/relations/list"
@@ -368,6 +370,59 @@ async def ws_binding_delete(
 
 @require_admin
 @websocket_command(
+    {
+        vol.Required("type"): WS_REPRESENTATION_SET,
+        vol.Required("asset_id"): cv.string,
+        vol.Required("platform"): cv.string,
+    }
+)
+@async_response
+async def ws_representation_set(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Create an Asset's logical Home Assistant representation."""
+    try:
+        representation = await _get_manager(hass).async_set_representation(
+            asset_id=msg["asset_id"],
+            platform=msg["platform"],
+        )
+    except (ModelValidationError, RegistryError) as err:
+        _send_error(connection, msg, err)
+        return
+
+    connection.send_result(
+        msg["id"],
+        {"representation": representation.to_dict()},
+    )
+
+
+@require_admin
+@websocket_command(
+    {
+        vol.Required("type"): WS_REPRESENTATION_DELETE,
+        vol.Required("asset_id"): cv.string,
+    }
+)
+@async_response
+async def ws_representation_delete(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Remove an Asset's logical Home Assistant representation."""
+    try:
+        await _get_manager(hass).async_remove_representation(msg["asset_id"])
+    except RegistryError as err:
+        _send_error(connection, msg, err)
+        return
+
+    connection.send_result(msg["id"], {"deleted": True})
+
+
+@require_admin
+@websocket_command(
     {vol.Required("type"): WS_ASSET_GET, vol.Required("asset_id"): cv.string}
 )
 @async_response
@@ -531,6 +586,8 @@ def async_register_websocket_commands(hass: HomeAssistant) -> None:
         ws_relation_delete,
         ws_binding_set,
         ws_binding_delete,
+        ws_representation_set,
+        ws_representation_delete,
         ws_asset_get,
         ws_asset_list,
         ws_relation_list,

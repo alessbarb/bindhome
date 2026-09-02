@@ -387,11 +387,13 @@ def test_registry_full_serialization_and_deserialization() -> None:
     assert len(data["assets"]) == 2
     assert len(data["relations"]) == 1
     assert len(data["bindings"]) == 1
+    assert len(data["representations"]) == 0
 
     restored = BindHomeRegistry.from_dict(data)
     assert len(restored.assets) == 2
     assert len(restored.relations) == 1
     assert len(restored.bindings) == 1
+    assert len(restored.representations) == 0
     assert restored.assets[source.id] == source
     assert restored.assets[target.id] == target
     assert restored.relations[relation.id] == relation

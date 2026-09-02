@@ -7,6 +7,7 @@ from custom_components.bindhome.models import (
     Binding,
     ModelValidationError,
     Relation,
+    Representation,
 )
 
 
@@ -144,6 +145,28 @@ def test_asset_serialization_deserialization() -> None:
                 "asset_type": "radiator",
                 "capabilities": "on_off",
             }
+        )
+
+
+def test_representation_creation_and_roundtrip() -> None:
+    representation = Representation.create(
+        asset_id="  asset-1  ",
+        platform="  LIGHT  ",
+    )
+
+    assert representation.asset_id == "asset-1"
+    assert representation.platform == "light"
+    assert Representation.from_dict(representation.to_dict()) == representation
+
+
+def test_representation_rejects_invalid_platform_identifier() -> None:
+    with pytest.raises(
+        ModelValidationError,
+        match="platform must use lower_snake_case",
+    ):
+        Representation.create(
+            asset_id="asset-1",
+            platform="Light Proxy",
         )
 
 

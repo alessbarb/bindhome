@@ -191,6 +191,57 @@ class Asset:
 
 
 @dataclass(frozen=True, slots=True)
+class Representation:
+    """Describe how BindHome exposes an Asset back into Home Assistant."""
+
+    asset_id: str
+    platform: str
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        asset_id: str,
+        platform: str,
+    ) -> Representation:
+        """Create a normalized logical representation."""
+        return cls(
+            asset_id=normalize_non_empty(asset_id, "asset_id"),
+            platform=normalize_identifier(platform, "platform"),
+        )
+
+    def to_dict(self) -> dict[str, str]:
+        """Serialize the representation."""
+        return {
+            "asset_id": self.asset_id,
+            "platform": self.platform,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> Representation:
+        """Deserialize and validate a representation."""
+        if not isinstance(data, dict):
+            raise ModelValidationError("Representation data must be a dictionary")
+
+        try:
+            return cls(
+                asset_id=normalize_non_empty(
+                    str(data["asset_id"]),
+                    "asset_id",
+                ),
+                platform=normalize_identifier(
+                    str(data["platform"]),
+                    "platform",
+                ),
+            )
+        except KeyError as err:
+            raise ModelValidationError(
+                f"Missing required representation field: {err.args[0]}",
+                field=str(err.args[0]),
+            ) from err
+
+
+@dataclass(frozen=True, slots=True)
 class Relation:
     """A directed topology relation between two assets."""
 

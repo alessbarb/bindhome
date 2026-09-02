@@ -16,6 +16,7 @@ async def test_store_empty_initial(hass: HomeAssistant) -> None:
     assert len(registry.assets) == 0
     assert len(registry.relations) == 0
     assert len(registry.bindings) == 0
+    assert len(registry.representations) == 0
 
 
 async def test_manager_load_and_persist(hass: HomeAssistant) -> None:

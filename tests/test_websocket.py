@@ -10,7 +10,12 @@ import pytest
 import voluptuous as vol
 
 from custom_components.bindhome import websocket
-from custom_components.bindhome.models import Asset, Binding, Relation
+from custom_components.bindhome.models import (
+    Asset,
+    Binding,
+    Relation,
+    Representation,
+)
 from custom_components.bindhome.registry import (
     BindHomeRegistry,
     RegistryConflictError,
@@ -45,6 +50,7 @@ class FakeManager:
             "assets": [],
             "relations": [],
             "bindings": [],
+            "representations": [],
         }
         self.async_create_asset = AsyncMock()
         self.async_create_assets = AsyncMock()
@@ -54,6 +60,8 @@ class FakeManager:
         self.async_remove_relation = AsyncMock()
         self.async_set_binding = AsyncMock()
         self.async_remove_binding = AsyncMock()
+        self.async_set_representation = AsyncMock()
+        self.async_remove_representation = AsyncMock()
 
 
 def hass_for(manager: FakeManager) -> SimpleNamespace:
@@ -538,6 +546,86 @@ async def test_binding_set_replaces_and_delete_serialize_binding() -> None:
 
 
 @pytest.mark.asyncio
+async def test_representation_set_and_delete_websocket_contracts() -> None:
+    manager = FakeManager()
+    representation = Representation.create(
+        asset_id="asset-1",
+        platform="light",
+    )
+    manager.async_set_representation.return_value = representation
+
+    connection = FakeConnection()
+    hass = hass_for(manager)
+
+    await call(
+        websocket.ws_representation_set,
+        hass,
+        connection,
+        {
+            "id": "1",
+            "asset_id": "asset-1",
+            "platform": "light",
+        },
+    )
+
+    await call(
+        websocket.ws_representation_delete,
+        hass,
+        connection,
+        {
+            "id": "2",
+            "asset_id": "asset-1",
+        },
+    )
+
+    manager.async_set_representation.assert_awaited_once_with(
+        asset_id="asset-1",
+        platform="light",
+    )
+    manager.async_remove_representation.assert_awaited_once_with("asset-1")
+
+    assert connection.results == [
+        (
+            "1",
+            {"representation": representation.to_dict()},
+        ),
+        (
+            "2",
+            {"deleted": True},
+        ),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_representation_validation_error_is_structured() -> None:
+    manager = FakeManager()
+    manager.async_set_representation.side_effect = RegistryValidationError(
+        "light representation requires capabilities: on_off",
+        field="capabilities",
+    )
+    connection = FakeConnection()
+
+    await call(
+        websocket.ws_representation_set,
+        hass_for(manager),
+        connection,
+        {
+            "id": "1",
+            "asset_id": "asset-1",
+            "platform": "light",
+        },
+    )
+
+    assert connection.errors == [
+        (
+            "1",
+            "invalid_format",
+            "light representation requires capabilities: on_off",
+        )
+    ]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("handler", "error"),
     [
@@ -625,6 +713,8 @@ def test_registers_all_commands_under_bindhome_namespace() -> None:
         websocket.WS_RELATION_DELETE,
         websocket.WS_BINDING_SET,
         websocket.WS_BINDING_DELETE,
+        websocket.WS_REPRESENTATION_SET,
+        websocket.WS_REPRESENTATION_DELETE,
         websocket.WS_ASSET_GET,
         websocket.WS_ASSET_LIST,
         websocket.WS_RELATION_LIST,

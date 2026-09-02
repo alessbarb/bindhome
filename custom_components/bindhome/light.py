@@ -13,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import DOMAIN, SIGNAL_REGISTRY_CHANGED
 from .manager import BindHomeManager
-from .models import Asset
+from .models import Asset, Representation
 from .resolver import (
     BindingResolver,
     Resolution,
@@ -38,16 +38,20 @@ async def async_setup_entry(
     async def async_reconcile() -> None:
         """Reconcile logical lights against the current BindHome registry."""
         async with reconcile_lock:
-            eligible_assets = {
-                asset.id: asset
-                for asset in manager.registry.assets.values()
-                if BindHomeLight.is_eligible(asset)
-            }
+            eligible_assets: dict[str, Asset] = {}
+
+            for asset_id, representation in manager.registry.representations.items():
+                if representation.platform != "light":
+                    continue
+
+                asset = manager.registry.get_asset(asset_id)
+                if BindHomeLight.is_eligible(asset, representation):
+                    eligible_assets[asset.id] = asset
 
             current_ids = set(entities)
             eligible_ids = set(eligible_assets)
 
-            # Remove logical entities whose assets no longer expose on_off.
+            # Remove logical entities whose light Representation disappeared.
             for asset_id in sorted(current_ids - eligible_ids):
                 entity = entities.pop(asset_id)
 
@@ -154,9 +158,16 @@ class BindHomeLight(LightEntity):
             self.async_write_ha_state()
 
     @staticmethod
-    def is_eligible(asset: Asset) -> bool:
-        """Return whether an asset can be represented as a logical light."""
-        return _CAPABILITY in asset.capabilities
+    def is_eligible(
+        asset: Asset,
+        representation: Representation,
+    ) -> bool:
+        """Return whether this explicit Representation belongs to this light."""
+        return (
+            representation.asset_id == asset.id
+            and representation.platform == "light"
+            and _CAPABILITY in asset.capabilities
+        )
 
     async def async_update(self) -> None:
         """Refresh state from the binding resolved at operation time."""

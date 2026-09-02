@@ -1,4 +1,4 @@
-"""Runtime reconciliation tests for BindHome logical lights."""
+"""Runtime reconciliation tests for explicit BindHome light Representations."""
 
 import pytest
 from homeassistant.core import HomeAssistant
@@ -25,7 +25,34 @@ async def bindhome_entry(hass: HomeAssistant):
     await hass.async_block_till_done()
 
 
-async def test_asset_created_after_setup_adds_logical_light(
+async def test_on_off_asset_does_not_create_light_without_representation(
+    hass: HomeAssistant,
+    bindhome_entry,
+) -> None:
+    manager = bindhome_entry.runtime_data
+
+    asset = await manager.async_create_asset(
+        name="Physical light point",
+        asset_type="light_point",
+        code="DYN-01",
+        area_id=None,
+        capabilities=["on_off"],
+    )
+    await hass.async_block_till_done()
+
+    registry = er.async_get(hass)
+
+    assert (
+        registry.async_get_entity_id(
+            "light",
+            DOMAIN,
+            f"{DOMAIN}_{asset.id}",
+        )
+        is None
+    )
+
+
+async def test_setting_light_representation_adds_logical_light_dynamically(
     hass: HomeAssistant,
     bindhome_entry,
 ) -> None:
@@ -34,9 +61,14 @@ async def test_asset_created_after_setup_adds_logical_light(
     asset = await manager.async_create_asset(
         name="Dynamic light",
         asset_type="light_point",
-        code="DYN-01",
+        code="DYN-02",
         area_id=None,
         capabilities=["on_off"],
+    )
+
+    await manager.async_set_representation(
+        asset_id=asset.id,
+        platform="light",
     )
     await hass.async_block_till_done()
 
@@ -51,7 +83,7 @@ async def test_asset_created_after_setup_adds_logical_light(
     assert hass.states.get(entity_id) is not None
 
 
-async def test_existing_asset_becomes_logical_light_when_on_off_added(
+async def test_adding_on_off_capability_alone_does_not_infer_light(
     hass: HomeAssistant,
     bindhome_entry,
 ) -> None:
@@ -69,8 +101,6 @@ async def test_existing_asset_becomes_logical_light_when_on_off_added(
     registry = er.async_get(hass)
     unique_id = f"{DOMAIN}_{asset.id}"
 
-    assert registry.async_get_entity_id("light", DOMAIN, unique_id) is None
-
     await manager.async_update_asset(
         asset_id=asset.id,
         name=asset.name,
@@ -81,14 +111,15 @@ async def test_existing_asset_becomes_logical_light_when_on_off_added(
     )
     await hass.async_block_till_done()
 
-    entity_id = registry.async_get_entity_id(
-        "light",
-        DOMAIN,
-        unique_id,
-    )
+    assert registry.async_get_entity_id("light", DOMAIN, unique_id) is None
 
-    assert entity_id is not None
-    assert hass.states.get(entity_id) is not None
+    await manager.async_set_representation(
+        asset_id=asset.id,
+        platform="light",
+    )
+    await hass.async_block_till_done()
+
+    assert registry.async_get_entity_id("light", DOMAIN, unique_id) is not None
 
 
 async def test_logical_light_metadata_updates_without_identity_change(
@@ -103,6 +134,10 @@ async def test_logical_light_metadata_updates_without_identity_change(
         code="LGT-OLD",
         area_id=None,
         capabilities=["on_off"],
+    )
+    await manager.async_set_representation(
+        asset_id=asset.id,
+        platform="light",
     )
     await hass.async_block_till_done()
 
@@ -143,7 +178,7 @@ async def test_logical_light_metadata_updates_without_identity_change(
     assert registry_entry.original_name == "New name"
 
 
-async def test_removing_on_off_removes_logical_light_cleanly(
+async def test_removing_representation_removes_logical_light_but_keeps_asset(
     hass: HomeAssistant,
     bindhome_entry,
 ) -> None:
@@ -156,6 +191,10 @@ async def test_removing_on_off_removes_logical_light_cleanly(
         area_id=None,
         capabilities=["on_off"],
     )
+    await manager.async_set_representation(
+        asset_id=asset.id,
+        platform="light",
+    )
     await hass.async_block_till_done()
 
     registry = er.async_get(hass)
@@ -167,30 +206,18 @@ async def test_removing_on_off_removes_logical_light_cleanly(
     )
 
     assert entity_id is not None
-    assert hass.states.get(entity_id) is not None
 
-    await manager.async_update_asset(
-        asset_id=asset.id,
-        name=asset.name,
-        asset_type=asset.asset_type,
-        code=asset.code,
-        area_id=asset.area_id,
-        capabilities=[],
-    )
+    await manager.async_remove_representation(asset.id)
     await hass.async_block_till_done()
 
-    assert (
-        registry.async_get_entity_id(
-            "light",
-            DOMAIN,
-            unique_id,
-        )
-        is None
-    )
+    assert registry.async_get_entity_id("light", DOMAIN, unique_id) is None
     assert hass.states.get(entity_id) is None
 
+    # Physical identity remains in BindHome.
+    assert manager.registry.get_asset(asset.id).id == asset.id
 
-async def test_removed_capability_can_be_readded_with_same_entity_id(
+
+async def test_removed_representation_can_be_readded_with_same_entity_id(
     hass: HomeAssistant,
     bindhome_entry,
 ) -> None:
@@ -202,6 +229,10 @@ async def test_removed_capability_can_be_readded_with_same_entity_id(
         code=None,
         area_id=None,
         capabilities=["on_off"],
+    )
+    await manager.async_set_representation(
+        asset_id=asset.id,
+        platform="light",
     )
     await hass.async_block_till_done()
 
@@ -215,23 +246,12 @@ async def test_removed_capability_can_be_readded_with_same_entity_id(
     )
     assert original_entity_id is not None
 
-    await manager.async_update_asset(
-        asset_id=asset.id,
-        name=asset.name,
-        asset_type=asset.asset_type,
-        code=asset.code,
-        area_id=asset.area_id,
-        capabilities=[],
-    )
+    await manager.async_remove_representation(asset.id)
     await hass.async_block_till_done()
 
-    await manager.async_update_asset(
+    await manager.async_set_representation(
         asset_id=asset.id,
-        name=asset.name,
-        asset_type=asset.asset_type,
-        code=asset.code,
-        area_id=asset.area_id,
-        capabilities=["on_off"],
+        platform="light",
     )
     await hass.async_block_till_done()
 
@@ -243,44 +263,3 @@ async def test_removed_capability_can_be_readded_with_same_entity_id(
 
     assert restored_entity_id == original_entity_id
     assert hass.states.get(restored_entity_id) is not None
-
-
-async def test_deleting_asset_removes_logical_light_without_reload(
-    hass: HomeAssistant,
-    bindhome_entry,
-) -> None:
-    manager = bindhome_entry.runtime_data
-
-    asset = await manager.async_create_asset(
-        name="Disposable light",
-        asset_type="light_point",
-        code=None,
-        area_id=None,
-        capabilities=["on_off"],
-    )
-    await hass.async_block_till_done()
-
-    registry = er.async_get(hass)
-    unique_id = f"{DOMAIN}_{asset.id}"
-
-    entity_id = registry.async_get_entity_id(
-        "light",
-        DOMAIN,
-        unique_id,
-    )
-
-    assert entity_id is not None
-    assert hass.states.get(entity_id) is not None
-
-    await manager.async_delete_asset(asset.id)
-    await hass.async_block_till_done()
-
-    assert (
-        registry.async_get_entity_id(
-            "light",
-            DOMAIN,
-            unique_id,
-        )
-        is None
-    )
-    assert hass.states.get(entity_id) is None
