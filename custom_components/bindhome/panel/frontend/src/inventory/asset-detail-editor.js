@@ -754,7 +754,10 @@ export class BindHomeAssetDetailEditor
       );
 
     return html`
-      <option value="">
+      <option
+        value=""
+        ?selected=${!this._draft?.area_id}
+      >
         ${this.t("browser.no_area")}
       </option>
 
@@ -762,6 +765,7 @@ export class BindHomeAssetDetailEditor
         ? html`
             <option
               value=${staleAreaId}
+              ?selected=${this._draft?.area_id === staleAreaId}
             >
               ${this.t(
                 "editor.unknown_area_option",
@@ -795,6 +799,7 @@ export class BindHomeAssetDetailEditor
                 (area) => html`
                   <option
                     value=${area.area_id}
+                    ?selected=${this._draft?.area_id === area.area_id}
                   >
                     ${area.name}
                   </option>
@@ -816,6 +821,7 @@ export class BindHomeAssetDetailEditor
                 (area) => html`
                   <option
                     value=${area.area_id}
+                    ?selected=${this._draft?.area_id === area.area_id}
                   >
                     ${area.name}
                   </option>
@@ -994,8 +1000,6 @@ export class BindHomeAssetDetailEditor
                 "common.area",
               )}
               <select
-                .value=${this._draft
-                  .area_id}
                 ?disabled=${this._saving}
                 @change=${(event) =>
                   this._updateField(

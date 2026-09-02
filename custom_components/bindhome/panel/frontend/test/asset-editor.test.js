@@ -141,6 +141,40 @@ function createEditor(hass) {
 }
 
 test(
+  "editor initially displays the Asset persisted Home Assistant Area",
+  async () => {
+    const editor = createEditor({
+      states: {},
+    });
+
+    await settle(editor);
+
+    editor._startEdit();
+    await settle(editor);
+
+    const select =
+      editor.shadowRoot.querySelector("select");
+
+    assert.ok(select);
+
+    assert.equal(
+      editor._draft.area_id,
+      "living",
+    );
+
+    assert.equal(
+      select.value,
+      "living",
+    );
+
+    assert.equal(
+      editor._dirty,
+      false,
+    );
+  },
+);
+
+test(
   "Asset edit saves only changed fields and preserves stable ID",
   async () => {
     const calls = [];
