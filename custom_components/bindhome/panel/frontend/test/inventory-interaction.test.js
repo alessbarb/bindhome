@@ -43,6 +43,20 @@ async function settle(element) {
   await element.updateComplete;
 }
 
+function panelInventorySection(panel) {
+  return panel.shadowRoot.querySelector(
+    "bindhome-inventory-section",
+  );
+}
+
+function panelRoomWorkflow(panel) {
+  const section = panelInventorySection(panel);
+
+  return section?.shadowRoot.querySelector(
+    "bindhome-inventory-workflow",
+  ) ?? null;
+}
+
 async function roomWorkflow(hass, areas = [{ area_id: "living", name: "Living room", floor_id: "ground" }]) {
   const element = document.createElement("bindhome-inventory-workflow");
   element.hass = hass;
@@ -77,7 +91,10 @@ test("routine hass replacement does not reload or unmount an edited room batch",
   panel.hass = { callWS, states: {} };
   document.body.append(panel);
   await settle(panel);
-  const workflow = panel.shadowRoot.querySelector("bindhome-inventory-workflow");
+  const inventorySection = panelInventorySection(panel);
+  const workflow = panelRoomWorkflow(panel);
+  assert.ok(inventorySection);
+  assert.ok(workflow);
   workflow._floorId = "ground";
   workflow._areaId = "living";
   workflow._continue();
@@ -87,7 +104,14 @@ test("routine hass replacement does not reload or unmount an edited room batch",
   await settle(workflow);
   await panel._load(false);
   await settle(panel);
-  assert.equal(panel.shadowRoot.querySelector("bindhome-inventory-workflow"), workflow);
+  assert.equal(
+    panelInventorySection(panel),
+    inventorySection,
+  );
+  assert.equal(
+    panelRoomWorkflow(panel),
+    workflow,
+  );
   assert.equal(workflow._activeDrafts[0].name, "Edited socket");
   const initialCalls = calls.length;
 
@@ -95,7 +119,14 @@ test("routine hass replacement does not reload or unmount an edited room batch",
   await settle(panel);
 
   assert.equal(calls.length, initialCalls);
-  assert.equal(panel.shadowRoot.querySelector("bindhome-inventory-workflow"), workflow);
+  assert.equal(
+    panelInventorySection(panel),
+    inventorySection,
+  );
+  assert.equal(
+    panelRoomWorkflow(panel),
+    workflow,
+  );
   assert.equal(workflow._activeDrafts[0].name, "Edited socket");
 });
 
@@ -115,7 +146,10 @@ test("changing HA language localizes presentation without touching an active bat
   panel.hass = { callWS, language: "en", states: {} };
   document.body.append(panel);
   await settle(panel);
-  const workflow = panel.shadowRoot.querySelector("bindhome-inventory-workflow");
+  const inventorySection = panelInventorySection(panel);
+  const workflow = panelRoomWorkflow(panel);
+  assert.ok(inventorySection);
+  assert.ok(workflow);
   workflow._floorId = "ground";
   workflow._areaId = "living";
   workflow._continue();
@@ -129,7 +163,14 @@ test("changing HA language localizes presentation without touching an active bat
   await window.happyDOM.waitUntilComplete();
   await settle(panel);
 
-  assert.equal(panel.shadowRoot.querySelector("bindhome-inventory-workflow"), workflow);
+  assert.equal(
+    panelInventorySection(panel),
+    inventorySection,
+  );
+  assert.equal(
+    panelRoomWorkflow(panel),
+    workflow,
+  );
   assert.equal(workflow._activeDrafts[0].name, "My edited socket");
   assert.equal(workflow._activeDrafts[0].asset_type, "socket");
   assert.deepEqual(workflow._activeDrafts[0].capabilities, ["on_off"]);

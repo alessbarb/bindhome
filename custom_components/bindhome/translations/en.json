@@ -264,6 +264,22 @@
     "panel_presets_pump_name": "Pump",
     "panel_presets_freezer_name": "Freezer",
     "panel_presets_appliance_name": "Appliance",
-    "panel_presets_machine_name": "Machine"
+    "panel_presets_machine_name": "Machine",
+    "panel_inventory_views_label": "Inventory views",
+    "panel_inventory_views_browse": "Home inventory",
+    "panel_inventory_views_room": "Inventory this room",
+    "panel_browser_title": "Home inventory",
+    "panel_browser_intro": "Browse stable physical Assets by Home Assistant Floor and Area.",
+    "panel_browser_navigation_label": "Browse by Floor and Area",
+    "panel_browser_select_area": "Choose an Area to see its registered Assets.",
+    "panel_browser_no_assets_home": "No BindHome Assets are registered yet.",
+    "panel_browser_no_assets_area": "No Assets are registered in this Area.",
+    "panel_browser_floor_no_areas": "This Floor has no Areas.",
+    "panel_browser_no_area": "No Area",
+    "panel_browser_no_area_intro": "Assets not assigned to a Home Assistant Area.",
+    "panel_browser_unknown_area": "Unknown Area references",
+    "panel_browser_unknown_area_intro": "These Assets reference an Area that no longer exists in Home Assistant.",
+    "panel_browser_stale_area": "Saved Area reference: {area_id}",
+    "panel_browser_asset_list_label": "Assets in {location}"
   }
 }

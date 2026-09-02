@@ -142,6 +142,22 @@
     "panel_presets_pump_name": "Bomba",
     "panel_presets_freezer_name": "Congelador",
     "panel_presets_appliance_name": "Electrodoméstico",
-    "panel_presets_machine_name": "Máquina"
+    "panel_presets_machine_name": "Máquina",
+    "panel_inventory_views_label": "Vistas de inventario",
+    "panel_inventory_views_browse": "Inventario de la vivienda",
+    "panel_inventory_views_room": "Inventariar habitación",
+    "panel_browser_title": "Inventario de la vivienda",
+    "panel_browser_intro": "Consulta los elementos físicos estables por planta y área de Home Assistant.",
+    "panel_browser_navigation_label": "Navegar por planta y área",
+    "panel_browser_select_area": "Selecciona un área para ver sus elementos registrados.",
+    "panel_browser_no_assets_home": "Todavía no hay elementos de BindHome registrados.",
+    "panel_browser_no_assets_area": "No hay elementos registrados en esta área.",
+    "panel_browser_floor_no_areas": "Esta planta no tiene áreas.",
+    "panel_browser_no_area": "Sin área",
+    "panel_browser_no_area_intro": "Elementos no asignados a un área de Home Assistant.",
+    "panel_browser_unknown_area": "Referencias a áreas desconocidas",
+    "panel_browser_unknown_area_intro": "Estos elementos hacen referencia a un área que ya no existe en Home Assistant.",
+    "panel_browser_stale_area": "Referencia de área guardada: {area_id}",
+    "panel_browser_asset_list_label": "Elementos en {location}"
   }
 }
