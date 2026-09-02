@@ -159,9 +159,7 @@ async def ws_asset_update(
             asset_type=msg.get("asset_type", existing.asset_type),
             code=msg.get("code", existing.code),
             area_id=area_id,
-            capabilities=list(
-                msg.get("capabilities", existing.capabilities)
-            ),
+            capabilities=list(msg.get("capabilities", existing.capabilities)),
         )
     except (
         ModelValidationError,

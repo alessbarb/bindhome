@@ -113,9 +113,7 @@ class Asset:
             asset_type=normalize_identifier(asset_type, "asset_type"),
             code=normalize_non_empty(code, "code") if code is not None else None,
             area_id=(
-                normalize_non_empty(area_id, "area_id")
-                if area_id is not None
-                else None
+                normalize_non_empty(area_id, "area_id") if area_id is not None else None
             ),
             capabilities=normalized_capabilities,
         )

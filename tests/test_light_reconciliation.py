@@ -179,11 +179,14 @@ async def test_removing_on_off_removes_logical_light_cleanly(
     )
     await hass.async_block_till_done()
 
-    assert registry.async_get_entity_id(
-        "light",
-        DOMAIN,
-        unique_id,
-    ) is None
+    assert (
+        registry.async_get_entity_id(
+            "light",
+            DOMAIN,
+            unique_id,
+        )
+        is None
+    )
     assert hass.states.get(entity_id) is None
 
 
@@ -272,9 +275,12 @@ async def test_deleting_asset_removes_logical_light_without_reload(
     await manager.async_delete_asset(asset.id)
     await hass.async_block_till_done()
 
-    assert registry.async_get_entity_id(
-        "light",
-        DOMAIN,
-        unique_id,
-    ) is None
+    assert (
+        registry.async_get_entity_id(
+            "light",
+            DOMAIN,
+            unique_id,
+        )
+        is None
+    )
     assert hass.states.get(entity_id) is None

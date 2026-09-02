@@ -68,17 +68,14 @@ class BindHomeRegistry:
             existing.id != asset_id and existing.code == updated.code
             for existing in self.assets.values()
         ):
-            raise RegistryConflictError(
-                f"Asset code {updated.code} already exists"
-            )
+            raise RegistryConflictError(f"Asset code {updated.code} already exists")
 
         removed = set(asset.capabilities) - set(updated.capabilities)
         if removed:
             blocking = [
                 binding
                 for binding in self.bindings.values()
-                if binding.asset_id == asset_id
-                and binding.capability in removed
+                if binding.asset_id == asset_id and binding.capability in removed
             ]
             if blocking:
                 raise RegistryConflictError(

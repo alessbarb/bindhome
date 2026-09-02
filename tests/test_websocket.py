@@ -200,9 +200,7 @@ async def test_asset_update_is_partial_and_preserves_unspecified_fields() -> Non
         area_id=None,
         capabilities=["on_off"],
     )
-    assert connection.results == [
-        ("1", {"asset": updated.to_dict()})
-    ]
+    assert connection.results == [("1", {"asset": updated.to_dict()})]
 
 
 @pytest.mark.asyncio
