@@ -185,12 +185,35 @@ BindHome does not maintain a hardware registry. Home Assistant already owns the 
 
 The registry is persisted with Home Assistant's `Store` helper. The `.storage` file is an implementation detail and must never be edited manually.
 
-## Planned layers
+## Current functional state
 
-1. Core registry and persistence. (done)
-2. Binding resolver and compatibility layer. (done)
-3. CRUD WebSocket API.
-4. Dedicated BindHome panel.
-5. Logical proxy entities, starting with `light`, built on the resolver.
-6. Topology visualization.
-7. Import/export UI.
+Implemented:
+
+1. Core registry and Home Assistant-backed persistence.
+2. Stable Asset identity with update support.
+3. Relations, capabilities and replaceable bindings.
+4. Binding resolver with configuration/runtime status.
+5. CRUD and query WebSocket APIs.
+6. Dedicated BindHome panel.
+7. Logical `light` proxy entities.
+8. Dynamic logical-entity reconciliation.
+9. Hot binding replacement without integration reload.
+10. Home Assistant-native service routing.
+
+The logical `light` platform currently uses the presence of `on_off` as its
+eligibility criterion. This was sufficient to validate the architecture but is
+not the final product model: capability and Home Assistant representation must
+become separate concepts before the user-facing UX is considered complete.
+
+## Functional foundations before UX
+
+The agreed next foundations are:
+
+1. transactional bulk Asset creation for high-volume inventory;
+2. an explicit optional Representation model, initially zero-or-one per Asset;
+3. extensible creation presets used only as UX defaults;
+4. an inventory-first workflow organised around Home Assistant Floors and Areas;
+5. topology visualization and user-friendly editing;
+6. import/export UX.
+
+See `product-contract.md` for the agreed product behaviour.
