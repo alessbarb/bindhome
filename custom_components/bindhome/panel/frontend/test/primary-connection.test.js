@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { Window } from "happy-dom";
 
 const window = new Window({ url: "http://localhost/bindhome" });
@@ -23,6 +24,14 @@ if (!customElements.get("ha-icon")) {
 await import("../src/bindings/primary-connection-editor.js");
 
 const t = (key) => key === "connection.cycle_error" ? "Circular connection" : key;
+
+function resources(language) {
+  const json = JSON.parse(readFileSync(new URL(`../../../translations/${language}.json`, import.meta.url)));
+  return Object.fromEntries(Object.entries(json.common).filter(([key]) => key.startsWith("panel_")).map(([key, value]) => [`component.bindhome.common.${key}`, value]));
+}
+
+const englishT = (await import("../src/i18n/localize.js")).createLocalizer(resources("en"), resources("en"));
+const spanishT = (await import("../src/i18n/localize.js")).createLocalizer(resources("es"), resources("en"));
 
 async function settle(element) {
   await element.updateComplete;
@@ -293,6 +302,26 @@ test("rendered summaries preserve configuration and live runtime semantics", asy
   editor.hass = { ...editor.hass, states: { "switch.relay": { state: "on", attributes: { friendly_name: "Relay" } } } };
   await settle(editor);
   assert.match(editor.shadowRoot.textContent, /connection.invalid_configuration/);
+});
+
+test("rendered configured runtime status has one configuration label", async () => {
+  const editor = createEditor(async () => ({}));
+  editor.t = spanishT;
+  editor.status = { status: "resolved", config_valid: true, entity_id: "switch.relay", binding: { id: "binding-1", role: "primary", entity_id: "switch.relay" } };
+  await settle(editor);
+  const summary = editor.shadowRoot.textContent;
+  assert.equal((summary.match(/Configurada/g) ?? []).length, 1);
+  assert.match(summary, /disponible/);
+});
+
+test("English configured runtime status is not duplicated", async () => {
+  const editor = createEditor(async () => ({}));
+  editor.t = englishT;
+  editor.status = { status: "resolved", config_valid: true, entity_id: "switch.relay", binding: { id: "binding-1", role: "primary", entity_id: "switch.relay" } };
+  await settle(editor);
+  const summary = editor.shadowRoot.textContent;
+  assert.equal((summary.match(/Configured/g) ?? []).length, 1);
+  assert.match(summary, /available/);
 });
 
 test("rendered picker consumes mixed candidates without filtering", async () => {
