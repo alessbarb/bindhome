@@ -3,6 +3,7 @@
 from unittest.mock import AsyncMock
 
 import pytest
+from homeassistant.components.light import ColorMode
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from custom_components.bindhome.light import BindHomeLight
@@ -132,3 +133,20 @@ async def test_assets_without_on_off_are_not_eligible() -> None:
     asset = _asset(registry, ["dimming"])
 
     assert BindHomeLight.is_eligible(asset) is False
+
+
+async def test_logical_light_exposes_valid_on_off_light_attributes(
+    hass: HomeAssistant,
+) -> None:
+    """Expose the Home Assistant light color-mode contract."""
+    registry = BindHomeRegistry()
+    asset = _asset(registry, ["on_off"])
+    _binding(registry, asset, "switch.hardware")
+    hass.states.async_set("switch.hardware", "on")
+
+    logical = _logical_light(hass, registry, asset)
+    await logical.async_update()
+
+    assert logical.supported_color_modes == {ColorMode.ONOFF}
+    assert logical.color_mode is ColorMode.ONOFF
+    assert logical.state_attributes["color_mode"] == ColorMode.ONOFF

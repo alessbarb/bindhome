@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from homeassistant.components.light import LightEntity
+from homeassistant.components.light import ColorMode, LightEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 
@@ -40,6 +40,8 @@ class BindHomeLight(LightEntity):
     """A stable logical light backed by the asset's current binding."""
 
     _attr_should_poll = True
+    _attr_color_mode = ColorMode.ONOFF
+    _attr_supported_color_modes = {ColorMode.ONOFF}
 
     def __init__(
         self, hass: HomeAssistant, asset: Asset, resolver: BindingResolver
