@@ -18,6 +18,28 @@ create_asset:
       selector:
         object:
 
+update_asset:
+  fields:
+    asset_id:
+      required: true
+      selector:
+        text:
+    name:
+      selector:
+        text:
+    asset_type:
+      selector:
+        text:
+    code:
+      selector:
+        text:
+    area_id:
+      selector:
+        area:
+    capabilities:
+      selector:
+        object:
+
 delete_asset:
   fields:
     asset_id:

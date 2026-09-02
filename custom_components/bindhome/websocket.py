@@ -36,6 +36,7 @@ from .validation import validate_area, validate_entity
 
 WS_REGISTRY_GET = f"{DOMAIN}/registry/get"
 WS_ASSET_CREATE = f"{DOMAIN}/assets/create"
+WS_ASSET_UPDATE = f"{DOMAIN}/assets/update"
 WS_ASSET_DELETE = f"{DOMAIN}/assets/delete"
 WS_RELATION_CREATE = f"{DOMAIN}/relations/create"
 WS_RELATION_DELETE = f"{DOMAIN}/relations/delete"
@@ -123,6 +124,53 @@ async def ws_asset_create(
     except (ModelValidationError, RegistryError, ServiceValidationError) as err:
         _send_error(connection, msg, err)
         return
+    connection.send_result(msg["id"], {"asset": asset.to_dict()})
+
+
+@require_admin
+@websocket_command(
+    {
+        vol.Required("type"): WS_ASSET_UPDATE,
+        vol.Required("asset_id"): cv.string,
+        vol.Optional("name"): cv.string,
+        vol.Optional("asset_type"): cv.string,
+        vol.Optional("code"): vol.Any(None, cv.string),
+        vol.Optional("area_id"): vol.Any(None, cv.string),
+        vol.Optional("capabilities"): [cv.string],
+    }
+)
+@async_response
+async def ws_asset_update(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Partially update an asset while preserving its stable identity."""
+    try:
+        manager = _get_manager(hass)
+        existing = manager.registry.get_asset(msg["asset_id"])
+
+        area_id = msg.get("area_id", existing.area_id)
+        validate_area(hass, area_id)
+
+        asset = await manager.async_update_asset(
+            asset_id=existing.id,
+            name=msg.get("name", existing.name),
+            asset_type=msg.get("asset_type", existing.asset_type),
+            code=msg.get("code", existing.code),
+            area_id=area_id,
+            capabilities=list(
+                msg.get("capabilities", existing.capabilities)
+            ),
+        )
+    except (
+        ModelValidationError,
+        RegistryError,
+        ServiceValidationError,
+    ) as err:
+        _send_error(connection, msg, err)
+        return
+
     connection.send_result(msg["id"], {"asset": asset.to_dict()})
 
 
@@ -390,6 +438,7 @@ def async_register_websocket_commands(hass: HomeAssistant) -> None:
     for handler in (
         ws_registry_get,
         ws_asset_create,
+        ws_asset_update,
         ws_asset_delete,
         ws_relation_create,
         ws_relation_delete,

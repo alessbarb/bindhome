@@ -24,6 +24,7 @@ from .const import (
     SERVICE_REMOVE_BINDING,
     SERVICE_REMOVE_RELATION,
     SERVICE_SET_BINDING,
+    SERVICE_UPDATE_ASSET,
 )
 from .manager import BindHomeManager
 from .models import ModelValidationError
@@ -37,6 +38,16 @@ _CREATE_ASSET_SCHEMA = vol.Schema(
         vol.Optional("code"): cv.string,
         vol.Optional("area_id"): cv.string,
         vol.Optional("capabilities", default=[]): [cv.string],
+    }
+)
+_UPDATE_ASSET_SCHEMA = vol.Schema(
+    {
+        vol.Required("asset_id"): cv.string,
+        vol.Optional("name"): cv.string,
+        vol.Optional("asset_type"): cv.string,
+        vol.Optional("code"): vol.Any(None, cv.string),
+        vol.Optional("area_id"): vol.Any(None, cv.string),
+        vol.Optional("capabilities"): [cv.string],
     }
 )
 _DELETE_ASSET_SCHEMA = vol.Schema({vol.Required("asset_id"): cv.string})
@@ -92,6 +103,40 @@ def async_register_services(hass: HomeAssistant) -> None:
             )
         except (ModelValidationError, RegistryError) as err:
             raise _translate_registry_error(err) from err
+        return {"asset": asset.to_dict()} if call.return_response else None
+
+    async def update_asset(call: ServiceCall) -> ServiceResponse | None:
+        manager = _get_manager(hass)
+
+        try:
+            existing = manager.registry.get_asset(call.data["asset_id"])
+
+            area_id = call.data.get("area_id", existing.area_id)
+            validate_area(hass, area_id)
+
+            asset = await manager.async_update_asset(
+                asset_id=existing.id,
+                name=call.data.get("name", existing.name),
+                asset_type=call.data.get(
+                    "asset_type",
+                    existing.asset_type,
+                ),
+                code=call.data.get("code", existing.code),
+                area_id=area_id,
+                capabilities=list(
+                    call.data.get(
+                        "capabilities",
+                        existing.capabilities,
+                    )
+                ),
+            )
+        except (
+            ModelValidationError,
+            RegistryError,
+            ServiceValidationError,
+        ) as err:
+            raise _translate_registry_error(err) from err
+
         return {"asset": asset.to_dict()} if call.return_response else None
 
     async def delete_asset(call: ServiceCall) -> ServiceResponse | None:
@@ -162,6 +207,13 @@ def async_register_services(hass: HomeAssistant) -> None:
         SERVICE_CREATE_ASSET,
         create_asset,
         schema=_CREATE_ASSET_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_UPDATE_ASSET,
+        update_asset,
+        schema=_UPDATE_ASSET_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(

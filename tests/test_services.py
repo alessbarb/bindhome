@@ -19,6 +19,7 @@ from custom_components.bindhome.const import (
     SERVICE_REMOVE_BINDING,
     SERVICE_REMOVE_RELATION,
     SERVICE_SET_BINDING,
+    SERVICE_UPDATE_ASSET,
 )
 
 
@@ -85,6 +86,42 @@ async def test_create_asset_service_and_area_validation(
             },
             blocking=True,
         )
+
+
+async def test_update_asset_service_is_partial(
+    hass: HomeAssistant,
+    setup_bindhome: MockConfigEntry,
+) -> None:
+    response = await hass.services.async_call(
+        DOMAIN,
+        SERVICE_CREATE_ASSET,
+        {
+            "name": "Original light",
+            "asset_type": "light_point",
+            "code": "LGT-01",
+            "capabilities": ["on_off"],
+        },
+        blocking=True,
+        return_response=True,
+    )
+    asset_id = response["asset"]["id"]
+
+    updated = await hass.services.async_call(
+        DOMAIN,
+        SERVICE_UPDATE_ASSET,
+        {
+            "asset_id": asset_id,
+            "name": "Renamed light",
+        },
+        blocking=True,
+        return_response=True,
+    )
+
+    assert updated["asset"]["id"] == asset_id
+    assert updated["asset"]["name"] == "Renamed light"
+    assert updated["asset"]["asset_type"] == "light_point"
+    assert updated["asset"]["code"] == "LGT-01"
+    assert updated["asset"]["capabilities"] == ["on_off"]
 
 
 async def test_create_asset_model_validation_translation(
