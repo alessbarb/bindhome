@@ -73,7 +73,42 @@ Represents a logical function of an asset. Bindings attach to capabilities, allo
 
 Maps `asset + capability + role` to one Home Assistant `entity_id`.
 
-Calling `set_binding` for an existing `(asset, capability, role)` replaces the current implementation while preserving the stable infrastructure asset.
+Calling `set_binding` for an existing `(asset, capability, role)` replaces the
+current implementation while preserving the stable infrastructure asset.
+
+### Representation
+
+Represents BindHome's explicit decision to expose an Asset back into Home
+Assistant as a logical entity.
+
+The current cardinality is zero or one Representation per Asset. A
+Representation stores the stable BindHome `asset_id` and a platform implemented
+by BindHome.
+
+Capability and Representation are intentionally independent. For example,
+`on_off` describes a function of an Asset but does not itself create a
+`light.*` entity.
+
+BindHome owns only the Representation platforms that it actually implements.
+The initial `light` Representation requires the BindHome `on_off` capability.
+This is a BindHome implementation contract, not a Home Assistant compatibility
+matrix.
+
+### Creation preset
+
+Creation presets are read-only UX metadata for generating editable Asset drafts
+during high-volume inventory.
+
+A preset contains only BindHome-owned suggestions such as:
+
+- stable preset identifier;
+- inventory group;
+- suggested `asset_type`;
+- default display name;
+- suggested capabilities.
+
+Presets do not create Assets by themselves, do not create bindings or
+Representations, and do not restrict custom Asset types or capabilities.
 
 ## Binding resolver
 
@@ -171,11 +206,45 @@ of existing bindings and every declared-but-unbound capability, so
 
 ### WebSocket surface
 
-These are exposed as additive read commands alongside the Sprint 1 CRUD
-commands, without renaming any: `bindhome/assets/get`, `bindhome/assets/list`,
-`bindhome/relations/list`, `bindhome/graph/traverse`, `bindhome/graph/path`, and
-`bindhome/bindings/status`. The panel branch remains usable from
-`bindhome/registry/get` alone.
+The WebSocket API is the primary BindHome-facing application surface.
+
+Asset mutation:
+
+- `bindhome/assets/create`;
+- `bindhome/assets/create_bulk`;
+- `bindhome/assets/update`;
+- `bindhome/assets/delete`.
+
+Topology and binding mutation:
+
+- `bindhome/relations/create`;
+- `bindhome/relations/delete`;
+- `bindhome/bindings/set`;
+- `bindhome/bindings/delete`.
+
+Logical exposure:
+
+- `bindhome/representations/set`;
+- `bindhome/representations/delete`.
+
+Inventory metadata:
+
+- `bindhome/presets/list`.
+
+Read/query commands:
+
+- `bindhome/registry/get`;
+- `bindhome/assets/get`;
+- `bindhome/assets/list`;
+- `bindhome/relations/list`;
+- `bindhome/graph/traverse`;
+- `bindhome/graph/path`;
+- `bindhome/bindings/status`.
+
+Bulk Asset creation is a first-class transactional operation rather than N
+client-side `create_asset` calls. Representation and preset configuration are
+WebSocket-oriented primitives and deliberately do not duplicate Home Assistant
+service actions without an external service-use case.
 
 ## Hardware ownership
 
@@ -194,26 +263,45 @@ Implemented:
 3. Relations, capabilities and replaceable bindings.
 4. Binding resolver with configuration/runtime status.
 5. CRUD and query WebSocket APIs.
-6. Dedicated BindHome panel.
-7. Logical `light` proxy entities.
-8. Dynamic logical-entity reconciliation.
-9. Hot binding replacement without integration reload.
-10. Home Assistant-native service routing.
+6. Transactional bulk Asset creation with all-or-none persistence.
+7. Explicit optional Representation, currently zero-or-one per Asset.
+8. Logical `light` proxy entities driven by explicit Representation.
+9. Dynamic logical-entity reconciliation.
+10. Hot binding replacement without integration reload.
+11. Home Assistant-native service routing.
+12. Extensible creation presets used only as editable UX defaults.
+13. Dedicated BindHome panel.
+14. System-health counters and registry serialization.
 
-The logical `light` platform currently uses the presence of `on_off` as its
-eligibility criterion. This was sufficient to validate the architecture but is
-not the final product model: capability and Home Assistant representation must
-become separate concepts before the user-facing UX is considered complete.
+The functional backend foundation required before inventory UX is complete.
 
-## Functional foundations before UX
+In particular:
 
-The agreed next foundations are:
+- Capability no longer implies logical Home Assistant entity type.
+- An Asset with `on_off` remains passive unless it has an explicit
+  Representation.
+- Existing pre-Representation registries are migrated to preserve their previous
+  logical-light behaviour once, after which Representation state is explicit.
+- Bulk creation stages the entire mutation, persists once, then adopts the
+  staged contents into the existing live registry object so long-lived runtime
+  references remain valid.
+- Creation presets never create bindings, entity references or
+  Representations.
 
-1. transactional bulk Asset creation for high-volume inventory;
-2. an explicit optional Representation model, initially zero-or-one per Asset;
-3. extensible creation presets used only as UX defaults;
-4. an inventory-first workflow organised around Home Assistant Floors and Areas;
-5. topology visualization and user-friendly editing;
-6. import/export UX.
+## Next product work
+
+The first user-facing milestone is the Area-oriented **Inventory this room**
+workflow using Home Assistant Floors and Areas.
+
+The backend primitives it requires are already available:
+
+1. read the creation preset catalogue;
+2. generate and edit local Asset drafts;
+3. submit the complete room inventory through transactional bulk creation;
+4. enrich created Assets later with bindings, topology and optional
+   Representations.
+
+Later UX work can add topology visualization, richer editing, issues/status
+views and import/export workflows without changing these core ownership rules.
 
 See `product-contract.md` for the agreed product behaviour.
