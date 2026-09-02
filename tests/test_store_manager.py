@@ -79,6 +79,8 @@ async def test_manager_relation_lifecycle(hass: HomeAssistant) -> None:
 async def test_manager_binding_lifecycle_and_replacement(
     hass: HomeAssistant,
 ) -> None:
+    hass.states.async_set("fan.old_switch", "off")
+    hass.states.async_set("fan.new_switch", "off")
     manager = BindHomeManager(hass)
     await manager.async_load()
 

@@ -76,6 +76,13 @@ Maps `asset + capability + role` to one Home Assistant `entity_id`.
 Calling `set_binding` for an existing `(asset, capability, role)` replaces the
 current implementation while preserving the stable infrastructure asset.
 
+The target may be any valid Home Assistant entity, including an entity produced
+by a BindHome Representation. BindHome-to-BindHome composition is supported
+when resolution remains acyclic. Cycle validation operates on functional
+Binding keys `(asset_id, capability, role)`, and uses the Home Assistant Entity
+Registry as the authoritative source for BindHome entity identity; no Home
+Assistant Core changes or duplicated registries are required.
+
 ### Representation
 
 Represents BindHome's explicit decision to expose an Asset back into Home

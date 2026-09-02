@@ -29,7 +29,7 @@ from .const import (
 from .manager import BindHomeManager
 from .models import ModelValidationError
 from .registry import RegistryError
-from .validation import validate_area, validate_entity
+from .validation import validate_area
 
 _CREATE_ASSET_SCHEMA = vol.Schema(
     {
@@ -174,7 +174,6 @@ def async_register_services(hass: HomeAssistant) -> None:
     async def set_binding(call: ServiceCall) -> ServiceResponse | None:
         manager = _get_manager(hass)
         entity_id = call.data["entity_id"]
-        validate_entity(hass, entity_id)
         try:
             binding = await manager.async_set_binding(
                 asset_id=call.data["asset_id"],

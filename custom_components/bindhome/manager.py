@@ -19,9 +19,16 @@ from .models import (
 from .registry import (
     BindHomeRegistry,
     RegistryError,
+    RegistryValidationError,
+)
+from .representation import (
+    binding_key,
+    representation_asset_for_entity,
+    runtime_contract,
 )
 from .resolver import BindingResolver, HomeAssistantEntityProbe
 from .store import BindHomeStore
+from .validation import validate_entity
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +75,17 @@ class BulkAssetCreateError(ValueError):
             "field": self.field,
             "message": self.reason,
         }
+
+
+class BindingCycleError(RegistryError):
+    """Raised when a binding would create recursive BindHome resolution."""
+
+    def __init__(self, path: list[tuple[str, str, str]]) -> None:
+        self.path = tuple(path)
+        formatted = " -> ".join(
+            f"({asset_id}, {capability}, {role})" for asset_id, capability, role in path
+        )
+        super().__init__(f"Binding cycle detected: {formatted}")
 
 
 class BindHomeManager:
@@ -233,16 +251,82 @@ class BindHomeManager:
     ) -> Binding:
         """Create or replace and persist a capability binding."""
         async with self._mutation_lock:
-            binding = self.registry.set_binding(
-                Binding.create(
-                    asset_id=asset_id,
-                    capability=capability,
-                    entity_id=entity_id,
-                    role=role,
-                )
+            binding = Binding.create(
+                asset_id=asset_id,
+                capability=capability,
+                entity_id=entity_id,
+                role=role,
             )
+            self._validate_binding_target(binding)
+            binding = self.registry.set_binding(binding)
             await self._async_persist_and_notify()
             return binding
+
+    def _validate_binding_target(self, proposed: Binding) -> None:
+        """Validate HA target and reject only functional BindHome cycles."""
+        asset = self.registry.get_asset(proposed.asset_id)
+        if proposed.capability not in asset.capabilities:
+            raise RegistryValidationError(
+                f"Asset {proposed.asset_id} does not declare capability "
+                f"{proposed.capability}",
+                field="capability",
+            )
+        validate_entity(self.hass, proposed.entity_id)
+
+        source = binding_key(proposed)
+        adjacency: dict[tuple[str, str, str], set[tuple[str, str, str]]] = {}
+        for existing in self.registry.bindings.values():
+            key = binding_key(existing)
+            if key == source:
+                continue
+            target_asset = representation_asset_for_entity(
+                self.hass, existing.entity_id, self.registry.representations
+            )
+            if target_asset is None:
+                continue
+            contract = runtime_contract(
+                self.registry.representations[target_asset], target_asset
+            )
+            if contract is not None:
+                adjacency.setdefault(key, set()).update(contract.dependencies)
+
+        target_asset = representation_asset_for_entity(
+            self.hass, proposed.entity_id, self.registry.representations
+        )
+        if target_asset is None:
+            return
+        contract = runtime_contract(
+            self.registry.representations[target_asset], target_asset
+        )
+        if contract is None:
+            return
+        adjacency[source] = set(contract.dependencies)
+        for dependency in contract.dependencies:
+            if dependency == source:
+                raise BindingCycleError([source, source])
+            path = self._find_path(adjacency, dependency, source)
+            if path is not None:
+                raise BindingCycleError([source, *path])
+
+    @staticmethod
+    def _find_path(
+        adjacency: dict[tuple[str, str, str], set[tuple[str, str, str]]],
+        start: tuple[str, str, str],
+        goal: tuple[str, str, str],
+    ) -> list[tuple[str, str, str]] | None:
+        """Return a path from start to goal, including both endpoints."""
+        stack = [(start, [start])]
+        visited: set[tuple[str, str, str]] = set()
+        while stack:
+            node, path = stack.pop()
+            if node == goal:
+                return path
+            if node in visited:
+                continue
+            visited.add(node)
+            for neighbor in adjacency.get(node, ()):
+                stack.append((neighbor, [*path, neighbor]))
+        return None
 
     async def async_remove_binding(self, binding_id: str) -> None:
         """Remove and persist a binding."""

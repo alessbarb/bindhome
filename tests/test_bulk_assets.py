@@ -226,6 +226,7 @@ async def test_bulk_create_preserves_existing_topology_bindings_and_live_resolve
     hass: HomeAssistant,
 ) -> None:
     """A batch commit must not invalidate existing runtime references."""
+    hass.states.async_set("switch.existing_backend", "off")
     manager = BindHomeManager(hass)
     await manager.async_load()
 

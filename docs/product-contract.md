@@ -96,6 +96,13 @@ A Binding maps:
 
 The Home Assistant entity may be replaced without changing the Asset identity.
 
+The target may also be a Home Assistant entity produced by another BindHome
+Representation. Such BindHome-to-BindHome composition is valid when it is
+acyclic. BindHome rejects cyclic resolution at functional Binding-key
+granularity: `(asset_id, capability, role)`. The Home Assistant Entity Registry
+remains authoritative for mapping a target entity to an active BindHome
+Representation, including after an entity-id rename.
+
 BindHome stores only the reference and its own binding metadata. Entity names,
 devices, states, domains, Areas, manufacturers and supported features are read
 from Home Assistant when needed rather than copied into BindHome.

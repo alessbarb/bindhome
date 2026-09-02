@@ -14,6 +14,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from .const import DOMAIN, SIGNAL_REGISTRY_CHANGED
 from .manager import BindHomeManager
 from .models import Asset, Representation
+from .representation import runtime_contract
 from .resolver import (
     BindingResolver,
     Resolution,
@@ -21,6 +22,16 @@ from .resolver import (
 )
 
 _CAPABILITY = "on_off"
+
+
+def _entity_registry_id(asset_id: str) -> tuple[str, str, str]:
+    """Return the Entity Registry identity for a logical light."""
+    contract = runtime_contract(
+        Representation.create(asset_id=asset_id, platform="light"), asset_id
+    )
+    if contract is None:
+        raise ValueError("Missing runtime contract for light representation")
+    return contract.domain, DOMAIN, contract.unique_id
 
 
 async def async_setup_entry(
@@ -69,9 +80,7 @@ async def async_setup_entry(
                         platform.async_unsub_polling()
 
                 entity_id = entity_registry.async_get_entity_id(
-                    "light",
-                    DOMAIN,
-                    f"{DOMAIN}_{asset_id}",
+                    *_entity_registry_id(asset_id)
                 )
                 if entity_id is not None:
                     entity_registry.async_remove(entity_id)
@@ -84,9 +93,7 @@ async def async_setup_entry(
                 entity.update_asset(asset)
 
                 entity_id = entity_registry.async_get_entity_id(
-                    "light",
-                    DOMAIN,
-                    entity.unique_id,
+                    *_entity_registry_id(asset_id)
                 )
                 if entity_id is not None:
                     entity_registry.async_update_entity(
@@ -137,7 +144,7 @@ class BindHomeLight(LightEntity):
         self._resolver = resolver
         self._resolution: Resolution | None = None
         self._attr_name = asset.name
-        self._attr_unique_id = f"{DOMAIN}_{asset.id}"
+        self._attr_unique_id = _entity_registry_id(asset.id)[2]
         self._attr_available = False
         self._attr_is_on = None
 
@@ -163,10 +170,11 @@ class BindHomeLight(LightEntity):
         representation: Representation,
     ) -> bool:
         """Return whether this explicit Representation belongs to this light."""
+        contract = runtime_contract(representation, asset.id)
         return (
-            representation.asset_id == asset.id
-            and representation.platform == "light"
-            and _CAPABILITY in asset.capabilities
+            contract is not None
+            and representation.asset_id == asset.id
+            and contract.required_capabilities <= set(asset.capabilities)
         )
 
     async def async_update(self) -> None:

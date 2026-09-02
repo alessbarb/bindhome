@@ -27,6 +27,7 @@ from .const import DOMAIN
 from .manager import (
     AssetCreateSpec,
     BindHomeManager,
+    BindingCycleError,
     BulkAssetCreateError,
 )
 from .models import ModelValidationError
@@ -38,7 +39,7 @@ from .registry import (
     RegistryNotFoundError,
     RegistryValidationError,
 )
-from .validation import validate_area, validate_entity
+from .validation import validate_area
 
 WS_REGISTRY_GET = f"{DOMAIN}/registry/get"
 WS_ASSET_CREATE = f"{DOMAIN}/assets/create"
@@ -88,7 +89,9 @@ def _send_error(
     connection: ActiveConnection, msg: dict[str, Any], err: Exception
 ) -> None:
     """Translate domain and Home Assistant validation errors to stable WS errors."""
-    if isinstance(err, RegistryNotFoundError):
+    if isinstance(err, BindingCycleError):
+        code = "binding_cycle"
+    elif isinstance(err, RegistryNotFoundError):
         code = ERR_NOT_FOUND
     elif isinstance(err, RegistryConflictError):
         code = "conflict"
@@ -340,7 +343,6 @@ async def ws_binding_set(
 ) -> None:
     """Create or replace a binding."""
     try:
-        validate_entity(hass, msg["entity_id"])
         binding = await _get_manager(hass).async_set_binding(
             asset_id=msg["asset_id"],
             capability=msg["capability"],
