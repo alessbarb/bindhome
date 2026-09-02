@@ -16,6 +16,7 @@ from custom_components.bindhome import (
 )
 from custom_components.bindhome.const import DOMAIN
 from custom_components.bindhome.panel import (
+    _bundle_version,
     async_register_panel,
     async_unregister_panel,
 )
@@ -28,6 +29,10 @@ async def test_panel_registration(hass: HomeAssistant) -> None:
         patch(
             "custom_components.bindhome.panel.panel_custom.async_register_panel"
         ) as mock_register_panel,
+        patch(
+            "custom_components.bindhome.panel._bundle_version",
+            return_value="123456789abc",
+        ),
         patch.object(hass, "http", MagicMock()) as mock_http,
     ):
         mock_http.async_register_static_paths = AsyncMock()
@@ -39,7 +44,7 @@ async def test_panel_registration(hass: HomeAssistant) -> None:
             webcomponent_name="bindhome-panel",
             sidebar_title="BindHome",
             sidebar_icon="mdi:home-switch",
-            js_url="/bindhome_static/bindhome-panel.js",
+            js_url=("/bindhome_static/bindhome-panel.js?v=123456789abc"),
             require_admin=True,
         )
 
@@ -49,6 +54,24 @@ async def test_panel_registration(hass: HomeAssistant) -> None:
         assert path_configs[0].url_path == "/bindhome_static/bindhome-panel.js"
         assert path_configs[0].path.endswith("bindhome-panel.js")
         assert path_configs[0].cache_headers is True
+
+
+def test_bundle_version_changes_with_bundle_content(tmp_path) -> None:
+    """Bundle cache version follows the actual file content."""
+    bundle = tmp_path / "bindhome-panel.js"
+
+    bundle.write_bytes(b"first bundle")
+    first = _bundle_version(bundle)
+
+    bundle.write_bytes(b"second bundle")
+    second = _bundle_version(bundle)
+
+    assert len(first) == 12
+    assert len(second) == 12
+    assert first != second
+
+    bundle.write_bytes(b"first bundle")
+    assert _bundle_version(bundle) == first
 
 
 @pytest.mark.asyncio
