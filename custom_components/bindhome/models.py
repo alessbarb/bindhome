@@ -7,6 +7,8 @@ from dataclasses import dataclass, replace
 from typing import Any
 from uuid import uuid4
 
+BindingKey = tuple[str, str, str]
+
 _IDENTIFIER_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 
 

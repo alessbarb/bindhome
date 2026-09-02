@@ -20,6 +20,12 @@ export function createHomeAssistantApi(hass) {
         icon: area.icon ?? null,
       }));
     },
+    async listEntityRegistry() {
+      return hass.callWS({ type: "config/entity_registry/list" });
+    },
+    async listDeviceRegistry() {
+      return hass.callWS({ type: "config/device_registry/list" });
+    },
   };
 }
 

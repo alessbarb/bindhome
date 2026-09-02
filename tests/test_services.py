@@ -203,6 +203,67 @@ async def test_set_binding_service_and_entity_validation(
     assert del_resp == {"deleted": True}
 
 
+async def test_set_binding_service_rejects_bindhome_cycle(
+    hass: HomeAssistant, setup_bindhome: MockConfigEntry
+) -> None:
+    assets = []
+    for name in ("Cycle A", "Cycle B"):
+        response = await hass.services.async_call(
+            DOMAIN,
+            SERVICE_CREATE_ASSET,
+            {"name": name, "asset_type": "light_point", "capabilities": ["on_off"]},
+            blocking=True,
+            return_response=True,
+        )
+        assets.append(response["asset"]["id"])
+
+    manager = setup_bindhome.runtime_data
+    entity_ids = []
+    entity_registry = er.async_get(hass)
+    for asset_id in assets:
+        await manager.async_set_representation(asset_id=asset_id, platform="light")
+        entity_registry.async_get_or_create(
+            "light",
+            "bindhome",
+            f"bindhome_{asset_id}",
+            suggested_object_id=f"cycle_{asset_id[:8]}",
+        )
+        entity_id = entity_registry.async_get_entity_id(
+            "light", "bindhome", f"bindhome_{asset_id}"
+        )
+        assert entity_id is not None
+        entity_ids.append(entity_id)
+
+    first_binding = await hass.services.async_call(
+        DOMAIN,
+        SERVICE_SET_BINDING,
+        {
+            "asset_id": assets[0],
+            "capability": "on_off",
+            "entity_id": entity_ids[1],
+        },
+        blocking=True,
+        return_response=True,
+    )
+    with pytest.raises(ServiceValidationError, match="Binding cycle detected"):
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_SET_BINDING,
+            {
+                "asset_id": assets[1],
+                "capability": "on_off",
+                "entity_id": entity_ids[0],
+            },
+            blocking=True,
+        )
+    assert first_binding is not None
+    assert (
+        manager.registry.bindings[first_binding["binding"]["id"]].entity_id
+        == (entity_ids[1])
+    )
+    assert len(manager.registry.bindings) == 1
+
+
 async def test_relation_services(
     hass: HomeAssistant, setup_bindhome: MockConfigEntry
 ) -> None:

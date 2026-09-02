@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
-from .const import REGISTRY_SCHEMA_VERSION, REPRESENTATION_REQUIREMENTS
+from .const import REGISTRY_SCHEMA_VERSION
 from .models import (
     Asset,
     Binding,
@@ -13,6 +13,7 @@ from .models import (
     Relation,
     Representation,
 )
+from .representation import runtime_contract
 
 
 class RegistryError(ValueError):
@@ -106,7 +107,12 @@ class BindHomeRegistry:
 
             representation = self.representations.get(asset_id)
             if representation is not None:
-                required = REPRESENTATION_REQUIREMENTS[representation.platform]
+                contract = runtime_contract(representation, asset_id)
+                if contract is None:
+                    raise RegistryValidationError(
+                        f"Unknown representation platform {representation.platform}"
+                    )
+                required = contract.required_capabilities
                 missing = sorted(required - set(updated.capabilities))
                 if missing:
                     raise RegistryConflictError(
@@ -239,15 +245,15 @@ class BindHomeRegistry:
         """Create the optional logical representation for an Asset."""
         asset = self.get_asset(representation.asset_id)
 
-        required = REPRESENTATION_REQUIREMENTS.get(representation.platform)
-        if required is None:
+        contract = runtime_contract(representation, representation.asset_id)
+        if contract is None:
             raise RegistryValidationError(
                 "BindHome does not implement representation platform "
                 f"{representation.platform}",
                 field="platform",
             )
 
-        missing = sorted(required - set(asset.capabilities))
+        missing = sorted(contract.required_capabilities - set(asset.capabilities))
         if missing:
             raise RegistryValidationError(
                 f"{representation.platform} representation requires capabilities: "

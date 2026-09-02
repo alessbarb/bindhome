@@ -70,6 +70,10 @@ const t = createLocalizer(
 
 async function settle(element) {
   await element.updateComplete;
+  await Promise.all(
+    [...element.shadowRoot.querySelectorAll("bindhome-primary-connection-editor")]
+      .map((child) => child.updateComplete),
+  );
   await window.happyDOM.waitUntilComplete();
   await element.updateComplete;
 }
@@ -383,7 +387,20 @@ test(
     await settle(editor);
 
     const text =
-      editor.shadowRoot.textContent;
+      editor.shadowRoot.textContent +
+      [...editor.shadowRoot.querySelectorAll(
+        "bindhome-primary-connection-editor",
+      )]
+        .map((child) => child.shadowRoot?.textContent ?? "")
+        .join("\n");
+
+    assert.equal(
+      editor.shadowRoot.querySelectorAll(
+        "bindhome-primary-connection-editor",
+      ).length,
+      2,
+    );
+    assert.doesNotMatch(text, /Other bindings/);
 
     assert.match(
       text,

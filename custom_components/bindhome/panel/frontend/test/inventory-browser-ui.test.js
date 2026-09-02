@@ -376,6 +376,14 @@ test(
           };
         }
 
+        if (message.type === "bindhome/bindings/status") {
+          return { records: [], summary: {} };
+        }
+
+        if (message.type === "config/entity_registry/list" || message.type === "config/device_registry/list") {
+          return [];
+        }
+
         if (
           message.type ===
           "config/floor_registry/list"

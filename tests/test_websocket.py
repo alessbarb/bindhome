@@ -10,6 +10,7 @@ import pytest
 import voluptuous as vol
 
 from custom_components.bindhome import websocket
+from custom_components.bindhome.manager import BindingCycleError
 from custom_components.bindhome.models import (
     Asset,
     Binding,
@@ -516,19 +517,17 @@ async def test_binding_set_replaces_and_delete_serialize_binding() -> None:
     manager.async_set_binding.return_value = binding
     connection = FakeConnection()
     hass = hass_for(manager)
-    with pytest.MonkeyPatch.context() as patch:
-        patch.setattr(websocket, "validate_entity", Mock())
-        await call(
-            websocket.ws_binding_set,
-            hass,
-            connection,
-            {
-                "id": "1",
-                "asset_id": "a",
-                "capability": "on_off",
-                "entity_id": "switch.new",
-            },
-        )
+    await call(
+        websocket.ws_binding_set,
+        hass,
+        connection,
+        {
+            "id": "1",
+            "asset_id": "a",
+            "capability": "on_off",
+            "entity_id": "switch.new",
+        },
+    )
     await call(
         websocket.ws_binding_delete,
         hass,
@@ -647,11 +646,9 @@ async def test_registry_errors_are_structured(handler, error) -> None:
             "capability": "on_off",
             "entity_id": "switch.x",
         }
-        with pytest.MonkeyPatch.context() as patch:
-            patch.setattr(websocket, "validate_entity", Mock())
-            await call(handler, hass_for(manager), connection, msg)
-            assert connection.errors == [("1", "invalid_format", str(error))]
-            return
+        await call(handler, hass_for(manager), connection, msg)
+        assert connection.errors == [("1", "invalid_format", str(error))]
+        return
     await call(handler, hass_for(manager), connection, msg)
     assert connection.errors == [("1", "not_found", str(error))]
 
@@ -659,28 +656,45 @@ async def test_registry_errors_are_structured(handler, error) -> None:
 @pytest.mark.asyncio
 async def test_binding_set_rejects_invalid_entity_reference() -> None:
     manager = FakeManager()
+    manager.async_set_binding.side_effect = websocket.ServiceValidationError(
+        "missing entity"
+    )
     connection = FakeConnection()
-    hass = hass_for(manager)
-    with pytest.MonkeyPatch.context() as patch:
-        patch.setattr(
-            websocket,
-            "validate_entity",
-            Mock(side_effect=websocket.ServiceValidationError("missing entity")),
-        )
-        await call(
-            websocket.ws_binding_set,
-            hass,
-            connection,
-            {
-                "id": "1",
-                "asset_id": "a",
-                "capability": "on_off",
-                "entity_id": "switch.missing",
-            },
-        )
+    await call(
+        websocket.ws_binding_set,
+        hass_for(manager),
+        connection,
+        {
+            "id": "1",
+            "asset_id": "a",
+            "capability": "on_off",
+            "entity_id": "switch.missing",
+        },
+    )
 
     assert connection.errors == [("1", "not_found", "missing entity")]
-    manager.async_set_binding.assert_not_awaited()
+    manager.async_set_binding.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_binding_set_cycle_uses_stable_error_code() -> None:
+    manager = FakeManager()
+    manager.async_set_binding.side_effect = BindingCycleError(
+        [("asset-a", "on_off", "primary"), ("asset-a", "on_off", "primary")]
+    )
+    connection = FakeConnection()
+    await call(
+        websocket.ws_binding_set,
+        hass_for(manager),
+        connection,
+        {
+            "id": "1",
+            "asset_id": "asset-a",
+            "capability": "on_off",
+            "entity_id": "light.self",
+        },
+    )
+    assert connection.errors[0][1] == "binding_cycle"
 
 
 def test_command_schemas_reject_malformed_payloads() -> None:

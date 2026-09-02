@@ -8,6 +8,8 @@ import {
 import {
   createBindHomeApi,
 } from "../api/bindhome-api.js";
+import { indexBindingStatuses } from "../bindings/binding-state.js";
+import "../bindings/primary-connection-editor.js";
 
 import {
   normalizeWsError,
@@ -38,6 +40,10 @@ export class BindHomeAssetDetailEditor
     areas: { attribute: false },
     floors: { attribute: false },
     registry: { attribute: false },
+    bindingStatuses: { attribute: false },
+    entityRegistry: { attribute: false },
+    deviceRegistry: { attribute: false },
+    refreshBindingData: { attribute: false },
 
     _editing: { state: true },
     _draft: { state: true },
@@ -58,6 +64,10 @@ export class BindHomeAssetDetailEditor
     this.areas = [];
     this.floors = [];
     this.registry = {};
+    this.bindingStatuses = { records: [], summary: {} };
+    this.entityRegistry = [];
+    this.deviceRegistry = [];
+    this.refreshBindingData = null;
 
     this._editing = false;
     this._draft = null;
@@ -710,6 +720,31 @@ export class BindHomeAssetDetailEditor
     );
   }
 
+  _primaryStatus(capability) {
+    const indexed = indexBindingStatuses(this.bindingStatuses).get(
+      `${this.asset.id}:${capability}:primary`,
+    );
+    if (indexed) {
+      return indexed;
+    }
+    const binding = this._bindings().find(
+      (candidate) =>
+        candidate.capability === capability && candidate.role === "primary",
+    );
+    return binding
+      ? {
+          asset_id: this.asset.id,
+          capability,
+          role: "primary",
+          status: "resolved",
+          config_valid: true,
+          runtime_available: true,
+          entity_id: binding.entity_id,
+          binding,
+        }
+      : null;
+  }
+
   _representation() {
     return (
       this.registry
@@ -1142,9 +1177,6 @@ export class BindHomeAssetDetailEditor
     const relations =
       this._relations();
 
-    const bindings =
-      this._bindings();
-
     const representation =
       this._representation();
 
@@ -1226,55 +1258,23 @@ export class BindHomeAssetDetailEditor
                 "editor.bindings",
               )}
             </h4>
-
-            ${bindings.length
-              ? html`
-                  <ul
-                    class="connection-list"
-                  >
-                    ${bindings.map(
-                      (binding) => {
-                        const friendly =
-                          this._entityName(
-                            binding.entity_id,
-                          );
-
-                        return html`
-                          <li>
-                            <strong>
-                              ${binding.capability}
-                            </strong>
-                            · ${binding.role}
-                            <br />
-                            <span>
-                              ${friendly}
-                            </span>
-
-                            ${friendly !==
-                            binding.entity_id
-                              ? html`
-                                  <br />
-                                  <span
-                                    class="muted"
-                                  >
-                                    ${binding
-                                      .entity_id}
-                                  </span>
-                                `
-                              : nothing}
-                          </li>
-                        `;
-                      },
-                    )}
-                  </ul>
-                `
-              : html`
-                  <p class="muted">
-                    ${this.t(
-                      "editor.no_bindings",
-                    )}
-                  </p>
-                `}
+            <div class="connection-list">
+              ${(this.asset.capabilities ?? []).map(
+                (capability) => html`
+                  <bindhome-primary-connection-editor
+                    .hass=${this.hass}
+                    .t=${this.t}
+                    .asset=${this.asset}
+                    .capability=${capability}
+                    .status=${this._primaryStatus(capability)}
+                    .areas=${this.areas}
+                    .entityRegistry=${this.entityRegistry}
+                    .deviceRegistry=${this.deviceRegistry}
+                    .refreshBindingData=${this.refreshBindingData}
+                  ></bindhome-primary-connection-editor>
+                `,
+              )}
+            </div>
           </article>
 
           <article class="connection-card">
