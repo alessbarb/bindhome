@@ -55,6 +55,14 @@ export class BindHomePanel extends LitElement {
     this._assets = registry.assets ?? this._assets;
     this._bindingStatuses = bindingStatuses;
   }
+  async _refreshTopologyData() {
+    if (!this.hass) return;
+    const generation = ++this._dataGeneration;
+    const registry = await createBindHomeApi(this.hass).getRegistry();
+    if (generation !== this._dataGeneration) return;
+    this._registry = registry;
+    this._assets = registry.assets ?? this._assets;
+  }
   _assetsRefreshed(event) { this._assets = event.detail; if (this._registry) this._registry = { ...this._registry, assets: event.detail }; }
   render() {
     let content;
@@ -78,6 +86,7 @@ export class BindHomePanel extends LitElement {
           .entityRegistry=${this._entityRegistry}
           .deviceRegistry=${this._deviceRegistry}
           .refreshBindingData=${() => this._refreshBindingData()}
+          .refreshTopologyData=${() => this._refreshTopologyData()}
           @assets-refreshed=${this._assetsRefreshed}
         ></bindhome-inventory-section>
       </section>

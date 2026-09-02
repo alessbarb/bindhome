@@ -2,6 +2,7 @@ import { LitElement, css, html } from "lit";
 
 import "./inventory-browser.js";
 import "./inventory-workflow.js";
+import "../topology/topology-explorer.js";
 
 export class BindHomeInventorySection extends LitElement {
   static properties = {
@@ -16,6 +17,7 @@ export class BindHomeInventorySection extends LitElement {
     entityRegistry: { attribute: false },
     deviceRegistry: { attribute: false },
     refreshBindingData: { attribute: false },
+    refreshTopologyData: { attribute: false },
     _active: { state: true },
   };
 
@@ -32,6 +34,7 @@ export class BindHomeInventorySection extends LitElement {
     this.entityRegistry = [];
     this.deviceRegistry = [];
     this.refreshBindingData = null;
+    this.refreshTopologyData = null;
     this._active = "browse";
   }
 
@@ -138,6 +141,12 @@ export class BindHomeInventorySection extends LitElement {
         )}
       >
         <button
+          class=${this._active === "topology" ? "active" : ""}
+          aria-current=${this._active === "topology" ? "page" : "false"}
+          @click=${() => this._show("topology")}
+        >${this.t("topology.explorer")}</button>
+
+        <button
           class=${this._active === "browse"
             ? "active"
             : ""}
@@ -187,9 +196,19 @@ export class BindHomeInventorySection extends LitElement {
           .entityRegistry=${this.entityRegistry}
           .deviceRegistry=${this.deviceRegistry}
           .refreshBindingData=${this.refreshBindingData}
+          .refreshTopologyData=${this.refreshTopologyData}
           @assets-refreshed=${this
             ._forwardAssetsRefreshed}
         ></bindhome-inventory-browser>
+      </section>
+
+      <section class="view" ?hidden=${this._active !== "topology"}>
+        <bindhome-topology-explorer
+          .t=${this.t}
+          .assets=${this.assets}
+          .areas=${this.areas}
+          .registry=${this.registry}
+        ></bindhome-topology-explorer>
       </section>
 
       <section
