@@ -1,5 +1,4 @@
 import * as esbuild from "esbuild";
-import { readFile, writeFile } from "node:fs/promises";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -24,7 +23,5 @@ if (isWatch) {
   console.log("Watching for frontend changes...");
 } else {
   await esbuild.build(buildOptions);
-  const bundle = await readFile(buildOptions.outfile, "utf8");
-  await writeFile(buildOptions.outfile, bundle.replace(/[ \t]+$/gm, ""));
   console.log("Frontend build complete.");
 }
