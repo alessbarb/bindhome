@@ -327,6 +327,11 @@ The lifecycle is intentionally separable:
 
 `Inventory -> Connect -> Topology -> Expose/Automate`
 
+Topology is implemented as a navigable incoming/outgoing Asset view. Relations
+are created and deleted explicitly using extensible types; search is bounded
+and same-Area ordering is only a suggestion. Expose/Automate remain future
+stages.
+
 This allows the physical model of the home to exist independently of its current
 automation level.
 

@@ -65,6 +65,11 @@ Required properties:
 
 Represents topology between assets. The core does not hard-code electrical, plumbing, climate, or network semantics. Relation types are extensible identifiers.
 
+The Inventory UI exposes these directed Relations as incoming and outgoing
+topology, with explicit create/delete actions and a bounded search-first
+explorer. Relation deletion never cascades to Assets, Bindings, or
+Representations.
+
 ### Capability
 
 Represents a logical function of an asset. Bindings attach to capabilities, allowing one asset to use different Home Assistant entities for control, sensing, power measurement, and other roles.
