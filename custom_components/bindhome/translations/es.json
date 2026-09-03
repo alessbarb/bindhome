@@ -225,6 +225,7 @@
     "panel_topology_delete": "Eliminar",
     "panel_topology_confirm_delete": "¿Eliminar esta relación?",
     "panel_topology_save_error": "No se pudo guardar la relación.",
+    "panel_topology_duplicate_relation": "Esta relación de topología ya existe.",
     "panel_topology_delete_error": "No se pudo eliminar la relación.",
     "panel_topology_sync_warning": "Guardado, pero no se pudo actualizar la topología.",
     "panel_topology_explorer": "Topología",

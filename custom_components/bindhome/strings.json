@@ -347,6 +347,7 @@
     ,"panel_topology_delete": "Delete"
     ,"panel_topology_confirm_delete": "Delete this relation?"
     ,"panel_topology_save_error": "Could not save this relation."
+    ,"panel_topology_duplicate_relation": "This topology relation already exists."
     ,"panel_topology_delete_error": "Could not delete this relation."
     ,"panel_topology_sync_warning": "Saved, but the latest topology could not be refreshed."
     ,"panel_topology_explorer": "Topology"

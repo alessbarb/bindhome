@@ -1660,3 +1660,58 @@ test(
     element.remove();
   },
 );
+
+
+test(
+  "Relation conflict is localized instead of exposing the backend English message",
+  async () => {
+    const editor = createRelationEditor({
+      callWS: async () => {
+        const error = new Error(
+          "The same topology relation already exists",
+        );
+
+        error.code = "conflict";
+        throw error;
+      },
+    });
+
+    editor.t = (key) => {
+      if (key === "topology.duplicate_relation") {
+        return "Esta relación de topología ya existe.";
+      }
+
+      if (key === "topology.save_error") {
+        return "No se pudo guardar esta relación.";
+      }
+
+      return key;
+    };
+
+    await settle(editor);
+
+    editor._direction = "incoming";
+    editor._type = "feeds";
+    editor._other = "a";
+    editor._search = "UX-4 Source";
+
+    await editor._save();
+
+    assert.equal(
+      editor._error,
+      "Esta relación de topología ya existe.",
+    );
+
+    assert.equal(editor._direction, "incoming");
+    assert.equal(editor._type, "feeds");
+    assert.equal(editor._other, "a");
+    assert.equal(editor._search, "UX-4 Source");
+
+    assert.doesNotMatch(
+      editor._error,
+      /The same topology relation already exists/,
+    );
+
+    editor.remove();
+  },
+);

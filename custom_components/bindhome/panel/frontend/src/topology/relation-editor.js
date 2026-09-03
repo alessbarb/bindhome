@@ -178,10 +178,15 @@ export class BindHomeRelationEditor extends LitElement {
         return;
       }
 
-      this._error = normalizeWsError(
+      const normalized = normalizeWsError(
         error,
         this.t("topology.save_error"),
-      ).message;
+      );
+
+      this._error =
+        normalized.code === "conflict"
+          ? this.t("topology.duplicate_relation")
+          : normalized.message;
 
       this._saving = false;
     }
