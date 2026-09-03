@@ -347,6 +347,7 @@ export class BindHomeAssetDetailEditor
       grid-template-columns:
         repeat(3, minmax(0, 1fr));
       gap: 14px;
+      align-items: start;
     }
 
     .connection-card {

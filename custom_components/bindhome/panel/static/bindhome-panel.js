@@ -376,8 +376,8 @@
 
     .columns {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 20px;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
       margin-top: 16px;
     }
 
@@ -390,18 +390,20 @@
     }
 
     li {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
       gap: 8px;
-      align-items: stretch;
+      align-items: center;
     }
 
     .neighbor {
-      flex: 1;
+      min-width: 0;
       text-align: left;
       padding: 9px;
       border: 1px solid var(--divider-color);
       background: transparent;
       border-radius: 6px;
+      overflow-wrap: anywhere;
     }
 
     button.neighbor {
@@ -419,10 +421,27 @@
     }
 
     .delete {
+      align-self: center;
       border: 0;
       background: transparent;
       color: var(--error-color);
       cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .confirm {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      padding-top: 4px;
+    }
+
+    .confirm > span {
+      flex: 1 1 100%;
+      color: var(--secondary-text-color);
+      font-size: 12px;
     }
 
     .topology button {
@@ -1073,6 +1092,7 @@
       grid-template-columns:
         repeat(3, minmax(0, 1fr));
       gap: 14px;
+      align-items: start;
     }
 
     .connection-card {
