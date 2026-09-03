@@ -45,6 +45,22 @@ export function createBindHomeApi(hass) {
       });
     },
 
+    async createRelation({ sourceAssetId, relationType, targetAssetId }) {
+      return hass.callWS({
+        type: "bindhome/relations/create",
+        source_asset_id: sourceAssetId,
+        relation_type: relationType,
+        target_asset_id: targetAssetId,
+      });
+    },
+
+    async deleteRelation(relationId) {
+      return hass.callWS({
+        type: "bindhome/relations/delete",
+        relation_id: relationId,
+      });
+    },
+
     async createAssetsBulk(assets) {
       return hass.callWS({
         type: "bindhome/assets/create_bulk",

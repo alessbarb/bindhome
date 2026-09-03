@@ -10,6 +10,7 @@ import {
 } from "../api/bindhome-api.js";
 import { indexBindingStatuses } from "../bindings/binding-state.js";
 import "../bindings/primary-connection-editor.js";
+import "../topology/asset-topology.js";
 
 import {
   normalizeWsError,
@@ -44,6 +45,7 @@ export class BindHomeAssetDetailEditor
     entityRegistry: { attribute: false },
     deviceRegistry: { attribute: false },
     refreshBindingData: { attribute: false },
+    refreshTopologyData: { attribute: false },
 
     _editing: { state: true },
     _draft: { state: true },
@@ -68,6 +70,7 @@ export class BindHomeAssetDetailEditor
     this.entityRegistry = [];
     this.deviceRegistry = [];
     this.refreshBindingData = null;
+    this.refreshTopologyData = null;
 
     this._editing = false;
     this._draft = null;
@@ -344,6 +347,7 @@ export class BindHomeAssetDetailEditor
       grid-template-columns:
         repeat(3, minmax(0, 1fr));
       gap: 14px;
+      align-items: start;
     }
 
     .connection-card {
@@ -1174,9 +1178,6 @@ export class BindHomeAssetDetailEditor
   }
 
   _renderConnections() {
-    const relations =
-      this._relations();
-
     const representation =
       this._representation();
 
@@ -1190,66 +1191,16 @@ export class BindHomeAssetDetailEditor
 
         <div class="connection-grid">
           <article class="connection-card">
-            <h4>
-              ${this.t(
-                "editor.relations",
-              )}
-            </h4>
-
-            ${relations.length
-              ? html`
-                  <ul
-                    class="connection-list"
-                  >
-                    ${relations.map(
-                      (relation) => {
-                        const outgoing =
-                          relation
-                            .source_asset_id ===
-                          this.asset.id;
-
-                        const otherId =
-                          outgoing
-                            ? relation
-                                .target_asset_id
-                            : relation
-                                .source_asset_id;
-
-                        return html`
-                          <li>
-                            <strong>
-                              ${outgoing
-                                ? this.t(
-                                    "editor.outgoing",
-                                  )
-                                : this.t(
-                                    "editor.incoming",
-                                  )}
-                            </strong>
-                            ·
-                            ${relation
-                              .relation_type}
-                            <br />
-                            <span
-                              class="muted"
-                            >
-                              ${this._assetName(
-                                otherId,
-                              )}
-                            </span>
-                          </li>
-                        `;
-                      },
-                    )}
-                  </ul>
-                `
-              : html`
-                  <p class="muted">
-                    ${this.t(
-                      "editor.no_relations",
-                    )}
-                  </p>
-                `}
+            <bindhome-asset-topology
+              .hass=${this.hass}
+              .t=${this.t}
+              .asset=${this.asset}
+              .assets=${this.assets}
+              .areas=${this.areas}
+              .registry=${this.registry}
+              .onRefresh=${this.refreshTopologyData}
+              @topology-sync-warning=${(event) => { this._error = event.detail; }}
+            ></bindhome-asset-topology>
           </article>
 
           <article class="connection-card">

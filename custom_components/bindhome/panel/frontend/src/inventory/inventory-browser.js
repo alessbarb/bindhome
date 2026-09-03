@@ -20,6 +20,7 @@ export class BindHomeInventoryBrowser extends LitElement {
     entityRegistry: { attribute: false },
     deviceRegistry: { attribute: false },
     refreshBindingData: { attribute: false },
+    refreshTopologyData: { attribute: false },
     t: { attribute: false },
     _selectedKey: { state: true },
     _selectedAssetId: { state: true },
@@ -38,6 +39,7 @@ export class BindHomeInventoryBrowser extends LitElement {
     this.entityRegistry = [];
     this.deviceRegistry = [];
     this.refreshBindingData = null;
+    this.refreshTopologyData = null;
     this.t = (key) => key;
     this._selectedKey = "";
     this._selectedAssetId = null;
@@ -806,11 +808,13 @@ export class BindHomeInventoryBrowser extends LitElement {
           .entityRegistry=${this.entityRegistry}
           .deviceRegistry=${this.deviceRegistry}
           .refreshBindingData=${this.refreshBindingData}
+          .refreshTopologyData=${this.refreshTopologyData}
           @close=${this._closeAsset}
           @editing-changed=${this
             ._handleEditingChanged}
           @asset-updated=${this
             ._handleAssetUpdated}
+          @navigate-asset=${(event) => this._openAsset(event.detail)}
         ></bindhome-asset-detail-editor>
       `;
     }

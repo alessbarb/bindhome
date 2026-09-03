@@ -443,3 +443,655 @@ test("room workflow preserves and focuses a failed draft, then retries one atomi
   assert.equal(calls.filter((call) => call.type === "bindhome/assets/create").length, 0);
   assert.equal(calls.filter((call) => call.type === "bindhome/assets/list").length, 1);
 });
+
+
+// ---------------------------------------------------------------------------
+// UX-4 topology refresh generation tests
+// ---------------------------------------------------------------------------
+
+function topologyDeferred() {
+  let resolve;
+  let reject;
+
+  const promise = new Promise(
+    (resolvePromise, rejectPromise) => {
+      resolve = resolvePromise;
+      reject = rejectPromise;
+    },
+  );
+
+  return {
+    promise,
+    resolve,
+    reject,
+  };
+}
+
+test(
+  "out-of-order topology refreshes cannot overwrite the newest snapshot",
+  async () => {
+    const pending = [];
+
+    const panel = document.createElement(
+      "bindhome-panel",
+    );
+
+    panel.hass = {
+      callWS: (message) => {
+        assert.equal(
+          message.type,
+          "bindhome/registry/get",
+        );
+
+        const operation =
+          topologyDeferred();
+
+        pending.push(operation);
+
+        return operation.promise;
+      },
+      states: {},
+    };
+
+    panel._initialized = true;
+
+    const first =
+      panel._refreshTopologyData();
+
+    const second =
+      panel._refreshTopologyData();
+
+    assert.equal(pending.length, 2);
+
+    pending[1].resolve({
+      assets: [
+        {
+          id: "topology-new",
+        },
+      ],
+      relations: [
+        {
+          id: "relation-new",
+        },
+      ],
+      bindings: [],
+      representations: [],
+    });
+
+    await second;
+
+    pending[0].resolve({
+      assets: [
+        {
+          id: "topology-old",
+        },
+      ],
+      relations: [
+        {
+          id: "relation-old",
+        },
+      ],
+      bindings: [],
+      representations: [],
+    });
+
+    await first;
+
+    assert.deepEqual(
+      panel._registry.assets,
+      [
+        {
+          id: "topology-new",
+        },
+      ],
+    );
+
+    assert.deepEqual(
+      panel._registry.relations,
+      [
+        {
+          id: "relation-new",
+        },
+      ],
+    );
+
+    assert.deepEqual(
+      panel._assets,
+      [
+        {
+          id: "topology-new",
+        },
+      ],
+    );
+  },
+);
+
+test(
+  "a newer full load wins over an older topology refresh",
+  async () => {
+    const pendingRegistry = [];
+    const pendingStatuses = [];
+
+    const callWS = (message) => {
+      if (
+        message.type ===
+        "bindhome/registry/get"
+      ) {
+        const operation =
+          topologyDeferred();
+
+        pendingRegistry.push(
+          operation,
+        );
+
+        return operation.promise;
+      }
+
+      if (
+        message.type ===
+        "bindhome/bindings/status"
+      ) {
+        const operation =
+          topologyDeferred();
+
+        pendingStatuses.push(
+          operation,
+        );
+
+        return operation.promise;
+      }
+
+      if (
+        message.type ===
+        "bindhome/presets/list"
+      ) {
+        return Promise.resolve({
+          presets,
+        });
+      }
+
+      if (
+        message.type ===
+        "bindhome/assets/list"
+      ) {
+        return Promise.resolve({
+          assets: [
+            {
+              id: "full-list",
+            },
+          ],
+        });
+      }
+
+      if (
+        message.type ===
+          "config/entity_registry/list" ||
+        message.type ===
+          "config/device_registry/list"
+      ) {
+        return Promise.resolve([]);
+      }
+
+      if (
+        message.type ===
+          "config/floor_registry/list" ||
+        message.type ===
+          "config/area_registry/list"
+      ) {
+        return Promise.resolve([]);
+      }
+
+      if (
+        message.type ===
+        "frontend/get_translations"
+      ) {
+        return Promise.resolve({
+          resources:
+            englishResources,
+        });
+      }
+
+      throw new Error(
+        `Unexpected call: ${message.type}`,
+      );
+    };
+
+    const panel = document.createElement(
+      "bindhome-panel",
+    );
+
+    panel.hass = {
+      callWS,
+      states: {},
+    };
+
+    panel._initialized = true;
+
+    const topology =
+      panel._refreshTopologyData();
+
+    const full =
+      panel._load(false);
+
+    assert.equal(
+      pendingRegistry.length,
+      2,
+    );
+
+    assert.equal(
+      pendingStatuses.length,
+      1,
+    );
+
+    /*
+     * Registry call #0 belongs to
+     * the older topology refresh.
+     *
+     * Registry call #1 belongs to
+     * the newer full load.
+     */
+    pendingRegistry[1].resolve({
+      assets: [
+        {
+          id: "full-registry",
+        },
+      ],
+      relations: [
+        {
+          id: "full-relation",
+        },
+      ],
+      bindings: [],
+      representations: [],
+    });
+
+    pendingStatuses[0].resolve({
+      records: [
+        {
+          asset_id:
+            "full-registry",
+        },
+      ],
+      summary: {},
+    });
+
+    await full;
+
+    pendingRegistry[0].resolve({
+      assets: [
+        {
+          id: "stale-topology",
+        },
+      ],
+      relations: [
+        {
+          id: "stale-relation",
+        },
+      ],
+      bindings: [],
+      representations: [],
+    });
+
+    await topology;
+
+    assert.deepEqual(
+      panel._registry.assets,
+      [
+        {
+          id: "full-registry",
+        },
+      ],
+    );
+
+    assert.deepEqual(
+      panel._registry.relations,
+      [
+        {
+          id: "full-relation",
+        },
+      ],
+    );
+
+    assert.deepEqual(
+      panel._bindingStatuses.records,
+      [
+        {
+          asset_id:
+            "full-registry",
+        },
+      ],
+    );
+
+    /*
+     * Full load owns _assets from
+     * bindhome/assets/list.
+     */
+    assert.deepEqual(
+      panel._assets,
+      [
+        {
+          id: "full-list",
+        },
+      ],
+    );
+  },
+);
+
+test(
+  "a newer topology refresh wins over an older full load",
+  async () => {
+    const pendingRegistry = [];
+    const pendingStatuses = [];
+
+    const callWS = (message) => {
+      if (
+        message.type ===
+        "bindhome/registry/get"
+      ) {
+        const operation =
+          topologyDeferred();
+
+        pendingRegistry.push(
+          operation,
+        );
+
+        return operation.promise;
+      }
+
+      if (
+        message.type ===
+        "bindhome/bindings/status"
+      ) {
+        const operation =
+          topologyDeferred();
+
+        pendingStatuses.push(
+          operation,
+        );
+
+        return operation.promise;
+      }
+
+      if (
+        message.type ===
+        "bindhome/presets/list"
+      ) {
+        return Promise.resolve({
+          presets,
+        });
+      }
+
+      if (
+        message.type ===
+        "bindhome/assets/list"
+      ) {
+        return Promise.resolve({
+          assets: [
+            {
+              id: "old-full-list",
+            },
+          ],
+        });
+      }
+
+      if (
+        message.type ===
+          "config/entity_registry/list" ||
+        message.type ===
+          "config/device_registry/list"
+      ) {
+        return Promise.resolve([]);
+      }
+
+      if (
+        message.type ===
+          "config/floor_registry/list" ||
+        message.type ===
+          "config/area_registry/list"
+      ) {
+        return Promise.resolve([]);
+      }
+
+      if (
+        message.type ===
+        "frontend/get_translations"
+      ) {
+        return Promise.resolve({
+          resources:
+            englishResources,
+        });
+      }
+
+      throw new Error(
+        `Unexpected call: ${message.type}`,
+      );
+    };
+
+    const panel = document.createElement(
+      "bindhome-panel",
+    );
+
+    panel.hass = {
+      callWS,
+      states: {},
+    };
+
+    panel._initialized = true;
+
+    const full =
+      panel._load(false);
+
+    const topology =
+      panel._refreshTopologyData();
+
+    assert.equal(
+      pendingRegistry.length,
+      2,
+    );
+
+    assert.equal(
+      pendingStatuses.length,
+      1,
+    );
+
+    /*
+     * Registry #0 belongs to
+     * the old full load.
+     *
+     * Registry #1 belongs to
+     * the newer topology refresh.
+     */
+    pendingRegistry[1].resolve({
+      assets: [
+        {
+          id: "new-topology",
+        },
+      ],
+      relations: [
+        {
+          id: "new-topology-relation",
+        },
+      ],
+      bindings: [],
+      representations: [],
+    });
+
+    await topology;
+
+    pendingRegistry[0].resolve({
+      assets: [
+        {
+          id: "old-full",
+        },
+      ],
+      relations: [
+        {
+          id: "old-full-relation",
+        },
+      ],
+      bindings: [],
+      representations: [],
+    });
+
+    pendingStatuses[0].resolve({
+      records: [
+        {
+          asset_id:
+            "old-full",
+        },
+      ],
+      summary: {},
+    });
+
+    await full;
+
+    assert.deepEqual(
+      panel._registry.assets,
+      [
+        {
+          id: "new-topology",
+        },
+      ],
+    );
+
+    assert.deepEqual(
+      panel._registry.relations,
+      [
+        {
+          id:
+            "new-topology-relation",
+        },
+      ],
+    );
+
+    assert.deepEqual(
+      panel._assets,
+      [
+        {
+          id: "new-topology",
+        },
+      ],
+    );
+
+    /*
+     * The stale full load must not
+     * apply its Binding snapshot.
+     */
+    assert.deepEqual(
+      panel._bindingStatuses.records,
+      [],
+    );
+  },
+);
+
+test(
+  "a newer failed topology refresh prevents an older topology snapshot from applying",
+  async () => {
+    const pending = [];
+
+    const panel = document.createElement(
+      "bindhome-panel",
+    );
+
+    panel.hass = {
+      callWS: (message) => {
+        assert.equal(
+          message.type,
+          "bindhome/registry/get",
+        );
+
+        const operation =
+          topologyDeferred();
+
+        pending.push(operation);
+
+        return operation.promise;
+      },
+      states: {},
+    };
+
+    panel._initialized = true;
+
+    panel._registry = {
+      assets: [
+        {
+          id: "baseline",
+        },
+      ],
+      relations: [],
+      bindings: [],
+      representations: [],
+    };
+
+    panel._assets = [
+      {
+        id: "baseline",
+      },
+    ];
+
+    const older =
+      panel._refreshTopologyData();
+
+    const newer =
+      panel._refreshTopologyData();
+
+    assert.equal(pending.length, 2);
+
+    pending[1].reject(
+      new Error(
+        "new topology refresh failed",
+      ),
+    );
+
+    await assert.rejects(
+      newer,
+      /new topology refresh failed/,
+    );
+
+    /*
+     * The older request eventually
+     * succeeds, but its generation is
+     * obsolete because a newer refresh
+     * was already initiated.
+     */
+    pending[0].resolve({
+      assets: [
+        {
+          id: "stale-success",
+        },
+      ],
+      relations: [
+        {
+          id: "stale-relation",
+        },
+      ],
+      bindings: [],
+      representations: [],
+    });
+
+    await older;
+
+    assert.deepEqual(
+      panel._registry.assets,
+      [
+        {
+          id: "baseline",
+        },
+      ],
+    );
+
+    assert.deepEqual(
+      panel._registry.relations,
+      [],
+    );
+
+    assert.deepEqual(
+      panel._assets,
+      [
+        {
+          id: "baseline",
+        },
+      ],
+    );
+  },
+);
