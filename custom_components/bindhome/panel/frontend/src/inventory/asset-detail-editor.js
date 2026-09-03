@@ -1190,7 +1190,6 @@ export class BindHomeAssetDetailEditor
 
         <div class="connection-grid">
           <article class="connection-card">
-            ${(this._relations()).map((relation) => html`<p class="muted">${this._assetName(relation.source_asset_id === this.asset.id ? relation.target_asset_id : relation.source_asset_id)} · ${relation.relation_type}</p>`)}
             <bindhome-asset-topology
               .hass=${this.hass}
               .t=${this.t}

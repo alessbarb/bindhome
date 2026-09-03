@@ -394,6 +394,9 @@ test(
         .map((child) => child.shadowRoot?.textContent ?? "")
         .join("\n");
 
+    const topology = editor.shadowRoot.querySelector("bindhome-asset-topology");
+    const topologyText = topology?.shadowRoot?.textContent ?? "";
+
     assert.equal(
       editor.shadowRoot.querySelectorAll(
         "bindhome-primary-connection-editor",
@@ -403,7 +406,7 @@ test(
     assert.doesNotMatch(text, /Other bindings/);
 
     assert.match(
-      text,
+      topologyText,
       /Electrical panel/,
     );
 
