@@ -229,6 +229,7 @@
     "panel_topology_sync_warning": "Guardado, pero no se pudo actualizar la topología.",
     "panel_topology_explorer": "Topología",
     "panel_topology_no_assets": "No hay activos disponibles.",
+    "panel_topology_missing_asset": "Elemento no disponible",
     "panel_common_save": "Guardar",
     "panel_capabilities_on_off": "Activar/desactivar"
   }
