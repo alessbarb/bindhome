@@ -2,19 +2,33 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError, UnsupportedStorageVersionError
 from homeassistant.helpers.storage import Store
 from homeassistant.util import json as json_util
 from homeassistant.util.file import WriteError
 
 from .const import STORAGE_KEY, STORAGE_VERSION
-from .registry import BindHomeRegistry
+from .registry import BindHomeRegistry, RegistryValidationError
 
 
 class BindHomeStoreError(RuntimeError):
-    """Raised when Home Assistant cannot persist the BindHome registry."""
+    """Base error for BindHome persistent storage failures."""
+
+
+class BindHomeStoreLoadError(BindHomeStoreError):
+    """Raised when persisted BindHome state cannot be loaded safely."""
+
+
+class BindHomeStoreCorruptionError(BindHomeStoreLoadError):
+    """Raised when Home Assistant moved corrupt BindHome storage aside."""
+
+
+class BindHomeStoreVersionError(BindHomeStoreLoadError):
+    """Raised when the Home Assistant storage envelope is too new."""
 
 
 class _FailFastStore(Store[dict[str, Any]]):
@@ -31,6 +45,7 @@ class BindHomeStore:
     """Persist the BindHome registry using Home Assistant storage."""
 
     def __init__(self, hass: HomeAssistant) -> None:
+        self._hass = hass
         self._store: Store[dict[str, Any]] = _FailFastStore(
             hass,
             STORAGE_VERSION,
@@ -38,9 +53,52 @@ class BindHomeStore:
             atomic_writes=True,
         )
 
+    async def _async_path_exists(self) -> bool:
+        """Return whether the managed Home Assistant storage file exists."""
+        return await self._hass.async_add_executor_job(os.path.isfile, self._store.path)
+
     async def async_load(self) -> BindHomeRegistry:
-        """Load the registry from Home Assistant storage."""
-        return BindHomeRegistry.from_dict(await self._store.async_load())
+        """Load persisted registry state without silently discarding failures."""
+        existed_before = await self._async_path_exists()
+
+        try:
+            data = await self._store.async_load()
+        except UnsupportedStorageVersionError as err:
+            raise BindHomeStoreVersionError(
+                "BindHome storage was written by a newer incompatible version"
+            ) from err
+        except HomeAssistantError as err:
+            raise BindHomeStoreLoadError(
+                "Home Assistant could not read BindHome storage"
+            ) from err
+
+        if data is None:
+            if not existed_before:
+                return BindHomeRegistry()
+
+            if not await self._async_path_exists():
+                raise BindHomeStoreCorruptionError(
+                    "BindHome storage is corrupt and Home Assistant moved it aside; "
+                    "restore the registry from a backup before continuing"
+                )
+
+            raise BindHomeStoreLoadError(
+                "BindHome storage exists but did not contain a readable registry"
+            )
+
+        try:
+            registry = BindHomeRegistry.from_dict(data)
+        except RegistryValidationError as err:
+            raise BindHomeStoreLoadError(
+                f"Persisted BindHome registry is invalid: {err}"
+            ) from err
+
+        # Persist the already-supported legacy in-memory migration once so
+        # future starts load the canonical explicit Representation form.
+        if "schema_version" not in data or "representations" not in data:
+            await self.async_save(registry)
+
+        return registry
 
     async def async_save(self, registry: BindHomeRegistry) -> None:
         """Persist the registry immediately or raise on storage failure."""
