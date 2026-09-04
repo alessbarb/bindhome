@@ -23,6 +23,7 @@ export class BindHomeElementDetail extends LitElement {
     bindingStatuses: { attribute: false },
     entityRegistry: { attribute: false },
     deviceRegistry: { attribute: false },
+    advancedEnabled: { type: Boolean, attribute: false },
     refreshBindingData: { attribute: false },
     refreshTopologyData: { attribute: false },
     refreshAssets: { attribute: false },
@@ -43,6 +44,7 @@ export class BindHomeElementDetail extends LitElement {
     this.bindingStatuses = { records: [], summary: {} };
     this.entityRegistry = [];
     this.deviceRegistry = [];
+    this.advancedEnabled = false;
     this.refreshBindingData = null;
     this.refreshTopologyData = null;
     this.refreshAssets = null;
@@ -444,7 +446,21 @@ export class BindHomeElementDetail extends LitElement {
                   : this.t("common.none")}
               </dd>
             </dl>
-            <button class="secondary" @click=${() => this.dispatchEvent(new CustomEvent("open-advanced", { detail: this.asset.id, bubbles:true, composed:true }))}>${this.t("detail.open_advanced")}</button>
+            ${this.advancedEnabled
+              ? html`<button
+                  class="secondary open-advanced"
+                  @click=${() =>
+                    this.dispatchEvent(
+                      new CustomEvent("open-advanced", {
+                        detail: this.asset.id,
+                        bubbles: true,
+                        composed: true,
+                      }),
+                    )}
+                >
+                  ${this.t("detail.open_advanced")}
+                </button>`
+              : nothing}
           </details>
         </section>
       </article>`;

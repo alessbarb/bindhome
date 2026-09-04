@@ -24,6 +24,7 @@ export class BindHomeHomeView extends LitElement {
     bindingStatuses: { attribute: false },
     entityRegistry: { attribute: false },
     deviceRegistry: { attribute: false },
+    advancedEnabled: { type: Boolean, attribute: false },
     refreshBindingData: { attribute: false },
     refreshTopologyData: { attribute: false },
     refreshAssets: { attribute: false },
@@ -42,6 +43,7 @@ export class BindHomeHomeView extends LitElement {
     this.bindingStatuses = { records: [], summary: {} };
     this.entityRegistry = [];
     this.deviceRegistry = [];
+    this.advancedEnabled = false;
     this.refreshBindingData = null;
     this.refreshTopologyData = null;
     this.refreshAssets = null;
@@ -383,6 +385,7 @@ export class BindHomeHomeView extends LitElement {
               .bindingStatuses=${this.bindingStatuses}
               .entityRegistry=${this.entityRegistry}
               .deviceRegistry=${this.deviceRegistry}
+              .advancedEnabled=${this.advancedEnabled}
               .refreshBindingData=${this.refreshBindingData}
               .refreshTopologyData=${this.refreshTopologyData}
               .refreshAssets=${this.refreshAssets}

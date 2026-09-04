@@ -426,7 +426,7 @@ export class BindHomePanel extends LitElement {
     this._view = "home";
   }
   _editAsset(id) {
-    this._setAdvancedPinned(true);
+    if (!this._advancedPinned) return;
     this._advancedAssetId = id;
     this._view = "advanced";
   }
@@ -462,6 +462,7 @@ export class BindHomePanel extends LitElement {
           .bindingStatuses=${common.bindingStatuses}
           .entityRegistry=${common.entityRegistry}
           .deviceRegistry=${common.deviceRegistry}
+          .advancedEnabled=${this._advancedPinned}
           .refreshBindingData=${common.refreshBindingData}
           .refreshTopologyData=${common.refreshTopologyData}
           .refreshAssets=${() => this._refreshAssets()}

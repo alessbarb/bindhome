@@ -525,6 +525,7 @@ test("Open in Advanced opens the exact human Asset in the mounted technical edit
   window.localStorage.clear();
 
   const panel = panelFixture();
+  panel._setAdvancedPinned(true);
   panel._homeNavigate({ detail: { areaId: "garage", assetId: "b" } });
   let home = await settlePanel(panel);
   const detail = home.shadowRoot.querySelector("bindhome-element-detail");
@@ -578,6 +579,7 @@ test("repeated Open in Advanced is a fresh request after manual Advanced navigat
   window.localStorage.clear();
 
   const panel = panelFixture();
+  panel._setAdvancedPinned(true);
   panel._homeNavigate({ detail: { areaId: "kitchen", assetId: "a" } });
   let home = await settlePanel(panel);
   let detail = home.shadowRoot.querySelector("bindhome-element-detail");
@@ -1060,60 +1062,82 @@ test("new Add session ignores completion from an older in-flight session", async
 });
 
 
-test("Open in Advanced explicitly enables and persists Advanced mode", async () => {
+test("Advanced switch is the only authority for human-to-Advanced handoff", async () => {
   window.localStorage.clear();
 
   const panel = panelFixture();
+
   panel._translationLanguage = "en";
   panel.hass = {
     language: "en",
-    user: { id: "open-advanced-user" },
+    user: { id: "master-switch-user" },
     callWS: async () => ({ resources: {} }),
   };
 
-  await settle(panel);
+  panel._homeNavigate({
+    detail: { areaId: "kitchen", assetId: "a" },
+  });
 
+  let home = await settlePanel(panel);
+  let detail =
+    home.shadowRoot.querySelector("bindhome-element-detail");
+
+  await settle(detail);
+
+  // No stored preference means first use is OFF.
   assert.equal(panel._advancedPinned, false);
   assert.equal(
-    panel.shadowRoot.querySelector(
-      ".tabs button.advanced",
-    ).disabled,
-    true,
+    window.localStorage.getItem(
+      "bindhome.advanced-pinned.master-switch-user",
+    ),
+    null,
   );
 
+  // Human view exposes no technical escape hatch while OFF.
+  assert.equal(detail.advancedEnabled, false);
+  assert.equal(
+    detail.shadowRoot.querySelector(".open-advanced"),
+    null,
+  );
+
+  // A stale/synthetic event cannot bypass the master control.
   panel._editAsset("a");
   await settle(panel);
 
-  assert.equal(panel._view, "advanced");
-  assert.equal(panel._advancedPinned, true);
-  assert.equal(
-    window.localStorage.getItem(
-      "bindhome.advanced-pinned.open-advanced-user",
-    ),
-    "true",
-  );
-  assert.equal(
-    panel.shadowRoot.querySelector(
-      ".tabs button.advanced",
-    ).disabled,
-    false,
-  );
-  assert.equal(
-    panel.shadowRoot.querySelector(
-      "ha-switch.advanced-switch",
-    ).checked,
-    true,
-  );
+  assert.equal(panel._view, "home");
+  assert.equal(panel._advancedPinned, false);
+  assert.equal(panel._advancedAssetId, null);
 
-  panel._navigate("home");
+  // Enable the mode explicitly.
+  panel._setAdvancedPinned(true);
   await settle(panel);
 
-  assert.equal(panel._view, "home");
+  home = await settlePanel(panel);
+  detail =
+    home.shadowRoot.querySelector("bindhome-element-detail");
+
+  await settle(detail);
+
+  assert.equal(detail.advancedEnabled, true);
+
+  const shortcut =
+    detail.shadowRoot.querySelector(".open-advanced");
+
+  assert.ok(shortcut);
+
+  shortcut.click();
+  await settle(panel);
+
+  // The shortcut consumes the permission; it does not create it.
+  assert.equal(panel._view, "advanced");
+  assert.equal(panel._advancedPinned, true);
+  assert.equal(panel._advancedAssetId, "a");
+
   assert.equal(
-    panel.shadowRoot.querySelector(
-      ".tabs button.advanced",
-    ).disabled,
-    false,
+    window.localStorage.getItem(
+      "bindhome.advanced-pinned.master-switch-user",
+    ),
+    "true",
   );
 
   window.localStorage.clear();
