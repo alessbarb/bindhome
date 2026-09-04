@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { Window } from "happy-dom";
 import {
   assetPresentation,
@@ -607,6 +608,37 @@ test("human device derivation finds non-first bindings and deduplicates one enti
   assert.equal(editors.length, 1);
   assert.equal(editors[0].capability, "temperature");
   assert.equal(editors[0].status.binding.id, "b1");
+  assert.equal(editors[0].showEntityId, false);
+});
+
+test("mobile room Add action keeps a foreground plus while retaining its desktop label", async () => {
+  const home = document.createElement("bindhome-home-view");
+  home.t = t;
+  home.selectedAreaId = "kitchen";
+  home.areas = [{ area_id: "kitchen", name: "Cocina", floor_id: null }];
+  document.body.append(home);
+  await settle(home);
+  const action = home.shadowRoot.querySelector(".room-head .primary");
+  assert.equal(action.querySelector("ha-icon").getAttribute("icon"), "mdi:plus");
+  assert.match(action.textContent, /home\.add_element/);
+  const cssText = home.constructor.styles.map((style) => style.cssText).join("\n");
+  assert.match(cssText, /\.room-head > ha-icon/);
+  assert.match(cssText, /\.room-head \.primary ha-icon\s*\{[^}]*var\(--text-primary-color, #fff\)/s);
+  assert.match(cssText, /@media \(max-width: 760px\)[\s\S]*\.room-head \.primary span\s*\{[^}]*display:\s*none/s);
+});
+
+test("human Add copy uses room language and never exposes preset terminology", () => {
+  for (const [language, expected] of Object.entries({
+    es: ["Añade un elemento físico a tu casa.", "Habitación", "Sin habitación"],
+    en: ["Add a physical element to your home.", "Room", "No room"],
+  })) {
+    const json = JSON.parse(readFileSync(new URL(`../../../translations/${language}.json`, import.meta.url)));
+    assert.deepEqual(
+      [json.common.panel_add_intro, json.common.panel_add_room, json.common.panel_add_no_room],
+      expected,
+    );
+    assert.doesNotMatch(json.common.panel_add_intro, /preset/i);
+  }
 });
 
 test("human device derivation distinguishes passive, unbound and first-bound Assets", async () => {

@@ -243,11 +243,11 @@ export class BindHomeAddView extends LitElement {
                   .value=${this._code}
                   @input=${(e) => (this._code = e.target.value)} /></label
               ><label
-                >${this.t("common.area")}<select
+                >${this.t("add.room")}<select
                   .value=${this._areaId}
                   @change=${(e) => (this._areaId = e.target.value)}
                 >
-                  <option value="">${this.t("common.none")}</option>
+                  <option value="">${this.t("add.no_room")}</option>
                   ${this.areas.map(
                     (area) =>
                       html`<option value=${area.area_id}>${area.name}</option>`,

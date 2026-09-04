@@ -408,6 +408,7 @@ export class BindHomeElementDetail extends LitElement {
                     .entityRegistry=${this.entityRegistry}
                     .deviceRegistry=${this.deviceRegistry}
                     .refreshBindingData=${this.refreshBindingData}
+                    .showEntityId=${false}
                   ></bindhome-primary-connection-editor>
                 </div>`)
             : html`<p class="passive">${this.t("detail.passive")}</p>`}

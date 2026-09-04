@@ -103,7 +103,7 @@ export class BindHomeHomeView extends LitElement {
         padding: 16px;
         border-bottom: 1px solid var(--divider-color);
       }
-      .room-head ha-icon {
+      .room-head > ha-icon {
         color: var(--primary-color);
         --mdc-icon-size: 30px;
       }
@@ -112,6 +112,9 @@ export class BindHomeHomeView extends LitElement {
         display: flex;
         align-items: center;
         gap: 8px;
+      }
+      .room-head .primary ha-icon {
+        color: var(--text-primary-color, #fff);
       }
       .category-title {
         font-weight: 500;

@@ -573,3 +573,42 @@ test("picker Cancel uses the established English translation key", async () => {
   assert.match(text, /Cancel/);
   assert.doesNotMatch(text, /common\.cancel/);
 });
+
+test("human connection presentation hides raw entity identity but keeps useful context", async () => {
+  const editor = createEditor(async () => ({}));
+  editor.showEntityId = false;
+  editor.status = {
+    status: "resolved",
+    config_valid: true,
+    entity_id: "switch.bindhome_backend_b",
+    binding: { id: "binding-b", role: "primary", entity_id: "switch.bindhome_backend_b" },
+  };
+  editor.hass.states = {
+    "switch.bindhome_backend_b": { state: "on", attributes: { friendly_name: "Shelly Plug S" } },
+  };
+  editor.entityRegistry = [{ entity_id: "switch.bindhome_backend_b", device_id: "shelly", area_id: "living" }];
+  editor.deviceRegistry = [{ id: "shelly", name: "Shelly Plus Plug", area_id: "living" }];
+  await settle(editor);
+
+  assert.match(editor.shadowRoot.textContent, /Shelly Plug S/);
+  assert.match(editor.shadowRoot.textContent, /Living room · Shelly Plus Plug/);
+  assert.match(editor.shadowRoot.textContent, /connection\.configured · connection\.available/);
+  assert.doesNotMatch(editor.shadowRoot.textContent, /switch\.bindhome_backend_b/);
+
+  editor._beginEdit();
+  await settle(editor);
+  assert.doesNotMatch(editor.shadowRoot.textContent, /switch\.bindhome_backend_b/);
+});
+
+test("technical connection presentation shows raw entity identity by default", async () => {
+  const editor = createEditor(async () => ({}));
+  editor.status = {
+    status: "resolved",
+    entity_id: "switch.bindhome_backend_b",
+    binding: { id: "binding-b", role: "primary", entity_id: "switch.bindhome_backend_b" },
+  };
+  editor.entityRegistry = [{ entity_id: "switch.bindhome_backend_b", name: "Backend B" }];
+  await settle(editor);
+  assert.equal(editor.showEntityId, true);
+  assert.match(editor.shadowRoot.textContent, /switch\.bindhome_backend_b/);
+});
