@@ -8,6 +8,7 @@ import "./home/home-view.js";
 import "./add/add-view.js";
 import "./search/search-view.js";
 import "./advanced/advanced-view.js";
+import "./onboarding/onboarding-view.js";
 export class BindHomePanel extends LitElement {
   static properties = {
     hass: { attribute: false },
@@ -33,6 +34,7 @@ export class BindHomePanel extends LitElement {
     _advancedAssetId: { state: true },
     _addSessionId: { state: true },
     _advancedPinned: { state: true },
+    _onboardingVisible: { state: true },
   };
   constructor() {
     super();
@@ -64,6 +66,9 @@ export class BindHomePanel extends LitElement {
     this._addSessionId = 0;
     this._advancedPinned = false;
     this._advancedPreferenceIdentity = null;
+    this._onboardingVisible = false;
+    this._onboardingDismissed = false;
+    this._onboardingPreferenceIdentity = null;
   }
   static styles = css`
     :host {
@@ -164,6 +169,13 @@ export class BindHomePanel extends LitElement {
       flex: 1;
       min-width: 0;
     }
+    .onboarding-overlay {
+      position: fixed;
+      inset: 60px 0 0;
+      z-index: 20;
+      overflow: auto;
+      background: var(--primary-background-color, #fafafa);
+    }
     .view[hidden] {
       display: none;
     }
@@ -254,6 +266,9 @@ export class BindHomePanel extends LitElement {
       .refresh-error {
         margin-inline: 12px;
       }
+      .onboarding-overlay {
+        inset: 104px 0 0;
+      }
     }
     @media (prefers-reduced-motion: reduce) {
       .spinner {
@@ -262,7 +277,10 @@ export class BindHomePanel extends LitElement {
     }
   `;
   updated(changed) {
-    if (changed.has("hass")) this._restoreAdvancedPreference();
+    if (changed.has("hass")) {
+      this._restoreAdvancedPreference();
+      this._restoreOnboardingPreference();
+    }
     if (
       changed.has("hass") &&
       this.hass &&
@@ -336,6 +354,7 @@ export class BindHomePanel extends LitElement {
       else this._refreshError = message;
     } finally {
       this._initialized = true;
+      this._syncOnboardingVisibility();
       this._loading = false;
       this._loadPromise = null;
     }
@@ -368,14 +387,17 @@ export class BindHomePanel extends LitElement {
     if (generation !== this._dataGeneration) return;
     this._assets = assets;
     if (this._registry) this._registry = { ...this._registry, assets };
+    this._syncOnboardingVisibility();
     return assets;
   }
   _assetsRefreshed(event) {
     this._assets = event.detail;
     if (this._registry)
       this._registry = { ...this._registry, assets: event.detail };
+    this._syncOnboardingVisibility();
   }
   _navigate(view) {
+    if (this._onboardingVisible) this._dismissOnboarding();
     if (view === "advanced" && !this._advancedPinned) {
       return;
     }
@@ -410,6 +432,42 @@ export class BindHomePanel extends LitElement {
     this._advancedPinned = pinned;
     try { window.localStorage.setItem(this._advancedPreferenceKey(), String(pinned)); } catch { /* Browser storage may be unavailable. */ }
     if (!pinned && this._view === "advanced") this._navigate("home");
+  }
+  _onboardingPreferenceKey() {
+    return `bindhome.onboarding.v1.${this.hass?.user?.id ?? "browser"}`;
+  }
+  _restoreOnboardingPreference() {
+    const identity = this._onboardingPreferenceKey();
+    if (identity === this._onboardingPreferenceIdentity) return;
+    this._onboardingPreferenceIdentity = identity;
+    try {
+      this._onboardingDismissed = window.localStorage.getItem(identity) === "true";
+    } catch {
+      this._onboardingDismissed = false;
+    }
+    this._syncOnboardingVisibility();
+  }
+  _syncOnboardingVisibility() {
+    this._onboardingVisible =
+      this._initialized &&
+      !this._error &&
+      this._assets.length === 0 &&
+      !this._onboardingDismissed;
+  }
+  _dismissOnboarding() {
+    this._onboardingDismissed = true;
+    this._onboardingVisible = false;
+    try {
+      window.localStorage.setItem(this._onboardingPreferenceKey(), "true");
+    } catch {
+      /* Browser storage may be unavailable. */
+    }
+  }
+  _completeOnboarding(event) {
+    const startInventory = Boolean(event?.detail?.startInventory);
+    this._dismissOnboarding();
+    if (startInventory) this._openAdd(null);
+    else this._view = "home";
   }
   _homeNavigate(event) {
     this._selectedAreaId = event.detail.areaId;
@@ -597,7 +655,19 @@ export class BindHomePanel extends LitElement {
             ${this._t("shell.refresh_error")} ${this._refreshError}
           </div>`
         : null}
-      <main>${content}</main>
+      <main>
+        ${content}
+        ${this._onboardingVisible
+          ? html`<div class="onboarding-overlay">
+              <bindhome-onboarding-view
+                .t=${this._t}
+                .floors=${this._floors}
+                .areas=${this._areas}
+                @onboarding-complete=${this._completeOnboarding}
+              ></bindhome-onboarding-view>
+            </div>`
+          : null}
+      </main>
     </div>`;
   }
 }

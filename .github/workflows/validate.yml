@@ -11,14 +11,64 @@ permissions:
   contents: read
 
 jobs:
+  release-metadata:
+    name: Release Metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Verify version metadata
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          import re
+          import tomllib
+
+          root = pathlib.Path('.')
+          pyproject = tomllib.loads((root / 'pyproject.toml').read_text())
+          manifest = json.loads(
+              (root / 'custom_components/bindhome/manifest.json').read_text()
+          )
+          frontend = root / 'frontend'
+          package = json.loads((frontend / 'package.json').read_text())
+          package_lock = json.loads((frontend / 'package-lock.json').read_text())
+          hacs = json.loads((root / 'hacs.json').read_text())
+
+          versions = {
+              'pyproject.toml': pyproject['project']['version'],
+              'manifest.json': manifest['version'],
+              'frontend/package.json': package['version'],
+              'frontend/package-lock.json': package_lock['version'],
+              'frontend/package-lock.json root package': package_lock['packages']['']['version'],
+          }
+          if len(set(versions.values())) != 1:
+              raise SystemExit(f'Version metadata mismatch: {versions}')
+
+          version = next(iter(versions.values()))
+          if not re.fullmatch(r'\d+\.\d+\.\d+', version):
+              raise SystemExit(f'Version is not SemVer-compatible: {version}')
+
+          minimum_ha = hacs.get('homeassistant')
+          if not isinstance(minimum_ha, str) or not re.fullmatch(
+              r'\d{4}\.\d+\.\d+', minimum_ha
+          ):
+              raise SystemExit(
+                  f'Invalid HACS Home Assistant minimum: {minimum_ha!r}'
+              )
+
+          print(f'BindHome version: {version}')
+          print(f'Minimum Home Assistant: {minimum_ha}')
+          PY
+
   pytest:
     name: Pytest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.14"
           cache: "pip"
@@ -35,10 +85,10 @@ jobs:
     name: Ruff Lint & Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.14"
           cache: "pip"
@@ -56,7 +106,7 @@ jobs:
     name: Hassfest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: home-assistant/actions/hassfest@master
 
   frontend:
@@ -64,16 +114,16 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: custom_components/bindhome/panel/frontend
+        working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: custom_components/bindhome/panel/frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
         run: npm ci
@@ -88,4 +138,4 @@ jobs:
         run: npm run build
 
       - name: Verify committed bundle is current
-        run: git diff --exit-code -- ../static/bindhome-panel.js
+        run: git diff --exit-code -- ../custom_components/bindhome/panel/static/bindhome-panel.js

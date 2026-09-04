@@ -1,0 +1,124 @@
+name: Bug report
+description: Report a reproducible BindHome defect
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a BindHome bug. Please do not include Home Assistant access tokens, passwords, private keys, cookies, webhook secrets, or unrelated personal/home data.
+
+        Security vulnerabilities must not be reported here. Follow `SECURITY.md` and use the repository Security tab instead.
+
+  - type: input
+    id: bindhome-version
+    attributes:
+      label: BindHome version
+      description: Release, tag, or exact commit SHA.
+      placeholder: "1.0.0 or abc1234"
+    validations:
+      required: true
+
+  - type: input
+    id: ha-version
+    attributes:
+      label: Home Assistant version
+      placeholder: "2026.9.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation method
+      options:
+        - HACS release
+        - Manual custom_components installation
+        - Development checkout
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Integration setup / startup
+        - Registry / persistence
+        - Backup / restore
+        - Assets / inventory
+        - Bindings / resolver
+        - Relations / topology
+        - Representations / logical entities
+        - Panel / frontend
+        - Localization
+        - Home Assistant actions / WebSocket API
+        - HACS / packaging / release
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the observable problem and its impact.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Provide the smallest deterministic sequence you can.
+      placeholder: |
+        1. Open ...
+        2. Create ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: registry
+    attributes:
+      label: Minimal Registry scenario
+      description: If relevant, describe the smallest Assets/Capabilities/Bindings/Relations/Representations needed to reproduce the bug. Use synthetic names and IDs rather than private household data.
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or console output
+      description: Paste only the lines needed to diagnose the problem. Redact tokens, credentials, URLs containing secrets, and private home/network data.
+      render: text
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Screenshots, browser information, upgrade history, or anything else directly relevant.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing Issues and did not find the same bug.
+          required: true
+        - label: I removed credentials, tokens and unnecessary personal/home data from this report.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

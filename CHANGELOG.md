@@ -1,0 +1,106 @@
+# Changelog
+
+All notable changes to BindHome are documented in this file.
+
+The format follows the principles of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project follows [Semantic Versioning](https://semver.org/).
+
+## How this changelog is maintained
+
+- User-visible features, behavior changes, compatibility changes, reliability work, migrations and meaningful fixes are added to **Unreleased** in the same PR that introduces them.
+- Entries describe the effect on users or maintainers rather than individual commits.
+- Relevant pull requests are linked so a changelog entry can be traced back to its design, tests and acceptance evidence.
+- Pure refactors, generated bundles and documentation-only corrections may be omitted unless they materially affect operation, compatibility or the release process.
+- At release time, the contents of **Unreleased** are moved under the released version and release date, then a fresh empty **Unreleased** section is kept at the top.
+
+The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**, **Compatibility**, **Security**, **Deprecated**, **Removed** and **Distribution**. Only categories that contain entries need to be present.
+
+---
+
+## [Unreleased]
+
+No changes yet beyond the `1.0.0` release candidate.
+
+---
+
+## [1.0.0] - 2026-09-04
+
+First public BindHome release.
+
+**Minimum Home Assistant:** `2026.8.0`
+
+### Added
+
+- Stable physical **Assets** with Home Assistant Area references and extensible Capabilities.
+- Directed Asset-to-Asset **Relations** for physical topology.
+- Capability-level **Bindings** to replaceable Home Assistant entities.
+- Explicit optional **Representations**, including stable logical `light` entities for Assets with an `on_off` capability.
+- Dynamic reconciliation of logical Home Assistant entities when BindHome Registry state changes. ([#5](https://github.com/alessbarb/bindhome/pull/5), [#9](https://github.com/alessbarb/bindhome/pull/9))
+- Home Assistant actions and CRUD/query WebSocket APIs for Registry operations.
+- Atomic bulk Asset creation for room inventory. ([#8](https://github.com/alessbarb/bindhome/pull/8))
+- Built-in extensible creation presets for electrical, network, climate, water, building and equipment inventory. ([#10](https://github.com/alessbarb/bindhome/pull/10))
+- Room-oriented inventory workflow using Home Assistant Floors and Areas as the location source of truth. ([#12](https://github.com/alessbarb/bindhome/pull/12))
+- Physical inventory browser and stable Asset editing without replacing Asset identity. ([#13](https://github.com/alessbarb/bindhome/pull/13))
+- Search-first primary Binding workflow with Connect, Change and Disconnect operations. ([#14](https://github.com/alessbarb/bindhome/pull/14))
+- Human topology browsing, relation creation/deletion and one-hop topology explorer. ([#15](https://github.com/alessbarb/bindhome/pull/15))
+- Human-first `Casa | Añadir | Buscar | Avanzado` application shell, with Advanced mode opt-in and persisted per Home Assistant user/browser. ([#16](https://github.com/alessbarb/bindhome/pull/16))
+- First-run onboarding for empty Registries explaining stable infrastructure, replaceable hardware, Asset → Capability → Binding → Representation and the recommended first-room inventory flow. ([#20](https://github.com/alessbarb/bindhome/pull/20))
+- English and Spanish panel/onboarding localization.
+- Administrator-only deterministic Registry backup/export and transactional full restore. ([#19](https://github.com/alessbarb/bindhome/pull/19))
+- BindHome system health reporting.
+
+### Changed
+
+- Home Assistant is explicitly the source of truth for Floors, Areas, Devices, Entities, runtime states, domains and service routing; BindHome owns only its stable infrastructure model. ([#6](https://github.com/alessbarb/bindhome/pull/6), [#7](https://github.com/alessbarb/bindhome/pull/7))
+- Logical operations delegate through Home Assistant services instead of maintaining a duplicate domain/capability compatibility catalogue. ([#6](https://github.com/alessbarb/bindhome/pull/6))
+- Representation semantics are explicit: an Asset capability no longer implicitly means a Home Assistant entity must exist. ([#9](https://github.com/alessbarb/bindhome/pull/9))
+- Custom panel resource URLs are content-versioned so Home Assistant/browser caching cannot keep an obsolete frontend bundle active after deployment. ([#13](https://github.com/alessbarb/bindhome/pull/13))
+- The public README now documents the BindHome mental model, progressive Inventory → Connect → Topology → Represent workflow, HACS installation, compatibility and recovery expectations. ([#20](https://github.com/alessbarb/bindhome/pull/20))
+
+### Fixed
+
+- Fixed Home Assistant custom-panel registration so the BindHome sidebar panel receives the configuration shape expected by Home Assistant. ([#2](https://github.com/alessbarb/bindhome/pull/2))
+- Fixed production Lit template corruption caused by post-processing significant whitespace in the generated frontend bundle. ([#3](https://github.com/alessbarb/bindhome/pull/3))
+- Fixed logical light color-mode declaration for Home Assistant runtime compatibility. ([#4](https://github.com/alessbarb/bindhome/pull/4))
+- Hardened asynchronous frontend workflows so stale saves, refreshes and navigation completions cannot contaminate a different Asset or draft session. ([#14](https://github.com/alessbarb/bindhome/pull/14), [#15](https://github.com/alessbarb/bindhome/pull/15), [#16](https://github.com/alessbarb/bindhome/pull/16))
+- First-run onboarding is rendered over the existing shell rather than replacing it, preserving mounted views and active draft state. ([#20](https://github.com/alessbarb/bindhome/pull/20))
+
+### Reliability
+
+- All Registry mutations use one staged **validate → persist → adopt → notify** transaction boundary. Persistence failures leave live RAM unchanged and emit no Registry-changed signal. ([#17](https://github.com/alessbarb/bindhome/pull/17))
+- Persistent writes use atomic Home Assistant storage and surface underlying serialization/write failures instead of publishing unpersisted state. ([#17](https://github.com/alessbarb/bindhome/pull/17))
+- Live `BindHomeRegistry` object identity is preserved across successful commits so existing runtime consumers and resolvers remain attached to the canonical Registry. ([#17](https://github.com/alessbarb/bindhome/pull/17))
+- Startup fails closed for corrupt, unreadable or unsupported Registry storage rather than silently replacing unsafe persisted state with an empty Registry. ([#18](https://github.com/alessbarb/bindhome/pull/18))
+- Legacy persisted Registries are validated, migrated to the canonical schema and durably rewritten only after successful validation. ([#18](https://github.com/alessbarb/bindhome/pull/18))
+- Backup restore validates the complete Registry before persistence and uses the same transaction guarantees as ordinary mutations. ([#19](https://github.com/alessbarb/bindhome/pull/19))
+
+### Compatibility
+
+- Development and CI tooling was aligned with Python 3.14 and the Home Assistant test environment. ([#1](https://github.com/alessbarb/bindhome/pull/1))
+- Home Assistant `2026.8.0` is the verified minimum supported release.
+- Home Assistant `2026.9.0` is covered by the release compatibility matrix.
+- Home Assistant `2026.7.0` and older are not supported because the BindHome panel requires `homeassistant.components.http.server.StaticPathConfig`.
+- BindHome-to-BindHome functional composition is supported when acyclic; true Binding cycles are rejected using capability/role identity rather than coarse Asset-level detection. ([#14](https://github.com/alessbarb/bindhome/pull/14))
+
+### Distribution
+
+- Version promoted to `1.0.0` across Python, Home Assistant and frontend package metadata. ([#20](https://github.com/alessbarb/bindhome/pull/20))
+- Added HACS repository metadata, brand asset and automatic HACS publication validation. ([#20](https://github.com/alessbarb/bindhome/pull/20))
+- Added permanent Home Assistant compatibility CI for the supported floor and current stable release. ([#20](https://github.com/alessbarb/bindhome/pull/20))
+- Added release metadata consistency validation so Python, manifest and frontend versions cannot drift unnoticed. ([#20](https://github.com/alessbarb/bindhome/pull/20))
+- Development-only frontend source, tests and Node.js tooling now live outside `custom_components/bindhome`, leaving the HACS-installed integration with only the generated runtime bundle. ([#20](https://github.com/alessbarb/bindhome/pull/20))
+- GitHub Actions use the current Node 24-based official action generations, and Dependabot tracks GitHub Actions, Python and frontend npm dependencies weekly. ([#20](https://github.com/alessbarb/bindhome/pull/20))
+- Added documented installation, upgrade, downgrade, backup and release procedures. ([#20](https://github.com/alessbarb/bindhome/pull/20))
+
+### Development milestones included in 1.0.0
+
+| Milestone | Scope | Pull requests |
+| --- | --- | --- |
+| Runtime foundation | HA tooling, panel loading, frontend bundle correctness, dynamic logical entities and HA-native service routing | [#1](https://github.com/alessbarb/bindhome/pull/1)–[#6](https://github.com/alessbarb/bindhome/pull/6) |
+| Inventory foundation | Product contract, atomic bulk creation, explicit Representations, creation presets and synchronized architecture docs | [#7](https://github.com/alessbarb/bindhome/pull/7)–[#11](https://github.com/alessbarb/bindhome/pull/11) |
+| Human workflows | Room inventory, browse/edit, Bindings, topology and the human-first Casa experience | [#12](https://github.com/alessbarb/bindhome/pull/12)–[#16](https://github.com/alessbarb/bindhome/pull/16) |
+| Reliability & release | Transactional mutations, fail-closed storage, backup/restore, onboarding, compatibility and HACS publication foundation | [#17](https://github.com/alessbarb/bindhome/pull/17)–[#20](https://github.com/alessbarb/bindhome/pull/20) |
+
+---
+
+[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/alessbarb/bindhome/releases/tag/v1.0.0

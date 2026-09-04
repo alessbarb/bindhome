@@ -674,7 +674,7 @@ test("human Add copy uses room language and never exposes preset terminology", (
     es: ["Añade un elemento físico a tu casa.", "Habitación", "Sin habitación"],
     en: ["Add a physical element to your home.", "Room", "No room"],
   })) {
-    const json = JSON.parse(readFileSync(new URL(`../../../translations/${language}.json`, import.meta.url)));
+    const json = JSON.parse(readFileSync(new URL(`../../custom_components/bindhome/translations/${language}.json`, import.meta.url)));
     assert.deepEqual(
       [json.common.panel_add_intro, json.common.panel_add_room, json.common.panel_add_no_room],
       expected,

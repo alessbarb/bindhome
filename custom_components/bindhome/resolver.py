@@ -1,8 +1,8 @@
 """Binding resolver: map a BindHome capability to its current HA entity.
 
-The resolver is the read-side abstraction that future logical BindHome entities
-use to discover which Home Assistant entity currently implements an asset
-capability, without knowing hardware identity.
+The resolver is the read-side abstraction that logical BindHome entities and
+status/query surfaces use to discover which Home Assistant entity currently
+implements an Asset capability, without knowing hardware identity.
 
 Central operation::
 
