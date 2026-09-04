@@ -75,7 +75,10 @@ async def ws_backup_restore(
 ) -> None:
     """Validate and atomically restore the Registry from a backup."""
     try:
-        registry = await async_restore_registry_backup(_get_manager(hass), msg["backup"])
+        registry = await async_restore_registry_backup(
+            _get_manager(hass),
+            msg["backup"],
+        )
     except BackupValidationError as err:
         connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
         return
