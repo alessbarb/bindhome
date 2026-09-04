@@ -17,7 +17,7 @@ jobs:
         with:
           ref: p1/release-1.0-foundation
 
-      - name: Integrate onboarding
+      - name: Integrate onboarding without unmounting existing views
         run: |
           python - <<'PY'
           import json
@@ -27,46 +27,25 @@ jobs:
           panel = panel_path.read_text()
 
           replacements = [
-              (
-                  'import "./advanced/advanced-view.js";\n',
-                  'import "./advanced/advanced-view.js";\nimport "./onboarding/onboarding-view.js";\n',
-              ),
-              (
-                  '    _advancedPinned: { state: true },\n',
-                  '    _advancedPinned: { state: true },\n    _onboardingVisible: { state: true },\n',
-              ),
-              (
-                  '    this._advancedPreferenceIdentity = null;\n',
-                  '    this._advancedPreferenceIdentity = null;\n    this._onboardingVisible = false;\n    this._onboardingDismissed = false;\n    this._onboardingPreferenceIdentity = null;\n',
-              ),
-              (
-                  '    if (changed.has("hass")) this._restoreAdvancedPreference();\n',
-                  '    if (changed.has("hass")) {\n      this._restoreAdvancedPreference();\n      this._restoreOnboardingPreference();\n    }\n',
-              ),
-              (
-                  '      this._initialized = true;\n      this._loading = false;\n',
-                  '      this._initialized = true;\n      this._syncOnboardingVisibility();\n      this._loading = false;\n',
-              ),
-              (
-                  '    this._assets = assets;\n    if (this._registry) this._registry = { ...this._registry, assets };\n    return assets;\n',
-                  '    this._assets = assets;\n    if (this._registry) this._registry = { ...this._registry, assets };\n    this._syncOnboardingVisibility();\n    return assets;\n',
-              ),
-              (
-                  '  _navigate(view) {\n',
-                  '  _navigate(view) {\n    if (this._onboardingVisible) this._dismissOnboarding();\n',
-              ),
-              (
-                  '    else content = this._renderViews();\n',
-                  '''    else if (this._onboardingVisible)\n      content = html`<bindhome-onboarding-view\n        .t=${this._t}\n        .floors=${this._floors}\n        .areas=${this._areas}\n        @onboarding-complete=${this._completeOnboarding}\n      ></bindhome-onboarding-view>`;\n    else content = this._renderViews();\n''',
-              ),
+              ('import "./advanced/advanced-view.js";\n', 'import "./advanced/advanced-view.js";\nimport "./onboarding/onboarding-view.js";\n'),
+              ('    _advancedPinned: { state: true },\n', '    _advancedPinned: { state: true },\n    _onboardingVisible: { state: true },\n'),
+              ('    this._advancedPreferenceIdentity = null;\n', '    this._advancedPreferenceIdentity = null;\n    this._onboardingVisible = false;\n    this._onboardingDismissed = false;\n    this._onboardingPreferenceIdentity = null;\n'),
+              ('    if (changed.has("hass")) this._restoreAdvancedPreference();\n', '    if (changed.has("hass")) {\n      this._restoreAdvancedPreference();\n      this._restoreOnboardingPreference();\n    }\n'),
+              ('      this._initialized = true;\n      this._loading = false;\n', '      this._initialized = true;\n      this._syncOnboardingVisibility();\n      this._loading = false;\n'),
+              ('    this._assets = assets;\n    if (this._registry) this._registry = { ...this._registry, assets };\n    return assets;\n', '    this._assets = assets;\n    if (this._registry) this._registry = { ...this._registry, assets };\n    this._syncOnboardingVisibility();\n    return assets;\n'),
+              ('    if (this._registry)\n      this._registry = { ...this._registry, assets: event.detail };\n  }\n  _navigate(view) {\n', '    if (this._registry)\n      this._registry = { ...this._registry, assets: event.detail };\n    this._syncOnboardingVisibility();\n  }\n  _navigate(view) {\n'),
+              ('  _navigate(view) {\n', '  _navigate(view) {\n    if (this._onboardingVisible) this._dismissOnboarding();\n'),
+              ('    main {\n      flex: 1;\n      min-width: 0;\n    }\n', '    main {\n      flex: 1;\n      min-width: 0;\n    }\n    .onboarding-overlay {\n      position: fixed;\n      inset: 60px 0 0;\n      z-index: 20;\n      overflow: auto;\n      background: var(--primary-background-color, #fafafa);\n    }\n'),
+              ('      .refresh-error {\n        margin-inline: 12px;\n      }\n', '      .refresh-error {\n        margin-inline: 12px;\n      }\n      .onboarding-overlay {\n        inset: 104px 0 0;\n      }\n'),
+              ('      <main>${content}</main>\n', '''      <main>\n        ${content}\n        ${this._onboardingVisible\n          ? html`<div class="onboarding-overlay">\n              <bindhome-onboarding-view\n                .t=${this._t}\n                .floors=${this._floors}\n                .areas=${this._areas}\n                @onboarding-complete=${this._completeOnboarding}\n              ></bindhome-onboarding-view>\n            </div>`\n          : null}\n      </main>\n'''),
           ]
           for old, new in replacements:
               if old not in panel:
-                  raise SystemExit(f'Could not locate onboarding integration marker: {old[:60]!r}')
+                  raise SystemExit(f'Could not locate onboarding integration marker: {old[:80]!r}')
               panel = panel.replace(old, new, 1)
 
           marker = '''  _setAdvancedPinned(pinned) {\n    this._advancedPinned = pinned;\n    try { window.localStorage.setItem(this._advancedPreferenceKey(), String(pinned)); } catch { /* Browser storage may be unavailable. */ }\n    if (!pinned && this._view === "advanced") this._navigate("home");\n  }\n'''
-          methods = marker + '''  _onboardingPreferenceKey() {\n    return `bindhome.onboarding.v1.${this.hass?.user?.id ?? "browser"}`;\n  }\n  _restoreOnboardingPreference() {\n    const identity = this._onboardingPreferenceKey();\n    if (identity === this._onboardingPreferenceIdentity) return;\n    this._onboardingPreferenceIdentity = identity;\n    try {\n      this._onboardingDismissed = window.localStorage.getItem(identity) === "true";\n    } catch {\n      this._onboardingDismissed = false;\n    }\n    this._syncOnboardingVisibility();\n  }\n  _syncOnboardingVisibility() {\n    this._onboardingVisible =\n      this._initialized &&\n      this._assets.length === 0 &&\n      !this._onboardingDismissed;\n  }\n  _dismissOnboarding() {\n    this._onboardingDismissed = true;\n    this._onboardingVisible = false;\n    try {\n      window.localStorage.setItem(this._onboardingPreferenceKey(), "true");\n    } catch {\n      /* Browser storage may be unavailable. */\n    }\n  }\n  _completeOnboarding(event) {\n    const startInventory = Boolean(event?.detail?.startInventory);\n    this._dismissOnboarding();\n    if (startInventory) this._openAdd(null);\n    else this._view = "home";\n  }\n'''
+          methods = marker + '''  _onboardingPreferenceKey() {\n    return `bindhome.onboarding.v1.${this.hass?.user?.id ?? "browser"}`;\n  }\n  _restoreOnboardingPreference() {\n    const identity = this._onboardingPreferenceKey();\n    if (identity === this._onboardingPreferenceIdentity) return;\n    this._onboardingPreferenceIdentity = identity;\n    try {\n      this._onboardingDismissed = window.localStorage.getItem(identity) === "true";\n    } catch {\n      this._onboardingDismissed = false;\n    }\n    this._syncOnboardingVisibility();\n  }\n  _syncOnboardingVisibility() {\n    this._onboardingVisible =\n      this._initialized &&\n      !this._error &&\n      this._assets.length === 0 &&\n      !this._onboardingDismissed;\n  }\n  _dismissOnboarding() {\n    this._onboardingDismissed = true;\n    this._onboardingVisible = false;\n    try {\n      window.localStorage.setItem(this._onboardingPreferenceKey(), "true");\n    } catch {\n      /* Browser storage may be unavailable. */\n    }\n  }\n  _completeOnboarding(event) {\n    const startInventory = Boolean(event?.detail?.startInventory);\n    this._dismissOnboarding();\n    if (startInventory) this._openAdd(null);\n    else this._view = "home";\n  }\n'''
           if marker not in panel:
               raise SystemExit('Could not locate onboarding method insertion point')
           panel = panel.replace(marker, methods, 1)
