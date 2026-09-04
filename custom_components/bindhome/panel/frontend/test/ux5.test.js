@@ -522,6 +522,8 @@ test("contextual Relation identity change blocks late refresh success and reject
 });
 
 test("Open in Advanced opens the exact human Asset in the mounted technical editor", async () => {
+  window.localStorage.clear();
+
   const panel = panelFixture();
   panel._homeNavigate({ detail: { areaId: "garage", assetId: "b" } });
   let home = await settlePanel(panel);
@@ -530,34 +532,57 @@ test("Open in Advanced opens the exact human Asset in the mounted technical edit
   detail.shadowRoot.querySelector("details").open = true;
   detail.shadowRoot.querySelector("details .secondary").click();
   await settle(panel);
+
+  assert.equal(panel._advancedPinned, true);
+
   const advanced = panel.shadowRoot.querySelector("bindhome-advanced-view");
   await settle(advanced);
   const section = advanced.shadowRoot.querySelector("bindhome-inventory-section");
   await settle(section);
   const browser = section.shadowRoot.querySelector("bindhome-inventory-browser");
   await settle(browser);
+
   assert.equal(panel._view, "advanced");
   assert.equal(browser._selectedAssetId, "b");
-  assert.equal(browser.shadowRoot.querySelector("bindhome-asset-detail-editor").asset.id, "b");
+  assert.equal(
+    browser.shadowRoot.querySelector("bindhome-asset-detail-editor").asset.id,
+    "b",
+  );
+
+  window.localStorage.clear();
 });
+
 
 async function advancedBrowser(panel) {
   await settle(panel);
-  const advanced = panel.shadowRoot.querySelector("bindhome-advanced-view");
+
+  const advanced =
+    panel.shadowRoot.querySelector("bindhome-advanced-view");
+
   await settle(advanced);
-  const section = advanced.shadowRoot.querySelector("bindhome-inventory-section");
+
+  const section =
+    advanced.shadowRoot.querySelector("bindhome-inventory-section");
+
   await settle(section);
-  const browser = section.shadowRoot.querySelector("bindhome-inventory-browser");
+
+  const browser =
+    section.shadowRoot.querySelector("bindhome-inventory-browser");
+
   await settle(browser);
+
   return browser;
 }
 
 test("repeated Open in Advanced is a fresh request after manual Advanced navigation", async () => {
+  window.localStorage.clear();
+
   const panel = panelFixture();
   panel._homeNavigate({ detail: { areaId: "kitchen", assetId: "a" } });
   let home = await settlePanel(panel);
   let detail = home.shadowRoot.querySelector("bindhome-element-detail");
   await settle(detail);
+
   detail.shadowRoot.querySelector("details .secondary").click();
   let browser = await advancedBrowser(panel);
   assert.equal(browser._selectedAssetId, "a");
@@ -569,26 +594,38 @@ test("repeated Open in Advanced is a fresh request after manual Advanced navigat
   panel._navigate("home");
   home = await settlePanel(panel);
   assert.equal(panel._advancedAssetId, null);
+
   detail = home.shadowRoot.querySelector("bindhome-element-detail");
   await settle(detail);
   detail.shadowRoot.querySelector("details .secondary").click();
+
   browser = await advancedBrowser(panel);
   assert.equal(browser._selectedAssetId, "a");
+
+  window.localStorage.clear();
 });
 
 test("normal Advanced Casa Advanced navigation preserves technical selection", async () => {
+  window.localStorage.clear();
+
   const panel = panelFixture();
+  panel._setAdvancedPinned(true);
   panel._navigate("advanced");
+
   let browser = await advancedBrowser(panel);
   browser._openAsset("b");
   await settle(browser);
 
   panel._navigate("home");
   await settlePanel(panel);
+
   panel._navigate("advanced");
   browser = await advancedBrowser(panel);
+
   assert.equal(panel._advancedAssetId, null);
   assert.equal(browser._selectedAssetId, "b");
+
+  window.localStorage.clear();
 });
 
 test("human device derivation finds non-first bindings and deduplicates one entity", async () => {
@@ -797,37 +834,109 @@ test("Human Edit identity change blocks a late write from contaminating another 
   assert.deepEqual([editor._identity, editor._name, editor._error, editor._committed], ["b", "B", null, false]);
 });
 
-test("Advanced is opt-in, persisted per user, and unpinning preserves mounted state", async () => {
+test("Advanced switch controls navigation, persistence, and mounted state", async () => {
   window.localStorage.clear();
+
   const panel = panelFixture();
   panel._translationLanguage = "en";
-  panel.hass = { language: "en", user: { id: "user-a" }, callWS: async () => ({ resources: {} }) };
+  panel.hass = {
+    language: "en",
+    user: { id: "user-a" },
+    callWS: async () => ({ resources: {} }),
+  };
+
   await settle(panel);
+
+  let advancedButton =
+    panel.shadowRoot.querySelector(".tabs button.advanced");
+  let toggle =
+    panel.shadowRoot.querySelector("ha-switch.advanced-switch");
+
   assert.equal(panel._advancedPinned, false);
-  assert.equal(panel.shadowRoot.querySelectorAll(".tabs button").length, 4);
-  panel.shadowRoot.querySelector(".pin").click();
+  assert.equal(advancedButton.disabled, true);
+  assert.equal(toggle.checked, false);
+
+  advancedButton.click();
   await settle(panel);
+  assert.equal(panel._view, "home");
+
+  toggle.checked = true;
+  toggle.dispatchEvent(
+    new Event("change", { bubbles: true }),
+  );
+  await settle(panel);
+
+  advancedButton =
+    panel.shadowRoot.querySelector(".tabs button.advanced");
+  toggle =
+    panel.shadowRoot.querySelector("ha-switch.advanced-switch");
+
   assert.equal(panel._advancedPinned, true);
-  assert.equal(window.localStorage.getItem("bindhome.advanced-pinned.user-a"), "true");
-  panel._navigate("advanced");
+  assert.equal(advancedButton.disabled, false);
+  assert.equal(toggle.checked, true);
+  assert.equal(
+    window.localStorage.getItem(
+      "bindhome.advanced-pinned.user-a",
+    ),
+    "true",
+  );
+
+  advancedButton.click();
   const browser = await advancedBrowser(panel);
   browser._openAsset("b");
   await settle(browser);
-  panel.shadowRoot.querySelector(".pin").click();
+
+  toggle =
+    panel.shadowRoot.querySelector("ha-switch.advanced-switch");
+  toggle.checked = false;
+  toggle.dispatchEvent(
+    new Event("change", { bubbles: true }),
+  );
   await settle(panel);
-  assert.deepEqual([panel._advancedPinned, panel._view], [false, "home"]);
+
+  advancedButton =
+    panel.shadowRoot.querySelector(".tabs button.advanced");
+
+  assert.deepEqual(
+    [panel._advancedPinned, panel._view],
+    [false, "home"],
+  );
+  assert.equal(advancedButton.disabled, true);
+
   panel._setAdvancedPinned(true);
   panel._navigate("advanced");
-  assert.equal((await advancedBrowser(panel))._selectedAssetId, "b");
+
+  assert.equal(
+    (await advancedBrowser(panel))._selectedAssetId,
+    "b",
+  );
 
   const restored = panelFixture();
   restored._translationLanguage = "en";
-  restored.hass = { language: "en", user: { id: "user-a" }, callWS: async () => ({ resources: {} }) };
+  restored.hass = {
+    language: "en",
+    user: { id: "user-a" },
+    callWS: async () => ({ resources: {} }),
+  };
+
   await settle(restored);
+
   assert.equal(restored._advancedPinned, true);
+  assert.equal(
+    restored.shadowRoot.querySelector(
+      ".tabs button.advanced",
+    ).disabled,
+    false,
+  );
+  assert.equal(
+    restored.shadowRoot.querySelector(
+      "ha-switch.advanced-switch",
+    ).checked,
+    true,
+  );
+
   window.localStorage.clear();
 });
-
 
 test("Add committed write is never retried after refresh failure", async () => {
   let writes = 0;
@@ -951,56 +1060,64 @@ test("new Add session ignores completion from an older in-flight session", async
 });
 
 
-test("Open in Advanced is temporary unless Advanced is explicitly pinned", async () => {
+test("Open in Advanced explicitly enables and persists Advanced mode", async () => {
   window.localStorage.clear();
 
   const panel = panelFixture();
   panel._translationLanguage = "en";
   panel.hass = {
     language: "en",
-    user: { id: "temporary-advanced-user" },
+    user: { id: "open-advanced-user" },
     callWS: async () => ({ resources: {} }),
   };
 
   await settle(panel);
 
   assert.equal(panel._advancedPinned, false);
+  assert.equal(
+    panel.shadowRoot.querySelector(
+      ".tabs button.advanced",
+    ).disabled,
+    true,
+  );
 
   panel._editAsset("a");
   await settle(panel);
 
   assert.equal(panel._view, "advanced");
-  assert.equal(panel._advancedPinned, false);
+  assert.equal(panel._advancedPinned, true);
   assert.equal(
     window.localStorage.getItem(
-      "bindhome.advanced-pinned.temporary-advanced-user",
+      "bindhome.advanced-pinned.open-advanced-user",
     ),
-    null,
+    "true",
   );
-
-  const labelsWhileOpen = [
-    ...panel.shadowRoot.querySelectorAll(".tabs button:not(.pin)"),
-  ].map((button) => button.textContent.trim());
-
-  assert.ok(
-    labelsWhileOpen.some((label) => /advanced|avanzado/i.test(label)),
+  assert.equal(
+    panel.shadowRoot.querySelector(
+      ".tabs button.advanced",
+    ).disabled,
+    false,
+  );
+  assert.equal(
+    panel.shadowRoot.querySelector(
+      "ha-switch.advanced-switch",
+    ).checked,
+    true,
   );
 
   panel._navigate("home");
   await settle(panel);
 
-  const labelsAfterLeaving = [
-    ...panel.shadowRoot.querySelectorAll(".tabs button:not(.pin)"),
-  ].map((button) => button.textContent.trim());
-
+  assert.equal(panel._view, "home");
   assert.equal(
-    labelsAfterLeaving.some((label) => /advanced|avanzado/i.test(label)),
+    panel.shadowRoot.querySelector(
+      ".tabs button.advanced",
+    ).disabled,
     false,
   );
 
   window.localStorage.clear();
 });
-
 
 test("Human Edit localizes backend conflicts instead of exposing raw text", async () => {
   const editor = document.createElement("bindhome-human-asset-editor");

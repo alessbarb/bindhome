@@ -136,8 +136,17 @@ export class BindHomePanel extends LitElement {
       color: var(--primary-text-color);
       border-bottom-color: var(--primary-color);
     }
-    .tabs button.pin { min-width: 52px; padding-inline: 12px; }
-    .tabs button.pin ha-icon { --mdc-icon-size: 21px; }
+    .tabs button.advanced[disabled] {
+      color: var(--disabled-text-color, var(--secondary-text-color));
+      opacity: 0.48;
+      cursor: default;
+      border-bottom-color: transparent;
+    }
+    .tabs .advanced-switch {
+      flex: none;
+      align-self: center;
+      margin: 0 14px 0 4px;
+    }
     button:focus-visible {
       outline: 2px solid var(--primary-color);
       outline-offset: -3px;
@@ -230,7 +239,13 @@ export class BindHomePanel extends LitElement {
         min-width: auto;
         flex: 1;
         min-height: 50px;
-        padding-inline: 11px;
+        padding-inline: 7px;
+        font-size: 12px;
+      }
+      .tabs .advanced-switch {
+        margin-inline: 4px 8px;
+        transform: scale(0.88);
+        transform-origin: center;
       }
       .refresh {
         grid-column: 2;
@@ -361,6 +376,9 @@ export class BindHomePanel extends LitElement {
       this._registry = { ...this._registry, assets: event.detail };
   }
   _navigate(view) {
+    if (view === "advanced" && !this._advancedPinned) {
+      return;
+    }
     if (view === "add") {
       this._openAdd(null);
       return;
@@ -408,6 +426,7 @@ export class BindHomePanel extends LitElement {
     this._view = "home";
   }
   _editAsset(id) {
+    this._setAdvancedPinned(true);
     this._advancedAssetId = id;
     this._view = "advanced";
   }
@@ -524,16 +543,7 @@ export class BindHomePanel extends LitElement {
           <h1>BindHome</h1>
         </div>
         <nav class="tabs" aria-label=${this._t("shell.sections_label")}>
-          ${[
-            "home",
-            "add",
-            "search",
-            ...(
-              this._advancedPinned || this._view === "advanced"
-                ? ["advanced"]
-                : []
-            ),
-          ].map(
+          ${["home", "add", "search"].map(
             (view) =>
               html`<button
                 class=${this._view === view ? "active" : ""}
@@ -543,7 +553,34 @@ export class BindHomePanel extends LitElement {
                 ${this._t(`nav.${view}`)}
               </button>`,
           )}
-          <button class="pin" aria-label=${this._t(this._advancedPinned ? "nav.unpin_advanced" : "nav.pin_advanced")} title=${this._t(this._advancedPinned ? "nav.unpin_advanced" : "nav.pin_advanced")} aria-pressed=${this._advancedPinned} @click=${() => this._setAdvancedPinned(!this._advancedPinned)}><ha-icon icon=${this._advancedPinned ? "mdi:pin" : "mdi:pin-outline"}></ha-icon></button>
+          <button
+            class=${this._view === "advanced"
+              ? "advanced active"
+              : "advanced"}
+            aria-current=${this._view === "advanced" ? "page" : "false"}
+            ?disabled=${!this._advancedPinned}
+            @click=${() => this._navigate("advanced")}
+          >
+            ${this._t("nav.advanced")}
+          </button>
+          <ha-switch
+            class="advanced-switch"
+            .checked=${this._advancedPinned}
+            aria-label=${this._t(
+              this._advancedPinned
+                ? "nav.unpin_advanced"
+                : "nav.pin_advanced",
+            )}
+            title=${this._t(
+              this._advancedPinned
+                ? "nav.unpin_advanced"
+                : "nav.pin_advanced",
+            )}
+            @change=${(event) =>
+              this._setAdvancedPinned(
+                Boolean(event.currentTarget.checked),
+              )}
+          ></ha-switch>
         </nav>
         <button
           class="refresh"

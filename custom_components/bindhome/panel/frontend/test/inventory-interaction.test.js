@@ -302,7 +302,12 @@ test("changing HA language localizes presentation without touching an active bat
   assert.equal(workflow._activeDrafts[0].asset_type, "socket");
   assert.deepEqual(workflow._activeDrafts[0].capabilities, ["on_off"]);
   assert.match(panel.shadowRoot.textContent, /Casa\s+Añadir\s+Buscar/);
-  assert.doesNotMatch(panel.shadowRoot.textContent, /Avanzado/);
+  const advancedButton =
+    panel.shadowRoot.querySelector(".tabs button.advanced");
+
+  assert.ok(advancedButton);
+  assert.equal(advancedButton.textContent.trim(), "Avanzado");
+  assert.equal(advancedButton.disabled, true);
   assert.match(workflow.shadowRoot.textContent, /Ground floor user name/);
   assert.match(workflow.shadowRoot.textContent, /Living room user name/);
   assert.equal(calls.filter((call) => call.type !== "frontend/get_translations").length, beforeDataCalls);
