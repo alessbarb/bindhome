@@ -6,12 +6,18 @@ build-backend = "setuptools.build_meta"
 name = "bindhome"
 version = "1.0.0"
 description = "Stable home infrastructure bound to replaceable Home Assistant hardware"
+readme = "README.md"
 requires-python = ">=3.14"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [
   { name = "Alessandro Barbagallo" }
 ]
+
+[project.urls]
+Homepage = "https://github.com/alessbarb/bindhome"
+Issues = "https://github.com/alessbarb/bindhome/issues"
+Changelog = "https://github.com/alessbarb/bindhome/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
