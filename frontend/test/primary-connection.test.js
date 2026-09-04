@@ -26,7 +26,7 @@ await import("../src/bindings/primary-connection-editor.js");
 const t = (key) => key === "connection.cycle_error" ? "Circular connection" : key;
 
 function resources(language) {
-  const json = JSON.parse(readFileSync(new URL(`../../../translations/${language}.json`, import.meta.url)));
+  const json = JSON.parse(readFileSync(new URL(`../../custom_components/bindhome/translations/${language}.json`, import.meta.url)));
   return Object.fromEntries(Object.entries(json.common).filter(([key]) => key.startsWith("panel_")).map(([key, value]) => [`component.bindhome.common.${key}`, value]));
 }
 

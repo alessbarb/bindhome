@@ -43,7 +43,7 @@ function panelResources(language) {
   const json = JSON.parse(
     readFileSync(
       new URL(
-        `../../../translations/${language}.json`,
+        `../../custom_components/bindhome/translations/${language}.json`,
         import.meta.url,
       ),
     ),
