@@ -28,7 +28,7 @@ class BindHomeStoreCorruptionError(BindHomeStoreLoadError):
 
 
 class BindHomeStoreVersionError(BindHomeStoreLoadError):
-    """Raised when the Home Assistant storage envelope is too new."""
+    """Raised when the Home Assistant storage envelope is incompatible."""
 
 
 class _FailFastStore(Store[dict[str, Any]]):
@@ -67,7 +67,11 @@ class BindHomeStore:
             raise BindHomeStoreVersionError(
                 "BindHome storage was written by a newer incompatible version"
             ) from err
-        except HomeAssistantError as err:
+        except NotImplementedError as err:
+            raise BindHomeStoreVersionError(
+                "BindHome storage uses an unsupported older storage version"
+            ) from err
+        except (HomeAssistantError, KeyError, TypeError) as err:
             raise BindHomeStoreLoadError(
                 "Home Assistant could not read BindHome storage"
             ) from err
