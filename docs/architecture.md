@@ -220,13 +220,13 @@ BindHome exposes system-health information for the Registry and its main object 
 
 ## Frontend architecture
 
-The BindHome panel is a Lit 3 application bundled with esbuild. Source code and tests live under:
+The BindHome panel is a Lit 3 application bundled with esbuild. Development source, tests and Node.js tooling live at the repository root under:
 
 ```text
-custom_components/bindhome/panel/frontend
+frontend
 ```
 
-The runtime bundle is committed under:
+The HACS/runtime tree contains only the generated frontend artifact under:
 
 ```text
 custom_components/bindhome/panel/static/bindhome-panel.js
