@@ -14,7 +14,7 @@ from .manager import BindHomeManager
 from .panel import async_register_panel, async_unregister_panel
 from .representation import implemented_platforms
 from .services import async_register_services
-from .store import BindHomeStoreLoadError
+from .store import BindHomeStoreError
 from .websocket import async_register_websocket_commands
 
 type BindHomeConfigEntry = ConfigEntry[BindHomeManager]
@@ -35,7 +35,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: BindHomeConfigEntry) -> 
     manager = BindHomeManager(hass)
     try:
         await manager.async_load()
-    except BindHomeStoreLoadError as err:
+    except BindHomeStoreError as err:
         raise ConfigEntryError(str(err)) from err
 
     entry.runtime_data = manager
