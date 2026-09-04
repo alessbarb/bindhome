@@ -36,7 +36,7 @@ At release time:
 3. leave a fresh `Unreleased` section at the top;
 4. add or update comparison/release links at the bottom of the file;
 5. ensure migrations, minimum Home Assistant changes, deprecations and breaking changes are explicit;
-6. use the finalized changelog section as the basis for the GitHub Release notes.
+6. use the finalized changelog section as the GitHub Release notes.
 
 Generated bundles, formatting-only changes and internal refactors do not need changelog entries unless they materially affect users, compatibility, reliability or release operations.
 
@@ -62,25 +62,39 @@ custom_components/bindhome/panel/static/bindhome-panel.js
 
 The release gate rebuilds this bundle and verifies that the committed artifact is current. Development source and tests must not be moved back into the HACS runtime tree.
 
+## Automated publication
+
+`.github/workflows/release.yml` is the publication boundary for stable BindHome releases.
+
+When a merge to `main` changes release metadata, the changelog, or the release workflow itself, the publisher:
+
+1. verifies that all version metadata agrees and that `CHANGELOG.md` contains a finalized section for that version;
+2. exits without changing anything if the corresponding GitHub Release already exists;
+3. waits for the exact merged `main` commit to pass `Release Metadata`, `Pytest`, `Ruff Lint & Format`, `Hassfest`, `Frontend`, `HACS Validation`, `HA 2026.8.0`, and `HA 2026.9.0`;
+4. fails closed if any required gate fails or the gate does not complete within the bounded wait;
+5. extracts the release notes from the matching `CHANGELOG.md` section;
+6. creates the immutable `v<version>` tag and stable GitHub Release on that exact commit.
+
+Publication therefore cannot race ahead of the protected release gate. Re-running the workflow is idempotent for an already published version.
+
 ## Release checklist
 
 1. Start from an up-to-date `main` and a dedicated release branch.
 2. Set the intended BindHome version in all release metadata.
 3. Review `CHANGELOG.md`: ensure every notable merged change since the previous release is present, move `Unreleased` into the release version/date, and leave a fresh `Unreleased` section.
-4. Confirm the Home Assistant compatibility matrix is green.
-5. Confirm Validate, Hassfest, frontend and HACS validation are green.
+4. Confirm the Home Assistant compatibility matrix is green on the release PR.
+5. Confirm Validate, Hassfest, frontend and HACS validation are green on the release PR.
 6. Confirm the README, changelog and release notes describe the supported Home Assistant range and any migrations.
 7. For a public release, confirm the repository itself satisfies HACS publication metadata requirements.
 8. Confirm `custom_components/bindhome` contains runtime files only and no local development workspace/tool artifacts.
 9. Merge the release PR into `main`.
-10. Confirm all workflows are green on the exact merged `main` commit.
-11. Create tag `v<version>` on that exact commit.
-12. Create the GitHub Release from that tag; do not move or reuse an existing release tag.
-13. Install or upgrade the release through HACS in a development Home Assistant instance.
-14. Restart Home Assistant and verify BindHome loads, the Registry is intact, logical entities reconcile, and the panel opens.
-15. Keep the previous release available for controlled downgrade when one exists.
+10. Let the publication workflow wait for all required checks on the exact merged `main` commit and create `v<version>` plus the GitHub Release.
+11. Verify that the published release targets that exact green commit and that its notes match the finalized changelog section.
+12. Install or upgrade the release through HACS in a development Home Assistant instance.
+13. Restart Home Assistant and verify BindHome loads, the Registry is intact, logical entities reconcile, and the panel opens.
+14. Keep the previous release available for controlled downgrade when one exists.
 
-For the first public release, the repository must be public before the final HACS publication validation. `v1.0.0` is created only after the release-preparation PR is merged and the exact resulting `main` commit is green.
+For the first public release, the repository must be public before the final HACS publication validation. `v1.0.0` is published only after the release-preparation changes are on protected `main` and the exact resulting commit passes every required gate.
 
 ## Upgrade
 

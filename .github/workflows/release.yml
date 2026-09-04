@@ -1,0 +1,209 @@
+name: Publish Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "custom_components/bindhome/manifest.json"
+      - "pyproject.toml"
+      - "frontend/package.json"
+      - "frontend/package-lock.json"
+      - "CHANGELOG.md"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: bindhome-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify release metadata
+        id: metadata
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import pathlib
+          import re
+          import tomllib
+
+          root = pathlib.Path('.')
+          pyproject = tomllib.loads((root / 'pyproject.toml').read_text())
+          manifest = json.loads(
+              (root / 'custom_components/bindhome/manifest.json').read_text()
+          )
+          package = json.loads((root / 'frontend/package.json').read_text())
+          package_lock = json.loads((root / 'frontend/package-lock.json').read_text())
+
+          versions = {
+              'pyproject.toml': pyproject['project']['version'],
+              'manifest.json': manifest['version'],
+              'frontend/package.json': package['version'],
+              'frontend/package-lock.json': package_lock['version'],
+              'frontend/package-lock.json root package': package_lock['packages']['']['version'],
+          }
+
+          if len(set(versions.values())) != 1:
+              raise SystemExit(f'Version metadata mismatch: {versions}')
+
+          version = next(iter(versions.values()))
+          if not re.fullmatch(r'\d+\.\d+\.\d+', version):
+              raise SystemExit(f'Version is not SemVer-compatible: {version}')
+
+          changelog = (root / 'CHANGELOG.md').read_text()
+          if not re.search(rf'^## \[{re.escape(version)}\] - \d{{4}}-\d{{2}}-\d{{2}}$', changelog, re.MULTILINE):
+              raise SystemExit(f'CHANGELOG.md has no finalized section for {version}')
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'version={version}\n')
+              output.write(f'tag=v{version}\n')
+
+          print(f'Release metadata is coherent for BindHome {version}')
+          PY
+
+      - name: Check whether release already exists
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.metadata.outputs.tag }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; nothing to publish."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Wait for required release gates
+        if: steps.existing.outputs.exists != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 60); do
+            gh api \
+              -H "Accept: application/vnd.github+json" \
+              "repos/$GITHUB_REPOSITORY/commits/$TARGET_SHA/check-runs?per_page=100" \
+              > /tmp/check-runs.json
+
+            if python - <<'PY'
+          import json
+          import sys
+
+          required = {
+              'Release Metadata',
+              'Pytest',
+              'Ruff Lint & Format',
+              'Hassfest',
+              'Frontend',
+              'HACS Validation',
+              'HA 2026.8.0',
+              'HA 2026.9.0',
+          }
+
+          data = json.load(open('/tmp/check-runs.json'))
+          runs = {run['name']: run for run in data.get('check_runs', [])}
+          missing = sorted(required - runs.keys())
+
+          if missing:
+              print('Waiting for checks to appear:', ', '.join(missing))
+              sys.exit(2)
+
+          failed = []
+          pending = []
+          for name in sorted(required):
+              run = runs[name]
+              if run.get('status') != 'completed':
+                  pending.append(name)
+              elif run.get('conclusion') != 'success':
+                  failed.append(f"{name}={run.get('conclusion')}")
+
+          if failed:
+              print('Release gate failed:', ', '.join(failed))
+              sys.exit(1)
+
+          if pending:
+              print('Waiting for checks:', ', '.join(pending))
+              sys.exit(2)
+
+          print('All required release gates passed.')
+          PY
+            then
+              break
+            else
+              status=$?
+              if [ "$status" -eq 1 ]; then
+                exit 1
+              fi
+            fi
+
+            if [ "$attempt" -eq 60 ]; then
+              echo "Timed out waiting for required release gates."
+              exit 1
+            fi
+
+            sleep 10
+          done
+
+      - name: Extract release notes from changelog
+        if: steps.existing.outputs.exists != 'true'
+        env:
+          VERSION: ${{ steps.metadata.outputs.version }}
+        run: |
+          python - <<'PY'
+          import os
+          import pathlib
+          import re
+
+          changelog = pathlib.Path('CHANGELOG.md').read_text()
+          version = os.environ['VERSION']
+          marker = re.search(
+              rf'^## \[{re.escape(version)}\] - \d{{4}}-\d{{2}}-\d{{2}}$',
+              changelog,
+              re.MULTILINE,
+          )
+          if marker is None:
+              raise SystemExit(f'No changelog section found for {version}')
+
+          section = changelog[marker.end():].lstrip('\n')
+          next_version = re.search(r'^## \[', section, re.MULTILINE)
+          if next_version is not None:
+              section = section[:next_version.start()]
+
+          link_separator = section.find('\n---\n')
+          if link_separator != -1:
+              section = section[:link_separator]
+
+          notes = section.strip() + '\n'
+          pathlib.Path('/tmp/release-notes.md').write_text(notes)
+          print(notes)
+          PY
+
+      - name: Publish stable GitHub Release
+        if: steps.existing.outputs.exists != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.metadata.outputs.tag }}
+          VERSION: ${{ steps.metadata.outputs.version }}
+        run: |
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "BindHome $VERSION" \
+            --notes-file /tmp/release-notes.md \
+            --latest
