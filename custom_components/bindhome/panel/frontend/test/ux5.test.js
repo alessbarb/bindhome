@@ -537,6 +537,56 @@ test("Edit opens the exact human Asset in the mounted technical editor", async (
   assert.equal(browser.shadowRoot.querySelector("bindhome-asset-detail-editor").asset.id, "b");
 });
 
+async function advancedBrowser(panel) {
+  await settle(panel);
+  const advanced = panel.shadowRoot.querySelector("bindhome-advanced-view");
+  await settle(advanced);
+  const section = advanced.shadowRoot.querySelector("bindhome-inventory-section");
+  await settle(section);
+  const browser = section.shadowRoot.querySelector("bindhome-inventory-browser");
+  await settle(browser);
+  return browser;
+}
+
+test("repeated Human Edit is a fresh request after manual Advanced navigation", async () => {
+  const panel = panelFixture();
+  panel._homeNavigate({ detail: { areaId: "kitchen", assetId: "a" } });
+  let home = await settlePanel(panel);
+  let detail = home.shadowRoot.querySelector("bindhome-element-detail");
+  await settle(detail);
+  detail.shadowRoot.querySelector(".header .text-button").click();
+  let browser = await advancedBrowser(panel);
+  assert.equal(browser._selectedAssetId, "a");
+
+  browser._openAsset("b");
+  await settle(browser);
+  assert.equal(browser._selectedAssetId, "b");
+
+  panel._navigate("home");
+  home = await settlePanel(panel);
+  assert.equal(panel._advancedAssetId, null);
+  detail = home.shadowRoot.querySelector("bindhome-element-detail");
+  await settle(detail);
+  detail.shadowRoot.querySelector(".header .text-button").click();
+  browser = await advancedBrowser(panel);
+  assert.equal(browser._selectedAssetId, "a");
+});
+
+test("normal Advanced Casa Advanced navigation preserves technical selection", async () => {
+  const panel = panelFixture();
+  panel._navigate("advanced");
+  let browser = await advancedBrowser(panel);
+  browser._openAsset("b");
+  await settle(browser);
+
+  panel._navigate("home");
+  await settlePanel(panel);
+  panel._navigate("advanced");
+  browser = await advancedBrowser(panel);
+  assert.equal(panel._advancedAssetId, null);
+  assert.equal(browser._selectedAssetId, "b");
+});
+
 test("human device derivation finds non-first bindings and deduplicates one entity", async () => {
   const detail = document.createElement("bindhome-element-detail");
   detail.t = t;

@@ -355,6 +355,9 @@ export class BindHomePanel extends LitElement {
   _navigate(view) {
     // Casa intentionally retains its last Area/Asset context while another
     // mounted top-level view is active. Only Casa navigation events own it.
+    if (this._view === "advanced" && view !== "advanced") {
+      this._advancedAssetId = null;
+    }
     this._view = view;
     if (view !== "add") this._contextAreaId = null;
   }
