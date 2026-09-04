@@ -20,6 +20,7 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
     hass: { attribute: false }, t: { attribute: false }, asset: { attribute: false },
     capability: { type: String }, status: { attribute: false }, areas: { attribute: false },
     entityRegistry: { attribute: false }, deviceRegistry: { attribute: false },
+    showEntityId: { type: Boolean, attribute: "show-entity-id" },
     refreshBindingData: { attribute: false }, _editing: { state: true }, _search: { state: true },
     _selectedEntityId: { state: true }, _saving: { state: true }, _error: { state: true },
     _confirmDisconnect: { state: true }, _selectionMode: { state: true },
@@ -35,6 +36,7 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
     this.areas = [];
     this.entityRegistry = [];
     this.deviceRegistry = [];
+    this.showEntityId = true;
     this.refreshBindingData = null;
     this._editing = false;
     this._search = "";
@@ -127,6 +129,20 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
     if (candidate.state === "unavailable") return this.t("connection.unavailable");
     if (candidate.state === "unknown") return this.t("connection.unknown");
     return candidate.state;
+  }
+
+  _displayName(candidate, entityId) {
+    if (candidate?.name && (this.showEntityId || candidate.name !== entityId)) return candidate.name;
+    return candidate?.deviceName ?? (this.showEntityId ? entityId : this.t("connection.configured"));
+  }
+
+  _candidateMeta(candidate) {
+    return [
+      this.showEntityId ? candidate?.entityId : null,
+      candidate?.areaName,
+      candidate?.deviceName,
+      candidate ? this._candidateStateLabel(candidate) : null,
+    ].filter(Boolean).join(" · ");
   }
 
   _beginEdit() {
@@ -228,8 +244,8 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
       return html`<div class="summary">${this.t("connection.not_connected")}</div><div class="actions"><button class="primary" @click=${this._beginEdit}>${this.t("connection.connect")}</button></div>`;
     }
     return html`
-      <div class="entity">${candidate?.name ?? entityId}</div>
-      ${entityId ? html`<div class="technical">${entityId}</div>` : nothing}
+      <div class="entity">${this._displayName(candidate, entityId)}</div>
+      ${entityId && this.showEntityId ? html`<div class="technical">${entityId}</div>` : nothing}
       ${candidate?.areaName || candidate?.deviceName ? html`<div class="summary">${[candidate.areaName, candidate.deviceName].filter(Boolean).join(" · ")}</div>` : nothing}
       <div class="summary">${this._configurationLabel()} · ${this.status?.status === "entity_not_found" ? this.t("connection.stale") : this._runtimeLabel(candidate)}</div>
       <div class="actions">
@@ -248,11 +264,11 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
     const unchanged = Boolean(currentEntityId && currentEntityId === this._selectedEntityId);
     return html`
       <div class="picker">
-        ${currentEntityId ? html`<div class="current"><strong>${this.t("connection.current")}</strong><div class="entity">${this._currentCandidate()?.name ?? currentEntityId}</div><div class="technical">${currentEntityId}</div></div>` : nothing}
+        ${currentEntityId ? html`<div class="current"><strong>${this.t("connection.current")}</strong><div class="entity">${this._displayName(this._currentCandidate(), currentEntityId)}</div>${this.showEntityId ? html`<div class="technical">${currentEntityId}</div>` : nothing}</div>` : nothing}
         <label>${this.t("connection.search_label")}<input aria-label=${this.t("connection.search_label")} .value=${this._search} @input=${(event) => { this._search = event.target.value; this._selectionMode = "search"; }} /></label>
-        ${this._selectionMode === "selected" ? html`<div class="selected-summary" aria-live="polite"><strong>${this.t("connection.selected")}</strong><div class="entity">✓ ${selectedCandidate?.name ?? this._selectedEntityId}</div><div class="technical">${selectedCandidate?.entityId ?? this._selectedEntityId}${selectedCandidate?.areaName ? ` · ${selectedCandidate.areaName}` : ""}${selectedCandidate ? ` · ${this._candidateStateLabel(selectedCandidate)}` : ` · ${this.t("connection.no_runtime")}`}</div><button @click=${this._changeSelection} ?disabled=${this._saving}>${this.t("connection.change_selection")}</button></div>` : html`
+        ${this._selectionMode === "selected" ? html`<div class="selected-summary" aria-live="polite"><strong>${this.t("connection.selected")}</strong><div class="entity">✓ ${this._displayName(selectedCandidate, this._selectedEntityId)}</div><div class="technical">${selectedCandidate ? this._candidateMeta(selectedCandidate) : this.showEntityId ? `${this._selectedEntityId} · ${this.t("connection.no_runtime")}` : this.t("connection.no_runtime")}</div><button @click=${this._changeSelection} ?disabled=${this._saving}>${this.t("connection.change_selection")}</button></div>` : html`
           ${!this._search && limitedCandidates.length ? html`<div class="suggestions-heading">${this.t("connection.suggestions")}</div>` : nothing}
-          ${limitedCandidates.length ? limitedCandidates.map((candidate) => html`<button class="candidate ${candidate.entityId === this._selectedEntityId ? "selected" : ""}" aria-pressed=${candidate.entityId === this._selectedEntityId} @click=${() => this._select(candidate.entityId)}><span class="entity">${candidate.name}</span><span class="candidate-meta">${candidate.entityId}${candidate.areaName ? ` · ${candidate.areaName}` : ""}${candidate.deviceName ? ` · ${candidate.deviceName}` : ""} · ${this._candidateStateLabel(candidate)}${candidate.disabled ? ` · ${this.t("connection.disabled")}` : ""}${candidate.hidden ? ` · ${this.t("connection.hidden")}` : ""}</span></button>`) : html`<div class="muted">${this.t("connection.no_matches")}</div>`}
+          ${limitedCandidates.length ? limitedCandidates.map((candidate) => html`<button class="candidate ${candidate.entityId === this._selectedEntityId ? "selected" : ""}" aria-pressed=${candidate.entityId === this._selectedEntityId} @click=${() => this._select(candidate.entityId)}><span class="entity">${this._displayName(candidate, candidate.entityId)}</span><span class="candidate-meta">${this._candidateMeta(candidate)}${candidate.disabled ? ` · ${this.t("connection.disabled")}` : ""}${candidate.hidden ? ` · ${this.t("connection.hidden")}` : ""}</span></button>`) : html`<div class="muted">${this.t("connection.no_matches")}</div>`}
           ${allMatches.length > limitedCandidates.length ? html`<div class="muted result-count">${this.t("connection.showing_results", { shown: limitedCandidates.length, total: allMatches.length })}</div>` : nothing}
         `}
         <div class="actions"><button @click=${this._cancelEdit} ?disabled=${this._saving}>${this.t("editor.cancel")}</button><button class="primary" @click=${this._save} ?disabled=${this._saving || !this._selectedEntityId || unchanged}>${this._saving ? this.t("connection.saving") : this.t("common.save")}</button></div>

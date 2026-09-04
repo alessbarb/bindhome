@@ -18,6 +18,7 @@ export class BindHomeInventorySection extends LitElement {
     deviceRegistry: { attribute: false },
     refreshBindingData: { attribute: false },
     refreshTopologyData: { attribute: false },
+    selectedAssetId: { attribute: false },
     _active: { state: true },
   };
 
@@ -35,6 +36,7 @@ export class BindHomeInventorySection extends LitElement {
     this.deviceRegistry = [];
     this.refreshBindingData = null;
     this.refreshTopologyData = null;
+    this.selectedAssetId = null;
     this._active = "browse";
   }
 
@@ -110,6 +112,12 @@ export class BindHomeInventorySection extends LitElement {
 
   _show(view) {
     this._active = view;
+  }
+
+  willUpdate(changed) {
+    if (changed.has("selectedAssetId") && this.selectedAssetId) {
+      this._active = "browse";
+    }
   }
 
   _forwardAssetsRefreshed(event) {
@@ -197,6 +205,7 @@ export class BindHomeInventorySection extends LitElement {
           .deviceRegistry=${this.deviceRegistry}
           .refreshBindingData=${this.refreshBindingData}
           .refreshTopologyData=${this.refreshTopologyData}
+          .selectedAssetId=${this.selectedAssetId}
           @assets-refreshed=${this
             ._forwardAssetsRefreshed}
         ></bindhome-inventory-browser>

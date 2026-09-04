@@ -21,6 +21,7 @@ export class BindHomeInventoryBrowser extends LitElement {
     deviceRegistry: { attribute: false },
     refreshBindingData: { attribute: false },
     refreshTopologyData: { attribute: false },
+    selectedAssetId: { attribute: false },
     t: { attribute: false },
     _selectedKey: { state: true },
     _selectedAssetId: { state: true },
@@ -40,6 +41,7 @@ export class BindHomeInventoryBrowser extends LitElement {
     this.deviceRegistry = [];
     this.refreshBindingData = null;
     this.refreshTopologyData = null;
+    this.selectedAssetId = null;
     this.t = (key) => key;
     this._selectedKey = "";
     this._selectedAssetId = null;
@@ -429,6 +431,13 @@ export class BindHomeInventoryBrowser extends LitElement {
   }
 
   willUpdate(changed) {
+    if (changed.has("selectedAssetId") && this.selectedAssetId) {
+      const requested = this.assets.find((asset) => asset.id === this.selectedAssetId);
+      if (requested) {
+        this._selectedKey = this._locationKeyForAsset(requested);
+        this._selectedAssetId = requested.id;
+      }
+    }
     if (
       this._selectedKey &&
       (
