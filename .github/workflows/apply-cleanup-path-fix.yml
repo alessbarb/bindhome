@@ -1,0 +1,47 @@
+name: Apply cleanup path fix
+
+on:
+  push:
+    branches:
+      - p1/release-1.0-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: p1/release-1.0-foundation
+
+      - name: Update moved frontend translation paths
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          old = "../../../translations/"
+          new = "../../custom_components/bindhome/translations/"
+          changed = []
+          for path in sorted(Path("frontend/test").glob("*.test.js")):
+              text = path.read_text()
+              if old not in text:
+                  continue
+              path.write_text(text.replace(old, new))
+              changed.append(str(path))
+
+          if len(changed) != 5:
+              raise SystemExit(f"Expected 5 translation-path test files, changed {len(changed)}: {changed}")
+          print("Updated:", *changed, sep="\n- ")
+          PY
+
+      - name: Commit cleanup fix and remove helper
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/test
+          git rm .github/workflows/apply-cleanup-path-fix.yml
+          git commit -m 'test: align translation paths with frontend layout'
+          git push origin HEAD:p1/release-1.0-foundation
