@@ -6,6 +6,8 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
+from homeassistant.util import json as json_util
+from homeassistant.util.file import WriteError
 
 from .const import STORAGE_KEY, STORAGE_VERSION
 from .registry import BindHomeRegistry
@@ -21,7 +23,7 @@ class _FailFastStore(Store[dict[str, Any]]):
     async def _async_write_data(self, data: dict[str, Any]) -> None:
         try:
             await super()._async_write_data(data)
-        except Exception as err:
+        except (json_util.SerializationError, WriteError) as err:
             raise BindHomeStoreError("Failed to persist BindHome registry") from err
 
 
