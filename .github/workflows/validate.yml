@@ -30,15 +30,17 @@ jobs:
           manifest = json.loads(
               (root / 'custom_components/bindhome/manifest.json').read_text()
           )
-          package = json.loads(
-              (root / 'custom_components/bindhome/panel/frontend/package.json').read_text()
-          )
+          frontend = root / 'custom_components/bindhome/panel/frontend'
+          package = json.loads((frontend / 'package.json').read_text())
+          package_lock = json.loads((frontend / 'package-lock.json').read_text())
           hacs = json.loads((root / 'hacs.json').read_text())
 
           versions = {
               'pyproject.toml': pyproject['project']['version'],
               'manifest.json': manifest['version'],
               'package.json': package['version'],
+              'package-lock.json': package_lock['version'],
+              'package-lock.json root package': package_lock['packages']['']['version'],
           }
           if len(set(versions.values())) != 1:
               raise SystemExit(f'Version metadata mismatch: {versions}')
