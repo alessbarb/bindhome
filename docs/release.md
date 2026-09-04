@@ -14,8 +14,8 @@ The release version must match in:
 
 - `pyproject.toml`;
 - `custom_components/bindhome/manifest.json`;
-- `custom_components/bindhome/panel/frontend/package.json`;
-- the root package metadata in `custom_components/bindhome/panel/frontend/package-lock.json`.
+- `frontend/package.json`;
+- the root package metadata in `frontend/package-lock.json`.
 
 CI verifies this metadata before a release can be accepted.
 
@@ -50,6 +50,18 @@ BindHome 1.0.0 supports Home Assistant `2026.8.0` and newer compatible releases.
 
 When the minimum supported Home Assistant version changes, the HACS metadata, README, compatibility matrix, changelog and release notes must change together.
 
+## Distribution layout
+
+HACS installs the runtime integration from `custom_components/bindhome`. Development-only frontend source, tests and Node.js tooling therefore live separately under the repository-root `frontend/` directory.
+
+The frontend build writes the only runtime artifact it needs into:
+
+```text
+custom_components/bindhome/panel/static/bindhome-panel.js
+```
+
+The release gate rebuilds this bundle and verifies that the committed artifact is current. Development source and tests must not be moved back into the HACS runtime tree.
+
 ## Release checklist
 
 1. Start from an up-to-date `main` and a dedicated release branch.
@@ -59,13 +71,14 @@ When the minimum supported Home Assistant version changes, the HACS metadata, RE
 5. Confirm Validate, Hassfest, frontend and HACS validation are green.
 6. Confirm the README, changelog and release notes describe the supported Home Assistant range and any migrations.
 7. For a public release, confirm the repository itself satisfies HACS publication metadata requirements.
-8. Merge the release PR into `main`.
-9. Confirm all workflows are green on the exact merged `main` commit.
-10. Create tag `v<version>` on that exact commit.
-11. Create the GitHub Release from that tag; do not move or reuse an existing release tag.
-12. Install or upgrade the release through HACS in a development Home Assistant instance.
-13. Restart Home Assistant and verify BindHome loads, the Registry is intact, logical entities reconcile, and the panel opens.
-14. Keep the previous release available for controlled downgrade when one exists.
+8. Confirm `custom_components/bindhome` contains runtime files only and no local development workspace/tool artifacts.
+9. Merge the release PR into `main`.
+10. Confirm all workflows are green on the exact merged `main` commit.
+11. Create tag `v<version>` on that exact commit.
+12. Create the GitHub Release from that tag; do not move or reuse an existing release tag.
+13. Install or upgrade the release through HACS in a development Home Assistant instance.
+14. Restart Home Assistant and verify BindHome loads, the Registry is intact, logical entities reconcile, and the panel opens.
+15. Keep the previous release available for controlled downgrade when one exists.
 
 For the first public release, the repository must be public before the final HACS publication validation. `v1.0.0` is created only after the release-preparation PR is merged and the exact resulting `main` commit is green.
 
