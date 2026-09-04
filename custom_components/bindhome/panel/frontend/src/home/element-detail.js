@@ -1,0 +1,416 @@
+// Typed contracts live in types.d.ts; view behavior is covered by DOM tests.
+import { LitElement, css, html, nothing } from "lit";
+import { tokens } from "../styles/shared-styles.js";
+import { assetPresentation } from "../presentation/asset-types.js";
+import {
+  relationPresentation,
+  contextualRelationActions,
+} from "../presentation/relation-types.js";
+import { relationPartitions } from "../topology/relation-state.js";
+import { indexBindingStatuses } from "../bindings/binding-state.js";
+import "../bindings/primary-connection-editor.js";
+import "./contextual-relation-editor.js";
+
+export class BindHomeElementDetail extends LitElement {
+  static properties = {
+    hass: { attribute: false },
+    t: { attribute: false },
+    asset: { attribute: false },
+    assets: { attribute: false },
+    areas: { attribute: false },
+    floors: { attribute: false },
+    registry: { attribute: false },
+    bindingStatuses: { attribute: false },
+    entityRegistry: { attribute: false },
+    deviceRegistry: { attribute: false },
+    refreshBindingData: { attribute: false },
+    refreshTopologyData: { attribute: false },
+    _action: { state: true },
+  };
+  constructor() {
+    super();
+    this.hass = null;
+    this.t = (key) => key;
+    this.asset = null;
+    this.assets = [];
+    this.areas = [];
+    this.floors = [];
+    this.registry = {};
+    this.bindingStatuses = { records: [], summary: {} };
+    this.entityRegistry = [];
+    this.deviceRegistry = [];
+    this.refreshBindingData = null;
+    this.refreshTopologyData = null;
+    this._action = null;
+    this._identity = null;
+  }
+  willUpdate() {
+    if (this.asset?.id !== this._identity) {
+      this._identity = this.asset?.id;
+      this._action = null;
+    }
+  }
+  static styles = [
+    tokens,
+    css`
+      :host {
+        display: block;
+        min-width: 0;
+      }
+      .back {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0;
+      }
+      .card {
+        margin-top: 8px;
+      }
+      .header {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+        padding: 20px;
+        border-bottom: 1px solid var(--divider-color);
+      }
+      .hero-icon {
+        display: grid;
+        place-items: center;
+        flex: none;
+        width: 52px;
+        height: 52px;
+        border-radius: 12px;
+        color: var(--primary-color);
+        background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+        --mdc-icon-size: 30px;
+      }
+      .grow {
+        min-width: 0;
+        flex: 1;
+      }
+      .header h2 {
+        overflow-wrap: anywhere;
+        font-size: 23px;
+        line-height: 30px;
+        font-weight: 500;
+      }
+      .location {
+        margin-top: 3px;
+        color: var(--secondary-text-color);
+      }
+      .type {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-top: 10px;
+      }
+      .section {
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--divider-color);
+      }
+      .section:last-child {
+        border-bottom: 0;
+      }
+      .section h3 {
+        margin-bottom: 12px;
+        font-size: 17px;
+        font-weight: 500;
+      }
+      .relations {
+        display: grid;
+        gap: 8px;
+      }
+      .relation {
+        display: grid;
+        grid-template-columns: 28px minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+        padding: 10px 0;
+      }
+      .relation ha-icon {
+        color: var(--primary-color);
+      }
+      .relation button {
+        display: block;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        font-weight: 500;
+      }
+      .relation small {
+        display: block;
+        margin-top: 2px;
+        color: var(--secondary-text-color);
+      }
+      .device {
+        padding: 14px;
+        border-radius: 8px;
+        background: var(--secondary-background-color);
+      }
+      .passive {
+        color: var(--secondary-text-color);
+        line-height: 1.45;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      details {
+        overflow: hidden;
+      }
+      summary {
+        min-height: 52px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        font-weight: 500;
+      }
+      dl {
+        display: grid;
+        grid-template-columns: 150px minmax(0, 1fr);
+        gap: 10px 16px;
+        padding-bottom: 16px;
+      }
+      dt {
+        color: var(--secondary-text-color);
+      }
+      dd {
+        overflow-wrap: anywhere;
+      }
+      .raw {
+        font-family: var(--code-font-family, monospace);
+        font-size: 12px;
+      }
+      @media (max-width: 600px) {
+        .header {
+          display: grid;
+          grid-template-columns: 46px minmax(0, 1fr);
+          padding: 16px 14px;
+        }
+        .header > .text-button {
+          grid-column: 2;
+          justify-self: start;
+          padding: 0;
+        }
+        .section {
+          padding: 16px 14px;
+        }
+        .hero-icon {
+          width: 46px;
+          height: 46px;
+        }
+        .header h2 {
+          font-size: 21px;
+          line-height: 27px;
+        }
+        dl {
+          grid-template-columns: 1fr;
+          gap: 3px;
+        }
+        dd {
+          margin-bottom: 8px;
+        }
+      }
+    `,
+  ];
+  _area() {
+    return this.areas.find((a) => a.area_id === this.asset?.area_id) ?? null;
+  }
+  _asset(id) {
+    return this.assets.find((a) => a.id === id) ?? null;
+  }
+  _relations() {
+    const parts = relationPartitions(
+      this.registry?.relations ?? [],
+      this.asset?.id,
+    );
+    return [
+      ...parts.incoming.map((relation) => ({
+        relation,
+        direction: "incoming",
+        other: this._asset(relation.source_asset_id),
+      })),
+      ...parts.outgoing.map((relation) => ({
+        relation,
+        direction: "outgoing",
+        other: this._asset(relation.target_asset_id),
+      })),
+    ];
+  }
+  _device() {
+    const statuses = indexBindingStatuses(this.bindingStatuses);
+    const capability = this.asset?.capabilities?.[0];
+    const status = capability
+      ? statuses.get(`${this.asset.id}:${capability}:primary`)
+      : null;
+    return { capability, status };
+  }
+  render() {
+    if (!this.asset) return nothing;
+    const type = assetPresentation(this.t, this.asset.asset_type),
+      area = this._area(),
+      relations = this._relations(),
+      device = this._device(),
+      representations = (this.registry.representations ?? []).filter(
+        (r) => r.asset_id === this.asset.id,
+      ),
+      actions = contextualRelationActions(this.asset.asset_type);
+    return html`<button
+        class="back text-button"
+        @click=${() =>
+          this.dispatchEvent(
+            new CustomEvent("back", { bubbles: true, composed: true }),
+          )}
+      >
+        <ha-icon icon="mdi:arrow-left"></ha-icon>${this.t("home.back_room")}
+      </button>
+      <article class="card surface">
+        <header class="header">
+          <div class="hero-icon"><ha-icon icon=${type.icon}></ha-icon></div>
+          <div class="grow">
+            <h2>${this.asset.name}</h2>
+            <p class="location">
+              ${area?.name ??
+              (this.asset.area_id
+                ? this.t("home.stale_area")
+                : this.t("home.unassigned"))}
+            </p>
+            <p class="type">
+              <ha-icon icon=${type.icon}></ha-icon>${type.label}
+            </p>
+          </div>
+          <button
+            class="text-button"
+            @click=${() =>
+              this.dispatchEvent(
+                new CustomEvent("edit-asset", {
+                  detail: this.asset.id,
+                  bubbles: true,
+                  composed: true,
+                }),
+              )}
+          >
+            ${this.t("common.edit")}
+          </button>
+        </header>
+        <section class="section">
+          <h3>${this.t("detail.connections")}</h3>
+          ${relations.length
+            ? html`<div class="relations">
+                ${relations.map(({ relation, direction, other }) => {
+                  const presentation = relationPresentation(
+                    this.t,
+                    relation.relation_type,
+                    direction,
+                  );
+                  return html`<div class="relation">
+                    <ha-icon icon=${presentation.icon}></ha-icon>
+                    <div>
+                      <small>${presentation.label}</small>${other
+                        ? html`<button
+                            @click=${() =>
+                              this.dispatchEvent(
+                                new CustomEvent("navigate-asset", {
+                                  detail: other.id,
+                                  bubbles: true,
+                                  composed: true,
+                                }),
+                              )}
+                          >
+                            ${other.name}
+                          </button>`
+                        : html`<strong
+                            >${this.t("detail.missing_element")}</strong
+                          >`}
+                    </div>
+                  </div>`;
+                })}
+              </div>`
+            : html`<p class="passive">
+                ${this.t("detail.no_connections")}
+              </p>`}${actions.length
+            ? html`<div class="actions">
+                ${actions.map(
+                  (action) =>
+                    html`<button
+                      class="secondary"
+                      ?disabled=${Boolean(this._action)}
+                      @click=${() => (this._action = action)}
+                    >
+                      ${this.t(action.labelKey)}
+                    </button>`,
+                )}
+              </div>`
+            : nothing}${this._action
+            ? html`<bindhome-contextual-relation-editor
+                .hass=${this.hass}
+                .t=${this.t}
+                .asset=${this.asset}
+                .assets=${this.assets}
+                .areas=${this.areas}
+                .action=${this._action}
+                .onRefresh=${this.refreshTopologyData}
+                @cancel=${() => (this._action = null)}
+                @done=${() => (this._action = null)}
+              ></bindhome-contextual-relation-editor>`
+            : nothing}
+        </section>
+        <section class="section">
+          <h3>
+            ${this.t(
+              this.asset.asset_type === "radiator"
+                ? "detail.control"
+                : "detail.device",
+            )}
+          </h3>
+          ${device.capability
+            ? html`<div class="device">
+                <bindhome-primary-connection-editor
+                  .hass=${this.hass}
+                  .t=${this.t}
+                  .asset=${this.asset}
+                  .capability=${device.capability}
+                  .status=${device.status}
+                  .areas=${this.areas}
+                  .entityRegistry=${this.entityRegistry}
+                  .deviceRegistry=${this.deviceRegistry}
+                  .refreshBindingData=${this.refreshBindingData}
+                ></bindhome-primary-connection-editor>
+              </div>`
+            : html`<p class="passive">${this.t("detail.passive")}</p>`}
+        </section>
+        <section class="section">
+          <details>
+            <summary>
+              <ha-icon icon="mdi:code-tags"></ha-icon>${this.t(
+                "detail.technical",
+              )}
+            </summary>
+            <dl>
+              <dt>${this.t("fields.asset_type")}</dt>
+              <dd class="raw">${this.asset.asset_type}</dd>
+              <dt>${this.t("detail.asset_id")}</dt>
+              <dd class="raw">${this.asset.id}</dd>
+              <dt>${this.t("fields.code")}</dt>
+              <dd>${this.asset.code || this.t("common.not_set")}</dd>
+              <dt>${this.t("fields.capabilities")}</dt>
+              <dd class="raw">
+                ${this.asset.capabilities?.join(", ") || this.t("common.none")}
+              </dd>
+              <dt>${this.t("detail.representations")}</dt>
+              <dd class="raw">
+                ${representations.length
+                  ? representations.map((r) => r.platform).join(", ")
+                  : this.t("common.none")}
+              </dd>
+            </dl>
+          </details>
+        </section>
+      </article>`;
+  }
+}
+customElements.define("bindhome-element-detail", BindHomeElementDetail);

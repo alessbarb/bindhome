@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "build": "node build.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "esbuild": "^0.25.0",
-    "happy-dom": "^20.13.1"
+    "happy-dom": "^20.13.1",
+    "typescript": "^5.9.2"
   },
   "dependencies": {
     "lit": "^3.3.3"

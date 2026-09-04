@@ -1,0 +1,400 @@
+// Typed contracts live in types.d.ts; view behavior is covered by DOM tests.
+import { LitElement, css, html, nothing } from "lit";
+import { tokens } from "../styles/shared-styles.js";
+import {
+  buildHomeProjection,
+  groupRoomAssets,
+  NO_AREA,
+  STALE_AREA,
+} from "../state/home-selectors.js";
+import {
+  assetPresentation,
+  categoryPresentation,
+} from "../presentation/asset-types.js";
+import "./element-detail.js";
+
+export class BindHomeHomeView extends LitElement {
+  static properties = {
+    hass: { attribute: false },
+    t: { attribute: false },
+    floors: { attribute: false },
+    areas: { attribute: false },
+    assets: { attribute: false },
+    registry: { attribute: false },
+    bindingStatuses: { attribute: false },
+    entityRegistry: { attribute: false },
+    deviceRegistry: { attribute: false },
+    refreshBindingData: { attribute: false },
+    refreshTopologyData: { attribute: false },
+    selectedAssetId: { attribute: false },
+    selectedAreaId: { attribute: false },
+    _areaId: { state: true },
+    _assetId: { state: true },
+  };
+  constructor() {
+    super();
+    this.hass = null;
+    this.t = (key) => key;
+    this.floors = [];
+    this.areas = [];
+    this.assets = [];
+    this.registry = {};
+    this.bindingStatuses = { records: [], summary: {} };
+    this.entityRegistry = [];
+    this.deviceRegistry = [];
+    this.refreshBindingData = null;
+    this.refreshTopologyData = null;
+    this.selectedAssetId = null;
+    this.selectedAreaId = null;
+    this._areaId = null;
+    this._assetId = null;
+  }
+  static styles = [
+    tokens,
+    css`
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
+        gap: 18px;
+        margin-top: 22px;
+        align-items: start;
+      }
+      .floor-title,
+      .area-row,
+      .category-title,
+      .asset-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        min-height: 52px;
+        padding: 8px 14px;
+        border: 0;
+        border-bottom: 1px solid var(--divider-color);
+        background: transparent;
+        text-align: left;
+      }
+      .floor-title {
+        font-weight: 500;
+        background: var(--secondary-background-color);
+      }
+      .floor-title ha-icon,
+      .category-title ha-icon {
+        color: var(--primary-color);
+      }
+      .area-row:hover,
+      .asset-row:hover {
+        background: var(--secondary-background-color);
+      }
+      .area-row.selected {
+        border-left: 3px solid var(--primary-color);
+        background: var(--secondary-background-color);
+      }
+      .grow {
+        min-width: 0;
+        flex: 1;
+        overflow-wrap: anywhere;
+      }
+      .count {
+        color: var(--secondary-text-color);
+        font-size: 12px;
+      }
+      .room-head {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px;
+        border-bottom: 1px solid var(--divider-color);
+      }
+      .room-head ha-icon {
+        color: var(--primary-color);
+        --mdc-icon-size: 30px;
+      }
+      .room-head .primary {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .category-title {
+        font-weight: 500;
+      }
+      .asset-row {
+        padding-left: 30px;
+      }
+      .asset-row ha-icon {
+        color: var(--secondary-text-color);
+      }
+      .asset-meta {
+        display: block;
+        margin-top: 2px;
+        color: var(--secondary-text-color);
+        font-size: 12px;
+      }
+      .specials {
+        margin-top: 16px;
+      }
+      .special {
+        border-bottom: 1px solid var(--divider-color);
+      }
+      .special:last-child {
+        border-bottom: 0;
+      }
+      .detail {
+        min-width: 0;
+      }
+      .back {
+        display: none;
+      }
+      .intro {
+        margin-top: 4px;
+      }
+      .layout > .room.hidden-mobile {
+        display: none;
+      }
+      @media (max-width: 760px) {
+        .layout {
+          display: block;
+        }
+        .tree.hidden-mobile,
+        .room.hidden-mobile {
+          display: none;
+        }
+        .detail .back,
+        .room .back {
+          display: inline-flex;
+          margin-bottom: 8px;
+        }
+        .page {
+          padding-top: 18px;
+        }
+        .room-head {
+          align-items: flex-start;
+        }
+        .room-head .primary {
+          padding: 0 12px;
+        }
+        .room-head .primary span {
+          display: none;
+        }
+      }
+    `,
+  ];
+  willUpdate() {
+    if (this.selectedAssetId && this.selectedAssetId !== this._assetId)
+      this._assetId = this.selectedAssetId;
+    if (this.selectedAreaId && !this._areaId)
+      this._areaId = this.selectedAreaId;
+  }
+  _areaAssets(id) {
+    if (id === NO_AREA) return this.assets.filter((asset) => !asset.area_id);
+    if (id === STALE_AREA)
+      return this.assets.filter(
+        (asset) =>
+          asset.area_id &&
+          !this.areas.some((area) => area.area_id === asset.area_id),
+      );
+    return this.assets.filter((asset) => asset.area_id === id);
+  }
+  _selectArea(id) {
+    this._areaId = id;
+    this._assetId = null;
+    this.dispatchEvent(
+      new CustomEvent("home-navigate", {
+        detail: { areaId: id, assetId: null },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+  _selectAsset(id) {
+    this._assetId = id;
+    this.dispatchEvent(
+      new CustomEvent("home-navigate", {
+        detail: { areaId: this._areaId, assetId: id },
+        bubbles: true,
+        composed: true,
+      }),
+    );
+  }
+  _areaName() {
+    if (this._areaId === NO_AREA) return this.t("home.unassigned");
+    if (this._areaId === STALE_AREA) return this.t("home.stale_area");
+    return (
+      this.areas.find((a) => a.area_id === this._areaId)?.name ??
+      this.t("home.choose_room")
+    );
+  }
+  _renderTree() {
+    const projection = buildHomeProjection(
+      this.floors,
+      this.areas,
+      this.assets,
+    );
+    return html`<section
+      class="tree surface ${this._areaId || this._assetId
+        ? "hidden-mobile"
+        : ""}"
+      aria-label=${this.t("home.navigation_label")}
+    >
+      ${projection.groups.map(
+        (group) =>
+          html`<div>
+            <div class="floor-title">
+              <ha-icon icon=${group.icon || "mdi:layers-outline"}></ha-icon
+              ><span class="grow"
+                >${group.name ?? this.t("common.no_floor")}</span
+              >
+            </div>
+            ${group.areas.map((area) => {
+              const count =
+                projection.assetsByArea.get(area.area_id)?.length ?? 0;
+              return html`<button
+                class="area-row ${this._areaId === area.area_id
+                  ? "selected"
+                  : ""}"
+                aria-current=${this._areaId === area.area_id
+                  ? "location"
+                  : "false"}
+                @click=${() => this._selectArea(area.area_id)}
+              >
+                <ha-icon icon=${area.icon || "mdi:floor-plan"}></ha-icon
+                ><span class="grow">${area.name}</span
+                ><span class="count">${count}</span
+                ><ha-icon icon="mdi:chevron-right"></ha-icon>
+              </button>`;
+            })}
+          </div>`,
+      )}${projection.unassigned.length || projection.stale.length
+        ? html`<div class="specials">
+            ${projection.unassigned.length
+              ? html`<button
+                  class="area-row special ${this._areaId === NO_AREA
+                    ? "selected"
+                    : ""}"
+                  @click=${() => this._selectArea(NO_AREA)}
+                >
+                  <ha-icon icon="mdi:map-marker-off-outline"></ha-icon
+                  ><span class="grow">${this.t("home.unassigned")}</span
+                  ><span class="count">${projection.unassigned.length}</span>
+                </button>`
+              : nothing}${projection.stale.length
+              ? html`<button
+                  class="area-row special ${this._areaId === STALE_AREA
+                    ? "selected"
+                    : ""}"
+                  @click=${() => this._selectArea(STALE_AREA)}
+                >
+                  <ha-icon icon="mdi:map-marker-alert-outline"></ha-icon
+                  ><span class="grow">${this.t("home.stale_area")}</span
+                  ><span class="count">${projection.stale.length}</span>
+                </button>`
+              : nothing}
+          </div>`
+        : nothing}
+    </section>`;
+  }
+  _renderRoom() {
+    if (!this._areaId)
+      return html`<div class="empty room">${this.t("home.choose_room")}</div>`;
+    const items = this._areaAssets(this._areaId);
+    const groups = groupRoomAssets(this.t, items);
+    return html`<section
+      class="room surface ${this._assetId ? "hidden-mobile" : ""}"
+    >
+      <button
+        class="back text-button"
+        @click=${() => {
+          this._areaId = null;
+        }}
+      >
+        <ha-icon icon="mdi:arrow-left"></ha-icon>${this.t("home.back_floors")}
+      </button>
+      <header class="room-head">
+        <ha-icon icon="mdi:floor-plan"></ha-icon>
+        <div class="grow">
+          <h2>${this._areaName()}</h2>
+          <span class="muted"
+            >${this.t("home.element_count", { count: items.length })}</span
+          >
+        </div>
+        ${![NO_AREA, STALE_AREA].includes(this._areaId)
+          ? html`<button
+              class="primary"
+              @click=${() =>
+                this.dispatchEvent(
+                  new CustomEvent("add-in-area", {
+                    detail: this._areaId,
+                    bubbles: true,
+                    composed: true,
+                  }),
+                )}
+            >
+              <ha-icon icon="mdi:plus"></ha-icon
+              ><span>${this.t("home.add_element")}</span>
+            </button>`
+          : nothing}
+      </header>
+      ${groups.length
+        ? groups.map((group) => {
+            const meta = categoryPresentation(this.t, group.category);
+            return html`<section>
+              <div class="category-title">
+                <ha-icon icon=${meta.icon}></ha-icon
+                ><span class="grow">${meta.label}</span
+                ><span class="count">${group.assets.length}</span>
+              </div>
+              ${group.assets.map((asset) => {
+                const type = assetPresentation(this.t, asset.asset_type);
+                return html`<button
+                  class="asset-row"
+                  @click=${() => this._selectAsset(asset.id)}
+                >
+                  <ha-icon icon=${type.icon}></ha-icon
+                  ><span class="grow"
+                    ><strong>${asset.name}</strong
+                    ><span class="asset-meta">${type.label}</span></span
+                  ><ha-icon icon="mdi:chevron-right"></ha-icon>
+                </button>`;
+              })}
+            </section>`;
+          })
+        : html`<div class="empty">${this.t("home.room_empty")}</div>`}
+    </section>`;
+  }
+  render() {
+    const asset = this.assets.find((item) => item.id === this._assetId);
+    return html`<div class="page">
+      <h1 class="page-title">${this.t("nav.home")}</h1>
+      <p class="intro muted">${this.t("home.intro")}</p>
+      <div class="layout">
+        ${this._renderTree()}
+        <div class="room ${asset ? "hidden-mobile" : ""}">
+          ${this._renderRoom()}
+        </div>
+        ${asset
+          ? html`<bindhome-element-detail
+              class="detail"
+              .hass=${this.hass}
+              .t=${this.t}
+              .asset=${asset}
+              .assets=${this.assets}
+              .areas=${this.areas}
+              .floors=${this.floors}
+              .registry=${this.registry}
+              .bindingStatuses=${this.bindingStatuses}
+              .entityRegistry=${this.entityRegistry}
+              .deviceRegistry=${this.deviceRegistry}
+              .refreshBindingData=${this.refreshBindingData}
+              .refreshTopologyData=${this.refreshTopologyData}
+              @back=${() => {
+                this._assetId = null;
+              }}
+              @navigate-asset=${(e) => this._selectAsset(e.detail)}
+            ></bindhome-element-detail>`
+          : nothing}
+      </div>
+    </div>`;
+  }
+}
+customElements.define("bindhome-home-view", BindHomeHomeView);

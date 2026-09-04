@@ -423,34 +423,36 @@ test(
     document.body.append(panel);
     await settle(panel);
 
+    const advanced = panel.shadowRoot.querySelector("bindhome-advanced-view");
     const inventoryBefore =
-      panel.shadowRoot.querySelector(
+      advanced.shadowRoot.querySelector(
         "bindhome-inventory-section",
       );
 
     const infrastructureBefore =
-      panel.shadowRoot.querySelector(
+      advanced.shadowRoot.querySelector(
         "bindhome-infrastructure-inspector",
       );
 
     assert.ok(inventoryBefore);
     assert.ok(infrastructureBefore);
 
-    panel._view = "infrastructure";
+    panel._view = "advanced";
+    advanced._tab = "infrastructure";
     await settle(panel);
 
     assert.equal(
-      panel.shadowRoot.querySelector(
+      advanced.shadowRoot.querySelector(
         "bindhome-inventory-section",
       ),
       inventoryBefore,
     );
 
-    panel._view = "inventory";
+    advanced._tab = "inventory";
     await settle(panel);
 
     assert.equal(
-      panel.shadowRoot.querySelector(
+      advanced.shadowRoot.querySelector(
         "bindhome-inventory-section",
       ),
       inventoryBefore,
