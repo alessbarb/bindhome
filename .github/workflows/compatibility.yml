@@ -18,14 +18,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - homeassistant: "2026.4.0"
-            harness: "0.13.321"
-          - homeassistant: "2026.5.0"
-            harness: "0.13.329"
-          - homeassistant: "2026.6.0"
-            harness: "0.13.336"
-          - homeassistant: "2026.7.0"
-            harness: "0.13.344"
           - homeassistant: "2026.8.0"
             harness: "0.13.354"
           - homeassistant: "2026.9.0"
