@@ -1,0 +1,76 @@
+name: Feature request
+description: Propose a focused improvement to BindHome
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        BindHome is intentionally infrastructure-focused. Please describe the user problem before the implementation idea, and preserve the stable-home / replaceable-hardware boundary.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What user or maintainer problem exists today? Who encounters it and in what workflow?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful change and how it should behave from the user's point of view.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Primary area
+      options:
+        - Assets / inventory
+        - Bindings / resolver
+        - Relations / topology
+        - Representations / logical entities
+        - Panel / frontend
+        - Backup / restore
+        - Home Assistant actions / WebSocket API
+        - Localization
+        - Reliability / persistence
+        - HACS / packaging / release
+        - Documentation / contributor experience
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: model-impact
+    attributes:
+      label: BindHome model impact
+      description: Explain whether this changes Assets, Capabilities, Bindings, Relations, Representations, persistence, or the Home Assistant ownership boundary. Write "None" if it is purely presentational or operational.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What can users do today, and why is that insufficient?
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example or acceptance criteria
+      description: A concrete example, workflow, or conditions that would make the feature complete.
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope checks
+      options:
+        - label: This proposal models stable home infrastructure rather than a specific hardware brand or one private house.
+          required: true
+        - label: The proposal does not duplicate Home Assistant Devices, Entities, Areas, Floors, or runtime state without a clear architectural reason.
+          required: true
+        - label: I searched existing Issues and did not find the same proposal.
+          required: true
