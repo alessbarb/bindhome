@@ -32,7 +32,7 @@ def _logical_entity(hass: HomeAssistant, asset: Asset) -> str:
 @pytest.fixture
 def manager(hass: HomeAssistant) -> BindHomeManager:
     value = BindHomeManager(hass)
-    value._async_persist_and_notify = AsyncMock()  # type: ignore[method-assign]
+    value._store.async_save = AsyncMock()
     return value
 
 
@@ -73,9 +73,7 @@ async def test_bindhome_composition_is_acyclic_and_self_cycle_is_rejected(
         )
 
     assert len(manager.registry.bindings) == 2
-    assert (
-        manager._async_persist_and_notify.await_count == 2  # type: ignore[attr-defined]
-    )
+    assert manager._store.async_save.await_count == 2
 
 
 @pytest.mark.asyncio
@@ -357,4 +355,4 @@ async def test_cycle_failure_is_atomic(
             role="primary",
         )
     assert not manager.registry.bindings
-    manager._async_persist_and_notify.assert_not_awaited()  # type: ignore[attr-defined]
+    manager._store.async_save.assert_not_awaited()
