@@ -266,7 +266,7 @@ Topology uses the same directed Relation objects as the backend and supports bou
 
 ### Localization
 
-Panel translations use Home Assistant's integration translation pipeline. `strings.json` is the canonical English source and `translations/` contains localized resources, currently including English and Spanish.
+Custom-integration translation resources live under `custom_components/bindhome/translations/`. `translations/en.json` contains the complete English runtime source and `translations/es.json` provides Spanish. This follows Home Assistant's custom-integration translation contract rather than relying on Core-only `strings.json` build processing.
 
 Language changes update presentation without resetting mounted workflow state.
 
