@@ -9,6 +9,7 @@ from homeassistant.exceptions import ConfigEntryError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
+from .backup_websocket import async_register_backup_websocket_commands
 from .const import DOMAIN
 from .manager import BindHomeManager
 from .panel import async_register_panel, async_unregister_panel
@@ -27,6 +28,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up BindHome and register service actions."""
     async_register_services(hass)
     async_register_websocket_commands(hass)
+    async_register_backup_websocket_commands(hass)
     return True
 
 
