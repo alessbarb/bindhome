@@ -1,10 +1,11 @@
 """Tests for fail-fast BindHome storage writes."""
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
+from homeassistant.helpers.storage import Store
 from homeassistant.util.file import WriteError
 
 from custom_components.bindhome.const import SIGNAL_REGISTRY_CHANGED
@@ -36,23 +37,27 @@ async def test_underlying_store_write_failure_does_not_commit(
         lambda: notifications.append(None),
     )
 
-    manager._store._store._write_prepared_data = MagicMock(
-        side_effect=WriteError("disk full"),
-    )
-
     try:
-        with pytest.raises(
-            BindHomeStoreError,
-            match="Failed to persist BindHome registry",
+        # Inject the failure below _FailFastStore._async_write_data(). This
+        # exercises the exact boundary where BindHome translates the errors
+        # Home Assistant's Store would otherwise catch and log.
+        with patch.object(
+            Store,
+            "_async_write_data",
+            new=AsyncMock(side_effect=WriteError("disk full")),
         ):
-            await manager.async_update_asset(
-                asset_id=asset.id,
-                name="Should not commit",
-                asset_type="socket",
-                code="SOCK-02",
-                area_id=None,
-                capabilities=[],
-            )
+            with pytest.raises(
+                BindHomeStoreError,
+                match="Failed to persist BindHome registry",
+            ):
+                await manager.async_update_asset(
+                    asset_id=asset.id,
+                    name="Should not commit",
+                    asset_type="socket",
+                    code="SOCK-02",
+                    area_id=None,
+                    capabilities=[],
+                )
 
         await hass.async_block_till_done()
 
