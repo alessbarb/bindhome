@@ -5,6 +5,7 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
@@ -13,6 +14,7 @@ from .manager import BindHomeManager
 from .panel import async_register_panel, async_unregister_panel
 from .representation import implemented_platforms
 from .services import async_register_services
+from .store import BindHomeStoreLoadError
 from .websocket import async_register_websocket_commands
 
 type BindHomeConfigEntry = ConfigEntry[BindHomeManager]
@@ -31,7 +33,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: BindHomeConfigEntry) -> bool:
     """Set up BindHome from a config entry."""
     manager = BindHomeManager(hass)
-    await manager.async_load()
+    try:
+        await manager.async_load()
+    except BindHomeStoreLoadError as err:
+        raise ConfigEntryError(str(err)) from err
+
     entry.runtime_data = manager
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await async_register_panel(hass)
