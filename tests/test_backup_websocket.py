@@ -79,7 +79,13 @@ async def test_backup_export_returns_versioned_envelope() -> None:
 async def test_backup_restore_returns_committed_registry(monkeypatch) -> None:
     manager = FakeManager()
     restored = BindHomeRegistry()
-    restored.add_asset(Asset.create(name="Restored", asset_type="socket", code="NEW-01"))
+    restored.add_asset(
+        Asset.create(
+            name="Restored",
+            asset_type="socket",
+            code="NEW-01",
+        )
+    )
     restore = AsyncMock(return_value=restored)
     monkeypatch.setattr(backup_websocket, "async_restore_registry_backup", restore)
     connection = FakeConnection()
