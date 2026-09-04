@@ -11,6 +11,54 @@ permissions:
   contents: read
 
 jobs:
+  release-metadata:
+    name: Release Metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify version metadata
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          import re
+          import tomllib
+
+          root = pathlib.Path('.')
+          pyproject = tomllib.loads((root / 'pyproject.toml').read_text())
+          manifest = json.loads(
+              (root / 'custom_components/bindhome/manifest.json').read_text()
+          )
+          package = json.loads(
+              (root / 'custom_components/bindhome/panel/frontend/package.json').read_text()
+          )
+          hacs = json.loads((root / 'hacs.json').read_text())
+
+          versions = {
+              'pyproject.toml': pyproject['project']['version'],
+              'manifest.json': manifest['version'],
+              'package.json': package['version'],
+          }
+          if len(set(versions.values())) != 1:
+              raise SystemExit(f'Version metadata mismatch: {versions}')
+
+          version = next(iter(versions.values()))
+          if not re.fullmatch(r'\d+\.\d+\.\d+', version):
+              raise SystemExit(f'Version is not SemVer-compatible: {version}')
+
+          minimum_ha = hacs.get('homeassistant')
+          if not isinstance(minimum_ha, str) or not re.fullmatch(
+              r'\d{4}\.\d+\.\d+', minimum_ha
+          ):
+              raise SystemExit(
+                  f'Invalid HACS Home Assistant minimum: {minimum_ha!r}'
+              )
+
+          print(f'BindHome version: {version}')
+          print(f'Minimum Home Assistant: {minimum_ha}')
+          PY
+
   pytest:
     name: Pytest
     runs-on: ubuntu-latest
