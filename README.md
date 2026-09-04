@@ -374,7 +374,7 @@ For the initial public release:
 9. Open the **BindHome** panel in the Home Assistant sidebar.
 10. Follow the first-run onboarding and inventory one room.
 
-BindHome supports one config entry per Home Assistant installation.
+BindHome supports one config entry per Home Assistant installation. The BindHome sidebar panel requires a Home Assistant administrator account.
 
 Published installations should use tagged releases rather than development branches.
 
@@ -491,16 +491,22 @@ See [Architecture](docs/architecture.md) for the deeper technical model.
 
 ## Development
 
-The Home Assistant custom integration lives under:
+The Home Assistant runtime integration lives under:
 
 ```text
 custom_components/bindhome
 ```
 
-The frontend source lives under:
+The frontend source, tests and Node.js build tooling live outside the HACS runtime tree under:
 
 ```text
-custom_components/bindhome/panel/frontend
+frontend
+```
+
+The generated frontend runtime bundle is committed at:
+
+```text
+custom_components/bindhome/panel/static/bindhome-panel.js
 ```
 
 Validation includes:
