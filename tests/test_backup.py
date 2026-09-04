@@ -151,9 +151,7 @@ async def test_restore_storage_failure_leaves_live_registry_unchanged(
     original_registry = manager.registry
     baseline = manager.registry.to_dict()
     backup = export_registry_backup(_registry("Replacement", "NEW-01"))
-    manager._store.async_save = AsyncMock(
-        side_effect=BindHomeStoreError("disk full")
-    )
+    manager._store.async_save = AsyncMock(side_effect=BindHomeStoreError("disk full"))
 
     notifications: list[None] = []
     unsubscribe = async_dispatcher_connect(
