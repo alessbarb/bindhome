@@ -4,342 +4,290 @@
 
 BindHome is a stable infrastructure abstraction layer for Home Assistant.
 
-It separates the physical identity of the home from the hardware that currently implements automation or measurement.
+It separates the physical identity of the home from the replaceable hardware that currently controls or measures it.
 
 ```text
-Home / automation logic
+Stable physical Asset
         |
-        v
-Stable BindHome asset + capability
+        +-- Capability
+        |      |
+        |      +-- Binding -> current Home Assistant entity
         |
-        v
-Binding
+        +-- Relation -> another Asset
         |
-        v
-Current Home Assistant entity
-        |
-        v
-Current physical hardware
+        +-- optional Representation -> stable logical HA entity
 ```
 
-### Home Assistant is the infrastructure source of truth
+The core rule is simple: replacing smart hardware should normally change a Binding, not the identity of the physical thing being modelled.
 
-BindHome is not a parallel home-automation platform.
+## Ownership boundary
 
-Home Assistant owns and remains authoritative for:
+Home Assistant remains authoritative for:
 
-- entities and their current state;
-- devices;
-- areas and floors;
+- Floors and Areas;
+- Devices and Entities;
+- entity state and availability;
 - domains and entity platforms;
+- supported features;
 - services and service routing;
-- supported features and runtime capabilities;
-- integration-specific behaviour.
+- integration-specific hardware behaviour.
 
-BindHome references those Home Assistant objects and adds only the concepts
-needed to preserve the stable physical and functional identity of the home,
-such as infrastructure assets, topology relations and bindings between a stable
-capability and the Home Assistant entity that currently implements it.
+BindHome owns only the additional infrastructure model:
 
-When Home Assistant already provides a registry, service, capability model or
-runtime behaviour, BindHome uses it rather than maintaining a parallel copy.
-In particular, BindHome must not maintain domain-to-capability compatibility
-matrices or duplicate Home Assistant supported-feature knowledge.
+- Assets;
+- Capabilities;
+- Relations;
+- Bindings;
+- Representations;
+- inventory preset metadata.
+
+BindHome does not maintain a parallel Device Registry, Entity Registry, Floor catalogue or Area catalogue. When Home Assistant already owns a concept, BindHome references or reads it instead of copying it.
 
 ## Core objects
 
 ### Asset
 
-Represents stable physical infrastructure.
+An Asset is a stable physical element of the home.
 
-Required properties:
+An Asset contains:
 
 - immutable internal `id`;
 - human-readable `name`;
-- generic `asset_type`;
+- extensible `asset_type`;
 - optional human code;
 - optional Home Assistant `area_id`;
-- zero or more capabilities.
+- zero or more extensible Capabilities.
 
-### Relation
-
-Represents topology between assets. The core does not hard-code electrical, plumbing, climate, or network semantics. Relation types are extensible identifiers.
-
-The Inventory UI exposes these directed Relations as incoming and outgoing
-topology, with explicit create/delete actions and a bounded search-first
-explorer. Relation deletion never cascades to Assets, Bindings, or
-Representations.
+Passive Assets are valid. An Asset does not need a Binding or Representation to exist.
 
 ### Capability
 
-Represents a logical function of an asset. Bindings attach to capabilities, allowing one asset to use different Home Assistant entities for control, sensing, power measurement, and other roles.
+A Capability describes a function of an Asset from BindHome's point of view, for example `on_off`, `temperature`, `setpoint` or `power_measurement`.
+
+Capabilities are extensible identifiers. BindHome deliberately does not maintain a static mapping between Capability names and Home Assistant domains.
 
 ### Binding
 
-Maps `asset + capability + role` to one Home Assistant `entity_id`.
+A Binding maps:
 
-Calling `set_binding` for an existing `(asset, capability, role)` replaces the
-current implementation while preserving the stable infrastructure asset.
+```text
+Asset + Capability + Role -> Home Assistant entity_id
+```
 
-The target may be any valid Home Assistant entity, including an entity produced
-by a BindHome Representation. BindHome-to-BindHome composition is supported
-when resolution remains acyclic. Cycle validation operates on functional
-Binding keys `(asset_id, capability, role)`, and uses the Home Assistant Entity
-Registry as the authoritative source for BindHome entity identity; no Home
-Assistant Core changes or duplicated registries are required.
+The Home Assistant entity is replaceable. Setting a new Binding for the same functional key changes the current implementation while preserving the Asset.
+
+Binding targets may also be logical entities produced by BindHome Representations. BindHome-to-BindHome composition is allowed only when the resulting functional dependency graph remains acyclic. Cycle validation operates at `(asset_id, capability, role)` granularity.
+
+The Home Assistant Entity Registry remains authoritative for entity identity, including after entity-id renames.
+
+### Relation
+
+A Relation is a directed link between two Assets.
+
+Relation types are extensible identifiers. The core does not impose an electrical, plumbing, climate or network ontology. Direction is significant: `source -> target` is preserved by the model and query layer.
+
+Relations are explicit and do not cascade-delete Assets, Bindings or Representations.
 
 ### Representation
 
-Represents BindHome's explicit decision to expose an Asset back into Home
-Assistant as a logical entity.
+A Representation is BindHome's explicit decision to expose an Asset back into Home Assistant as a stable logical entity.
 
-The current cardinality is zero or one Representation per Asset. A
-Representation stores the stable BindHome `asset_id` and a platform implemented
-by BindHome.
+Capability and Representation are separate concepts. An Asset may have `on_off` without being represented as a Home Assistant Light.
 
-Capability and Representation are intentionally independent. For example,
-`on_off` describes a function of an Asset but does not itself create a
-`light.*` entity.
+BindHome 1.0 supports zero or one Representation per Asset. The implemented logical platform is currently `light`, which requires the BindHome `on_off` Capability.
 
-BindHome owns only the Representation platforms that it actually implements.
-The initial `light` Representation requires the BindHome `on_off` capability.
-This is a BindHome implementation contract, not a Home Assistant compatibility
-matrix.
+Representation requirements describe BindHome's own implementation contract; they are not a compatibility catalogue for Home Assistant domains.
+
+Removing a Representation removes the logical entity while preserving the physical Asset. Re-adding it restores the same stable logical identity derived from the Asset.
 
 ### Creation preset
 
-Creation presets are read-only UX metadata for generating editable Asset drafts
-during high-volume inventory.
+Creation presets are read-only UX metadata used to generate editable Asset drafts during inventory.
 
-A preset contains only BindHome-owned suggestions such as:
+A preset may suggest:
 
-- stable preset identifier;
+- a stable preset identifier;
 - inventory group;
-- suggested `asset_type`;
-- default display name;
-- suggested capabilities.
+- `asset_type`;
+- default name;
+- Capabilities.
 
-Presets do not create Assets by themselves, do not create bindings or
-Representations, and do not restrict custom Asset types or capabilities.
+Presets are not backend enums or validation rules. They never create Bindings, Home Assistant entity references, Relations or Representations automatically.
 
-## Binding resolver
+## Registry and persistence
 
-`resolver.py` is the read-side layer that future logical BindHome entities use to
-find which Home Assistant entity currently implements a capability:
+`BindHomeRegistry` is the canonical in-memory domain state. It serializes Assets, Relations, Bindings and Representations with an explicit Registry schema version.
+
+Persistent storage uses Home Assistant's `Store` helper with atomic writes. Home Assistant `.storage` files are implementation details and must not be edited manually.
+
+### Mutation transaction boundary
+
+All manager mutations follow the same contract:
+
+1. clone the live Registry into isolated staged state;
+2. apply and validate the mutation against staged state;
+3. persist the staged Registry;
+4. only after persistence succeeds, adopt the staged collections into the existing live Registry object;
+5. emit `SIGNAL_REGISTRY_CHANGED` after commit.
+
+The identity of the live Registry object is preserved so long-lived resolvers and platform consumers remain attached to the canonical object.
+
+If persistence fails, live RAM remains unchanged and no Registry-changed signal is emitted.
+
+### Startup and recovery
+
+Storage loading fails closed when persisted BindHome state is corrupt, unreadable or uses an unsupported storage/schema version. Unsafe persisted state is never silently replaced with an empty Registry.
+
+Legacy Registry payloads that predate explicit Representations are validated and migrated to the canonical schema. The canonical form is persisted only after validation succeeds.
+
+### Backup and restore
+
+BindHome provides a versioned deterministic Registry backup envelope through administrator-only WebSocket commands:
+
+- `bindhome/backup/export`;
+- `bindhome/backup/restore`.
+
+Restore is a validated full Registry replacement and uses the same persist-before-adopt transaction boundary as ordinary mutations.
+
+See [Registry backup and restore](backup-restore.md).
+
+## Binding resolver and runtime state
+
+`resolver.py` translates a stable BindHome functional key into the current Home Assistant entity implementation:
 
 ```text
-(asset_id, capability, role) -> current Home Assistant entity_id
+(asset_id, capability, role) -> Home Assistant entity_id
 ```
 
-`BindingResolver.resolve()` returns a typed `Resolution` with an explicit
-`ResolutionStatus` instead of an ambiguous `None`:
+Resolution distinguishes configuration validity from runtime availability. A correctly configured entity that is temporarily `unavailable` is not treated as a broken Binding.
 
-- `ASSET_NOT_FOUND`, `CAPABILITY_NOT_DECLARED`, `BINDING_NOT_FOUND` -- the request
-  cannot be satisfied by the registry;
-- `ENTITY_NOT_FOUND` -- the binding exists but its `entity_id` is no longer in the
-  Entity Registry or state machine (stale reference);
-- `RUNTIME_UNAVAILABLE` / `RUNTIME_UNKNOWN` -- the entity exists but its state is
-  `unavailable`, `unknown` or not yet loaded;
-- `RESOLVED` -- the entity exists and has a usable state;
-- `INVALID_REQUEST` -- the requested capability/role is not a valid identifier.
+The read model exposes statuses such as:
 
-### Configuration validity vs runtime availability
+- asset not found;
+- capability not declared;
+- binding not found;
+- stale entity reference;
+- runtime unavailable;
+- runtime unknown;
+- resolved.
 
-These are independent axes and must not be conflated:
+Operations on logical BindHome entities resolve the current Binding and then delegate service execution to Home Assistant. Home Assistant remains responsible for actual domain behaviour and hardware communication.
 
-- `Resolution.config_valid` is true for `RESOLVED`, `RUNTIME_UNAVAILABLE` and
-  `RUNTIME_UNKNOWN`. A device that is merely offline is still a valid binding.
-- `Resolution.runtime_available` is true only for `RESOLVED`.
+## Query layer
 
-`resolve_entity_id()` is the strict variant: it raises for configuration failures
-(missing asset/capability/binding, stale reference) but still returns the
-`entity_id` when the reference is valid and only the runtime state is degraded.
+`query.py` provides side-effect-free Registry reads and graph traversal.
 
-Home Assistant access is isolated behind the `EntityProbe` protocol
-(`HomeAssistantEntityProbe` for production, `StaticEntityProbe` for tests), so the
-resolver and its tests need no running Home Assistant instance.
+It includes:
 
-### Home Assistant capability and service authority
+- Asset lookup/listing;
+- incoming/outgoing Relations;
+- deterministic traversal;
+- reachability;
+- shortest paths;
+- Binding/resolver status aggregation.
 
-The resolver does not maintain its own operational compatibility model. Its
-responsibility is limited to BindHome concerns: resolving the stable
-asset/capability/role key, checking that the binding references an entity known
-to Home Assistant, and reporting its runtime state.
+Relation traversal treats types as identifiers rather than imposing domain semantics.
 
-When an operation is executed, BindHome resolves the binding to a Home
-Assistant `entity_id` and delegates through Home Assistant's own generic service
-infrastructure. Home Assistant then determines the target domain, whether the
-operation is supported, and how the integration implements it.
+## Application surfaces
 
-This keeps BindHome independent of Home Assistant's evolving domain and feature
-catalogue and avoids duplicating infrastructure knowledge already owned by Home
-Assistant.
+### WebSocket API
 
-## Infrastructure query layer
+The BindHome panel primarily uses WebSocket commands.
 
-`query.py` is the pure, side-effect-free read layer that makes BindHome
-semantically queryable. Every function takes a `BindHomeRegistry` (and, for the
-resolver status read model, an `EntityProbe`) and returns plain data or simple
-serializable dataclasses (`to_dict()`), following the `models.py` idiom.
+Mutation surfaces include:
 
-It never mutates the registry and adds no dependency: traversal is plain
-breadth-first search over dictionaries.
+- Asset create, bulk create, update and delete;
+- Relation create and delete;
+- Binding set and delete;
+- Representation set and delete;
+- Registry backup restore.
 
-### Relation reads
+Read surfaces include:
 
-`get_asset` / `list_assets`, and `incoming_relations` / `outgoing_relations` /
-`relations_for_asset`. Relation direction is significant: `outgoing` follows
-`source -> target`, `incoming` follows `target -> source`. All reads accept an
-optional `relation_types` filter, matched as normalized identifiers so `POWERS`
-matches `powers`; relation types are never interpreted. Unknown assets raise
-`RegistryNotFoundError` (never an empty list).
+- Registry and Asset reads;
+- Relation reads and graph traversal/path queries;
+- Binding status;
+- creation presets;
+- Registry backup export.
 
-### Traversal and paths
+### Home Assistant actions
 
-`traverse(registry, asset_id, direction, relation_types=None, max_depth=None)`
-returns `TraversalHit(asset_id, depth)` entries. The `Direction` enum is
-`OUTGOING` (default), `INCOMING`, or `ANY`. The start asset is excluded; each
-reachable asset appears once at its minimum depth, so cycles terminate safely.
-`max_depth=1` yields direct neighbours only. `reachable_assets` is the sorted
-id-only view. `find_path` returns the shortest asset-id path between two assets
-(both endpoints included) or `None`.
+Home Assistant actions expose selected Registry operations for automation and administrative tooling. The panel remains the preferred normal-user surface.
 
-Results are deterministic: neighbours and result lists are sorted by a stable
-key, so output does not depend on asset insertion order.
+### System health
 
-### Binding / resolver status read model
-
-`resolver_status(registry, probe)` composes `BindingResolver` outcomes into an
-aggregate read model: per-key `records` (each a serialized `BindingStatus` with
-`status`, `config_valid`, `runtime_available`, `entity_id`, `state`, `binding`)
-plus a `summary` with totals and a per-status breakdown. The key set is the union
-of existing bindings and every declared-but-unbound capability, so
-`binding_not_found` gaps are surfaced rather than omitted.
-
-### WebSocket surface
-
-The WebSocket API is the primary BindHome-facing application surface.
-
-Asset mutation:
-
-- `bindhome/assets/create`;
-- `bindhome/assets/create_bulk`;
-- `bindhome/assets/update`;
-- `bindhome/assets/delete`.
-
-Topology and binding mutation:
-
-- `bindhome/relations/create`;
-- `bindhome/relations/delete`;
-- `bindhome/bindings/set`;
-- `bindhome/bindings/delete`.
-
-Logical exposure:
-
-- `bindhome/representations/set`;
-- `bindhome/representations/delete`.
-
-Inventory metadata:
-
-- `bindhome/presets/list`.
-
-Read/query commands:
-
-- `bindhome/registry/get`;
-- `bindhome/assets/get`;
-- `bindhome/assets/list`;
-- `bindhome/relations/list`;
-- `bindhome/graph/traverse`;
-- `bindhome/graph/path`;
-- `bindhome/bindings/status`.
-
-Bulk Asset creation is a first-class transactional operation rather than N
-client-side `create_asset` calls. Representation and preset configuration are
-WebSocket-oriented primitives and deliberately do not duplicate Home Assistant
-service actions without an external service-use case.
-
-## Hardware ownership
-
-BindHome does not maintain a hardware registry. Home Assistant already owns the Device Registry and Entity Registry. BindHome only stores entity references in bindings.
-
-## Storage
-
-The registry is persisted with Home Assistant's `Store` helper. The `.storage` file is an implementation detail and must never be edited manually.
-
-## Current functional state
-
-Implemented:
-
-1. Core registry and Home Assistant-backed persistence.
-2. Stable Asset identity with update support.
-3. Relations, capabilities and replaceable bindings.
-4. Binding resolver with configuration/runtime status.
-5. CRUD and query WebSocket APIs.
-6. Transactional bulk Asset creation with all-or-none persistence.
-7. Explicit optional Representation, currently zero-or-one per Asset.
-8. Logical `light` proxy entities driven by explicit Representation.
-9. Dynamic logical-entity reconciliation.
-10. Hot binding replacement without integration reload.
-11. Home Assistant-native service routing.
-12. Extensible creation presets used only as editable UX defaults.
-13. Dedicated BindHome panel.
-14. System-health counters and registry serialization.
-
-The functional backend foundation required before inventory UX is complete.
-
-In particular:
-
-- Capability no longer implies logical Home Assistant entity type.
-- An Asset with `on_off` remains passive unless it has an explicit
-  Representation.
-- Existing pre-Representation registries are migrated to preserve their previous
-  logical-light behaviour once, after which Representation state is explicit.
-- Bulk creation stages the entire mutation, persists once, then adopts the
-  staged contents into the existing live registry object so long-lived runtime
-  references remain valid.
-- Creation presets never create bindings, entity references or
-  Representations.
+BindHome exposes system-health information for the Registry and its main object counts.
 
 ## Frontend architecture
 
-The Home Assistant custom panel remains a Lit application bundled with esbuild.
-Its production frontend is split into explicit boundaries:
+The BindHome panel is a Lit 3 application bundled with esbuild. Source code and tests live under:
 
-1. a panel shell with Inventory and Infrastructure navigation;
-2. a BindHome WebSocket adapter for registry, Asset, preset and bulk-create
-   operations;
-3. a Home Assistant adapter that reads the native Floor and Area registries;
-4. pure local draft-state helpers and a guarded bulk-save controller;
-5. the Area-oriented **Inventory this room** workflow;
-6. a preserved Infrastructure inspector for Assets, Relations and Bindings.
+```text
+custom_components/bindhome/panel/frontend
+```
 
-The room workflow joins Home Assistant Areas to Floors in the client. `No floor`
-is a presentation-only grouping for Areas whose Home Assistant `floor_id` is
-empty. It is never persisted by BindHome.
+The runtime bundle is committed under:
 
-Creation preset values are consumed directly from `bindhome/presets/list`.
-Quantities create local editable drafts, while reduced quantities retain
-inactive edits only in session memory. Only active drafts are serialized, and
-the accepted batch is sent in one `bindhome/assets/create_bulk` request.
+```text
+custom_components/bindhome/panel/static/bindhome-panel.js
+```
 
-Successful inventory creation does not create Bindings, Relations,
-Representations, Home Assistant entities, devices or automations. Those remain
-separate lifecycle stages.
+CI rebuilds the bundle and fails if the committed runtime artifact differs from source.
 
-Panel localization uses Home Assistant's backend integration translation
-pipeline. The shell requests the valid integration `common` category through
-`frontend/get_translations` for the current `hass.language`, scoped to the
-`bindhome` integration. Panel-owned keys use a `panel_` prefix within that
-category. English resources are also loaded as the fallback.
-Language changes refresh only presentation translations: the mounted workflow,
-selected Floor/Area and local draft state are preserved. This includes existing
-auto-generated draft names; names already created in a room session are not
-rewritten when the language changes. New clean sessions use the localized preset
-name when available and otherwise use the backend preset `default_name`.
+### Human shell
 
-## Next product work
+The primary navigation is:
 
-Later UX work can add topology visualization, richer editing, issues/status
-views and import/export workflows without changing these ownership rules.
+```text
+Casa | Añadir | Buscar | Avanzado
+```
 
-See `product-contract.md` for the agreed product behaviour.
+Normal workflows present physical/home concepts. Technical identifiers and direct Registry controls are kept in the opt-in Advanced workspace.
+
+Top-level views remain mounted while navigating so in-progress drafts and view state are not destroyed by ordinary navigation.
+
+### First-run onboarding
+
+An empty Registry triggers a guided onboarding overlay. It explains the stable-infrastructure model, the four core concepts, reuse of Home Assistant Floors/Areas and the recommended first-room inventory workflow.
+
+The onboarding does not create sample data. It is skippable and remembered per Home Assistant user/browser. Existing installations with Assets do not receive it.
+
+### Home Assistant data adapters
+
+The panel reads Home Assistant Floors, Areas, Entity Registry and Device Registry data through Home Assistant WebSocket APIs. These values are presentation/runtime inputs and are not copied into a parallel BindHome registry.
+
+### Inventory and editing
+
+Room inventory uses Home Assistant Areas as location references and BindHome presets to generate editable local drafts. Accepted batches are persisted with one transactional `bindhome/assets/create_bulk` request.
+
+Human editing preserves stable Asset identity. Hardware connection uses replacement-safe Binding operations rather than delete-before-set sequences.
+
+Topology uses the same directed Relation objects as the backend and supports bounded search/navigation.
+
+### Localization
+
+Panel translations use Home Assistant's integration translation pipeline. `strings.json` is the canonical English source and `translations/` contains localized resources, currently including English and Spanish.
+
+Language changes update presentation without resetting mounted workflow state.
+
+## Compatibility and release boundary
+
+BindHome 1.0.0 supports Home Assistant `2026.8.0` and newer compatible releases. CI tests the complete Python suite against the minimum supported Home Assistant version and the current stable release used for the release baseline.
+
+Release metadata is synchronized across Python, Home Assistant manifest and frontend package metadata. HACS, Hassfest, Python, frontend and compatibility validation form the release gate.
+
+See [Release process](release.md).
+
+## Architectural non-goals
+
+BindHome 1.0 does not attempt to:
+
+- replace Home Assistant Devices, Entities, Areas or Floors;
+- infer physical topology automatically;
+- infer a logical Representation from a Capability;
+- maintain a Home Assistant domain/capability compatibility matrix;
+- cascade-delete dependent infrastructure implicitly;
+- edit Home Assistant `.storage` files directly;
+- encode knowledge of one particular house.
+
+See [Product contract](product-contract.md) for the user-facing behavioural rules built on these boundaries.
