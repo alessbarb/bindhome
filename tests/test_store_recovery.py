@@ -4,7 +4,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryError, HomeAssistantError
+from homeassistant.exceptions import (
+    ConfigEntryError,
+    HomeAssistantError,
+    UnsupportedStorageVersionError,
+)
 
 from custom_components.bindhome import async_setup_entry
 from custom_components.bindhome.registry import BindHomeRegistry
@@ -13,6 +17,7 @@ from custom_components.bindhome.store import (
     BindHomeStoreCorruptionError,
     BindHomeStoreError,
     BindHomeStoreLoadError,
+    BindHomeStoreVersionError,
 )
 
 
@@ -62,6 +67,46 @@ async def test_home_assistant_load_failure_is_surfaced(hass: HomeAssistant) -> N
     store._store.async_load = AsyncMock(
         side_effect=HomeAssistantError("cannot read storage")
     )
+
+    with pytest.raises(
+        BindHomeStoreLoadError,
+        match="Home Assistant could not read BindHome storage",
+    ):
+        await store.async_load()
+
+
+async def test_newer_storage_envelope_is_rejected(hass: HomeAssistant) -> None:
+    store = BindHomeStore(hass)
+    store._async_path_exists = AsyncMock(return_value=True)
+    store._store.async_load = AsyncMock(
+        side_effect=UnsupportedStorageVersionError("bindhome.registry", 2, 1)
+    )
+
+    with pytest.raises(
+        BindHomeStoreVersionError,
+        match="newer incompatible version",
+    ):
+        await store.async_load()
+
+
+async def test_older_unmigratable_storage_envelope_is_rejected(
+    hass: HomeAssistant,
+) -> None:
+    store = BindHomeStore(hass)
+    store._async_path_exists = AsyncMock(return_value=True)
+    store._store.async_load = AsyncMock(side_effect=NotImplementedError)
+
+    with pytest.raises(
+        BindHomeStoreVersionError,
+        match="unsupported older storage version",
+    ):
+        await store.async_load()
+
+
+async def test_malformed_storage_envelope_is_surfaced(hass: HomeAssistant) -> None:
+    store = BindHomeStore(hass)
+    store._async_path_exists = AsyncMock(return_value=True)
+    store._store.async_load = AsyncMock(side_effect=KeyError("version"))
 
     with pytest.raises(
         BindHomeStoreLoadError,
