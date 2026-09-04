@@ -43,19 +43,21 @@ async def test_underlying_store_write_failure_does_not_commit(
         # Inject the failure below _FailFastStore._async_write_data(). This
         # exercises the exact boundary where BindHome translates the errors
         # Home Assistant's Store would otherwise catch and log.
-        with patch.object(Store, "_async_write_data", new=base_write):
-            with pytest.raises(
+        with (
+            patch.object(Store, "_async_write_data", new=base_write),
+            pytest.raises(
                 BindHomeStoreError,
                 match="Failed to persist BindHome registry",
-            ):
-                await manager.async_update_asset(
-                    asset_id=asset.id,
-                    name="Should not commit",
-                    asset_type="socket",
-                    code="SOCK-02",
-                    area_id=None,
-                    capabilities=[],
-                )
+            ),
+        ):
+            await manager.async_update_asset(
+                asset_id=asset.id,
+                name="Should not commit",
+                asset_type="socket",
+                code="SOCK-02",
+                area_id=None,
+                capabilities=[],
+            )
 
         base_write.assert_awaited_once()
         await hass.async_block_till_done()
