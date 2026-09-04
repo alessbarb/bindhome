@@ -9,6 +9,7 @@ import {
 import { relationPartitions } from "../topology/relation-state.js";
 import "../bindings/primary-connection-editor.js";
 import "./contextual-relation-editor.js";
+import "./human-asset-editor.js";
 
 export class BindHomeElementDetail extends LitElement {
   static properties = {
@@ -24,8 +25,10 @@ export class BindHomeElementDetail extends LitElement {
     deviceRegistry: { attribute: false },
     refreshBindingData: { attribute: false },
     refreshTopologyData: { attribute: false },
+    refreshAssets: { attribute: false },
     _action: { state: true },
     _sync: { state: true },
+    _editingAsset: { state: true },
   };
   constructor() {
     super();
@@ -42,8 +45,10 @@ export class BindHomeElementDetail extends LitElement {
     this.deviceRegistry = [];
     this.refreshBindingData = null;
     this.refreshTopologyData = null;
+    this.refreshAssets = null;
     this._action = null;
     this._sync = null;
+    this._editingAsset = false;
     this._identity = null;
   }
   willUpdate() {
@@ -51,6 +56,7 @@ export class BindHomeElementDetail extends LitElement {
       this._identity = this.asset?.id;
       this._action = null;
       this._sync = null;
+      this._editingAsset = false;
     }
   }
   static styles = [
@@ -277,6 +283,13 @@ export class BindHomeElementDetail extends LitElement {
   }
   render() {
     if (!this.asset) return nothing;
+    if (this._editingAsset) return html`<bindhome-human-asset-editor
+      .hass=${this.hass} .t=${this.t} .asset=${this.asset} .areas=${this.areas}
+      .refreshAssets=${this.refreshAssets}
+      @cancel=${() => (this._editingAsset = false)}
+      @done=${() => (this._editingAsset = false)}
+      @sync-warning=${(event) => (this._sync = event.detail)}
+    ></bindhome-human-asset-editor>`;
     const type = assetPresentation(this.t, this.asset.asset_type),
       area = this._area(),
       relations = this._relations(),
@@ -311,14 +324,7 @@ export class BindHomeElementDetail extends LitElement {
           </div>
           <button
             class="text-button"
-            @click=${() =>
-              this.dispatchEvent(
-                new CustomEvent("edit-asset", {
-                  detail: this.asset.id,
-                  bubbles: true,
-                  composed: true,
-                }),
-              )}
+            @click=${() => (this._editingAsset = true)}
           >
             ${this.t("common.edit")}
           </button>
@@ -438,6 +444,7 @@ export class BindHomeElementDetail extends LitElement {
                   : this.t("common.none")}
               </dd>
             </dl>
+            <button class="secondary" @click=${() => this.dispatchEvent(new CustomEvent("open-advanced", { detail: this.asset.id, bubbles:true, composed:true }))}>${this.t("detail.open_advanced")}</button>
           </details>
         </section>
       </article>`;

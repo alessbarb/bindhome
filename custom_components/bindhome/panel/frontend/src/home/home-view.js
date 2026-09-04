@@ -26,6 +26,7 @@ export class BindHomeHomeView extends LitElement {
     deviceRegistry: { attribute: false },
     refreshBindingData: { attribute: false },
     refreshTopologyData: { attribute: false },
+    refreshAssets: { attribute: false },
     selectedAssetId: { attribute: false },
     selectedAreaId: { attribute: false },
   };
@@ -43,6 +44,7 @@ export class BindHomeHomeView extends LitElement {
     this.deviceRegistry = [];
     this.refreshBindingData = null;
     this.refreshTopologyData = null;
+    this.refreshAssets = null;
     this.selectedAssetId = null;
     this.selectedAreaId = null;
   }
@@ -383,6 +385,7 @@ export class BindHomeHomeView extends LitElement {
               .deviceRegistry=${this.deviceRegistry}
               .refreshBindingData=${this.refreshBindingData}
               .refreshTopologyData=${this.refreshTopologyData}
+              .refreshAssets=${this.refreshAssets}
               @back=${() => {
                 this.dispatchEvent(
                   new CustomEvent("home-navigate", {

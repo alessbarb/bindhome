@@ -31,6 +31,8 @@ export class BindHomePanel extends LitElement {
     _selectedAssetId: { state: true },
     _selectedAreaId: { state: true },
     _advancedAssetId: { state: true },
+    _addSessionId: { state: true },
+    _advancedPinned: { state: true },
   };
   constructor() {
     super();
@@ -59,6 +61,9 @@ export class BindHomePanel extends LitElement {
     this._selectedAssetId = null;
     this._selectedAreaId = null;
     this._advancedAssetId = null;
+    this._addSessionId = 0;
+    this._advancedPinned = false;
+    this._advancedPreferenceIdentity = null;
   }
   static styles = css`
     :host {
@@ -131,6 +136,8 @@ export class BindHomePanel extends LitElement {
       color: var(--primary-text-color);
       border-bottom-color: var(--primary-color);
     }
+    .tabs button.pin { min-width: 52px; padding-inline: 12px; }
+    .tabs button.pin ha-icon { --mdc-icon-size: 21px; }
     button:focus-visible {
       outline: 2px solid var(--primary-color);
       outline-offset: -3px;
@@ -240,6 +247,7 @@ export class BindHomePanel extends LitElement {
     }
   `;
   updated(changed) {
+    if (changed.has("hass")) this._restoreAdvancedPreference();
     if (
       changed.has("hass") &&
       this.hass &&
@@ -353,6 +361,10 @@ export class BindHomePanel extends LitElement {
       this._registry = { ...this._registry, assets: event.detail };
   }
   _navigate(view) {
+    if (view === "add") {
+      this._openAdd(null);
+      return;
+    }
     // Casa intentionally retains its last Area/Asset context while another
     // mounted top-level view is active. Only Casa navigation events own it.
     if (this._view === "advanced" && view !== "advanced") {
@@ -360,6 +372,26 @@ export class BindHomePanel extends LitElement {
     }
     this._view = view;
     if (view !== "add") this._contextAreaId = null;
+  }
+  _openAdd(contextAreaId = null) {
+    this._addSessionId += 1;
+    this._contextAreaId = contextAreaId;
+    this._view = "add";
+  }
+  _advancedPreferenceKey() {
+    return `bindhome.advanced-pinned.${this.hass?.user?.id ?? "browser"}`;
+  }
+  _restoreAdvancedPreference() {
+    const identity = this._advancedPreferenceKey();
+    if (identity === this._advancedPreferenceIdentity) return;
+    this._advancedPreferenceIdentity = identity;
+    try { this._advancedPinned = window.localStorage.getItem(identity) === "true"; }
+    catch { this._advancedPinned = false; }
+  }
+  _setAdvancedPinned(pinned) {
+    this._advancedPinned = pinned;
+    try { window.localStorage.setItem(this._advancedPreferenceKey(), String(pinned)); } catch { /* Browser storage may be unavailable. */ }
+    if (!pinned && this._view === "advanced") this._navigate("home");
   }
   _homeNavigate(event) {
     this._selectedAreaId = event.detail.areaId;
@@ -378,6 +410,13 @@ export class BindHomePanel extends LitElement {
   _editAsset(id) {
     this._advancedAssetId = id;
     this._view = "advanced";
+  }
+  _humanAssetCommitted(updated) {
+    if (!updated?.id) return;
+    this._assets = this._assets.map((asset) => asset.id === updated.id ? updated : asset);
+    if (this._registry) this._registry = { ...this._registry, assets: this._assets };
+    this._selectedAssetId = updated.id;
+    this._selectedAreaId = !updated.area_id ? NO_AREA : this._areas.some((area) => area.area_id === updated.area_id) ? updated.area_id : STALE_AREA;
   }
   _renderViews() {
     const common = {
@@ -406,14 +445,13 @@ export class BindHomePanel extends LitElement {
           .deviceRegistry=${common.deviceRegistry}
           .refreshBindingData=${common.refreshBindingData}
           .refreshTopologyData=${common.refreshTopologyData}
+          .refreshAssets=${() => this._refreshAssets()}
           .selectedAssetId=${this._selectedAssetId}
           .selectedAreaId=${this._selectedAreaId}
           @home-navigate=${this._homeNavigate}
-          @add-in-area=${(e) => {
-            this._contextAreaId = e.detail;
-            this._view = "add";
-          }}
-          @edit-asset=${(event) => this._editAsset(event.detail)}
+          @add-in-area=${(e) => this._openAdd(e.detail)}
+          @open-advanced=${(event) => this._editAsset(event.detail)}
+          @asset-committed=${(event) => this._humanAssetCommitted(event.detail)}
         ></bindhome-home-view>
       </section>
       <section class="view" ?hidden=${this._view !== "add"}>
@@ -423,6 +461,7 @@ export class BindHomePanel extends LitElement {
           .presets=${this._presets}
           .areas=${this._areas}
           .contextAreaId=${this._contextAreaId}
+          .sessionId=${this._addSessionId}
           .onCreated=${async (created) => {
             const assets = await this._refreshAssets();
             const asset = created ?? assets?.at(-1);
@@ -485,7 +524,16 @@ export class BindHomePanel extends LitElement {
           <h1>BindHome</h1>
         </div>
         <nav class="tabs" aria-label=${this._t("shell.sections_label")}>
-          ${["home", "add", "search", "advanced"].map(
+          ${[
+            "home",
+            "add",
+            "search",
+            ...(
+              this._advancedPinned || this._view === "advanced"
+                ? ["advanced"]
+                : []
+            ),
+          ].map(
             (view) =>
               html`<button
                 class=${this._view === view ? "active" : ""}
@@ -495,6 +543,7 @@ export class BindHomePanel extends LitElement {
                 ${this._t(`nav.${view}`)}
               </button>`,
           )}
+          <button class="pin" aria-label=${this._t(this._advancedPinned ? "nav.unpin_advanced" : "nav.pin_advanced")} title=${this._t(this._advancedPinned ? "nav.unpin_advanced" : "nav.pin_advanced")} aria-pressed=${this._advancedPinned} @click=${() => this._setAdvancedPinned(!this._advancedPinned)}><ha-icon icon=${this._advancedPinned ? "mdi:pin" : "mdi:pin-outline"}></ha-icon></button>
         </nav>
         <button
           class="refresh"

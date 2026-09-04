@@ -79,6 +79,7 @@ export interface Registry {
 export interface HomeAssistant {
   callWS(message: Record<string, unknown>): Promise<any>;
   language?: string;
+  user?: { id?: string };
   states?: Record<
     string,
     { state: string; attributes?: Record<string, unknown> }

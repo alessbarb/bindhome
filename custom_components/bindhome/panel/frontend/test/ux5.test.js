@@ -17,6 +17,7 @@ import {
   NO_AREA,
   STALE_AREA,
 } from "../src/state/home-selectors.js";
+import { buildPresetCatalogue } from "../src/add/preset-catalogue.js";
 
 const t = (key, variables = {}) =>
   ({
@@ -311,6 +312,7 @@ function panelFixture() {
   panel._areas = [
     { area_id: "kitchen", name: "Cocina", floor_id: "ground", icon: null },
     { area_id: "garage", name: "Garaje", floor_id: "ground", icon: null },
+    { area_id: "bedroom", name: "Dormitorio", floor_id: "ground", icon: null },
   ];
   panel._assets = [
     { id: "a", name: "Circuito cocina", asset_type: "circuit", area_id: "kitchen", capabilities: [] },
@@ -519,13 +521,14 @@ test("contextual Relation identity change blocks late refresh success and reject
   }
 });
 
-test("Edit opens the exact human Asset in the mounted technical editor", async () => {
+test("Open in Advanced opens the exact human Asset in the mounted technical editor", async () => {
   const panel = panelFixture();
   panel._homeNavigate({ detail: { areaId: "garage", assetId: "b" } });
   let home = await settlePanel(panel);
   const detail = home.shadowRoot.querySelector("bindhome-element-detail");
   await settle(detail);
-  detail.shadowRoot.querySelector(".header .text-button").click();
+  detail.shadowRoot.querySelector("details").open = true;
+  detail.shadowRoot.querySelector("details .secondary").click();
   await settle(panel);
   const advanced = panel.shadowRoot.querySelector("bindhome-advanced-view");
   await settle(advanced);
@@ -549,13 +552,13 @@ async function advancedBrowser(panel) {
   return browser;
 }
 
-test("repeated Human Edit is a fresh request after manual Advanced navigation", async () => {
+test("repeated Open in Advanced is a fresh request after manual Advanced navigation", async () => {
   const panel = panelFixture();
   panel._homeNavigate({ detail: { areaId: "kitchen", assetId: "a" } });
   let home = await settlePanel(panel);
   let detail = home.shadowRoot.querySelector("bindhome-element-detail");
   await settle(detail);
-  detail.shadowRoot.querySelector(".header .text-button").click();
+  detail.shadowRoot.querySelector("details .secondary").click();
   let browser = await advancedBrowser(panel);
   assert.equal(browser._selectedAssetId, "a");
 
@@ -568,7 +571,7 @@ test("repeated Human Edit is a fresh request after manual Advanced navigation", 
   assert.equal(panel._advancedAssetId, null);
   detail = home.shadowRoot.querySelector("bindhome-element-detail");
   await settle(detail);
-  detail.shadowRoot.querySelector(".header .text-button").click();
+  detail.shadowRoot.querySelector("details .secondary").click();
   browser = await advancedBrowser(panel);
   assert.equal(browser._selectedAssetId, "a");
 });
@@ -652,13 +655,387 @@ test("human device derivation distinguishes passive, unbound and first-bound Ass
   assert.equal(detail._devices()[0].status.binding.id, "b");
 });
 
-test("global Add clears stale room launch context deterministically", async () => {
+test("Add session identity resets stale room launch context deterministically", async () => {
   const add = document.createElement("bindhome-add-view");
   add.contextAreaId = "kitchen";
+  add.sessionId = 1;
   document.body.append(add);
   await settle(add);
   assert.equal(add._areaId, "kitchen");
   add.contextAreaId = null;
+  add.sessionId = 2;
   await settle(add);
   assert.equal(add._areaId, "");
+});
+
+test("preset catalogue searches localized and machine names with stable grouped ordering", () => {
+  const presets = [
+    { preset_id: "custom", asset_type: "solar_inverter", default_name: "Solar", suggested_capabilities: [], group: "x" },
+    { preset_id: "socket", asset_type: "socket", default_name: "Socket", suggested_capabilities: [], group: "x" },
+    { preset_id: "light_point", asset_type: "light_point", default_name: "Light", suggested_capabilities: [], group: "x" },
+    { preset_id: "circuit", asset_type: "circuit", default_name: "Circuit", suggested_capabilities: [], group: "x" },
+  ];
+  const catalogue = buildPresetCatalogue(t, presets);
+  assert.deepEqual(catalogue.groups.map(({ category }) => category), ["lighting", "electricity", "other"]);
+  assert.deepEqual(catalogue.groups[1].items.map(({ name }) => name), ["Circuit", "Enchufe"]);
+  assert.equal(catalogue.groups.at(-1).items[0].preset.asset_type, "solar_inverter");
+  assert.deepEqual(buildPresetCatalogue(t, presets, "enchufe").groups[0].items.map(({ preset }) => preset.asset_type), ["socket"]);
+  assert.deepEqual(buildPresetCatalogue(t, presets, "solar_inverter").groups[0].items.map(({ preset }) => preset.asset_type), ["solar_inverter"]);
+});
+
+test("every global Add entry starts a fresh chooser session", async () => {
+  const panel = panelFixture();
+  panel._presets = [{ preset_id: "socket", asset_type: "socket", default_name: "Socket", suggested_capabilities: [], group: "x" }];
+  panel._openAdd(null);
+  await settle(panel);
+  let add = panel.shadowRoot.querySelector("bindhome-add-view");
+  await settle(add);
+  add._choose(panel._presets[0]);
+  add._name = "Stale name";
+  add._code = "STALE";
+  add._search = "stale";
+  panel._navigate("home");
+  panel._navigate("add");
+  await settle(panel);
+  add = panel.shadowRoot.querySelector("bindhome-add-view");
+  await settle(add);
+  assert.deepEqual([add._preset, add._name, add._code, add._areaId, add._search, add._error], [null, "", "", "", "", null]);
+});
+
+test("room Add entries always start fresh with the current room context", async () => {
+  const panel = panelFixture();
+  panel._presets = [{ preset_id: "socket", asset_type: "socket", default_name: "Socket", suggested_capabilities: [], group: "x" }];
+  for (const areaId of ["kitchen", "kitchen", "bedroom"]) {
+    panel._navigate("home");
+    panel._homeNavigate({ detail: { areaId, assetId: null } });
+    const home = await settlePanel(panel);
+    home.shadowRoot.querySelector(".room-head .primary").click();
+    await settle(panel);
+    const add = panel.shadowRoot.querySelector("bindhome-add-view");
+    await settle(add);
+    assert.deepEqual([add._preset, add._name, add._code, add._areaId, add._search], [null, "", "", areaId, ""]);
+    add._choose(panel._presets[0]);
+    add._name = "Transient";
+    add._code = "TMP";
+  }
+});
+
+test("primary Human Edit stays in Casa and exposes only human fields", async () => {
+  const panel = panelFixture();
+  panel._homeNavigate({ detail: { areaId: "kitchen", assetId: "a" } });
+  let home = await settlePanel(panel);
+  let detail = home.shadowRoot.querySelector("bindhome-element-detail");
+  await settle(detail);
+  detail.shadowRoot.querySelector(".header .text-button").click();
+  await settle(detail);
+  const editor = detail.shadowRoot.querySelector("bindhome-human-asset-editor");
+  await settle(editor);
+  assert.equal(panel._view, "home");
+  assert.equal(editor.shadowRoot.querySelectorAll("input").length, 2);
+  assert.equal(editor.shadowRoot.querySelectorAll("select").length, 1);
+  assert.doesNotMatch(editor.shadowRoot.textContent, /asset_type|capabilities|Binding|Representation|UUID/);
+  editor.shadowRoot.querySelector("button.secondary").click();
+  await settle(detail);
+  assert.ok(detail.shadowRoot.querySelector(".header"));
+});
+
+test("Human Edit commits once, follows its new room, and tolerates refresh failure", async () => {
+  const panel = panelFixture();
+  let writes = 0;
+  panel.hass = { language: "en", callWS: async (message) => {
+    if (message.type === "bindhome/assets/update") { writes += 1; return { asset: { ...panel._assets[0], name: message.name, area_id: message.area_id } }; }
+    if (message.type === "bindhome/assets/list") throw new Error("refresh failed");
+    return { resources: {} };
+  } };
+  panel._translationLanguage = "en";
+  panel._homeNavigate({ detail: { areaId: "kitchen", assetId: "a" } });
+  const home = await settlePanel(panel);
+  const detail = home.shadowRoot.querySelector("bindhome-element-detail");
+  await settle(detail);
+  detail._editingAsset = true;
+  await settle(detail);
+  const editor = detail.shadowRoot.querySelector("bindhome-human-asset-editor");
+  await settle(editor);
+  editor._name = "Circuito movido";
+  editor._areaId = "garage";
+  await editor._save({ preventDefault() {} });
+  await settlePanel(panel);
+  assert.equal(writes, 1);
+  assert.deepEqual([panel._selectedAssetId, panel._selectedAreaId, panel._assets[0].name], ["a", "garage", "Circuito movido"]);
+  assert.equal(detail._sync, "editor.sync_warning");
+  await editor._save({ preventDefault() {} });
+  assert.equal(writes, 1);
+});
+
+test("Human Edit write failure preserves its complete draft", async () => {
+  const editor = document.createElement("bindhome-human-asset-editor");
+  editor.t = t;
+  editor.hass = { callWS: async () => { throw new Error("write failed"); } };
+  editor.asset = { id: "a", name: "Original", code: "A", asset_type: "socket", area_id: "kitchen" };
+  document.body.append(editor);
+  await settle(editor);
+  editor._name = "Draft"; editor._code = "D"; editor._areaId = "garage";
+  await editor._save({ preventDefault() {} });
+  assert.deepEqual([editor._name, editor._code, editor._areaId, editor._committed], ["Draft", "D", "garage", false]);
+  assert.match(editor._error, /write failed/);
+});
+
+test("Human Edit identity change blocks a late write from contaminating another Asset", async () => {
+  let release;
+  const editor = document.createElement("bindhome-human-asset-editor");
+  editor.t = t;
+  editor.hass = { callWS: async () => new Promise((resolve) => (release = resolve)) };
+  editor.asset = { id: "a", name: "A", asset_type: "socket" };
+  document.body.append(editor);
+  await settle(editor);
+  editor._name = "Changed A";
+  const save = editor._save({ preventDefault() {} });
+  editor.asset = { id: "b", name: "B", asset_type: "socket" };
+  await settle(editor);
+  release({ asset: { id: "a", name: "Changed A", asset_type: "socket" } });
+  await save;
+  assert.deepEqual([editor._identity, editor._name, editor._error, editor._committed], ["b", "B", null, false]);
+});
+
+test("Advanced is opt-in, persisted per user, and unpinning preserves mounted state", async () => {
+  window.localStorage.clear();
+  const panel = panelFixture();
+  panel._translationLanguage = "en";
+  panel.hass = { language: "en", user: { id: "user-a" }, callWS: async () => ({ resources: {} }) };
+  await settle(panel);
+  assert.equal(panel._advancedPinned, false);
+  assert.equal(panel.shadowRoot.querySelectorAll(".tabs button").length, 4);
+  panel.shadowRoot.querySelector(".pin").click();
+  await settle(panel);
+  assert.equal(panel._advancedPinned, true);
+  assert.equal(window.localStorage.getItem("bindhome.advanced-pinned.user-a"), "true");
+  panel._navigate("advanced");
+  const browser = await advancedBrowser(panel);
+  browser._openAsset("b");
+  await settle(browser);
+  panel.shadowRoot.querySelector(".pin").click();
+  await settle(panel);
+  assert.deepEqual([panel._advancedPinned, panel._view], [false, "home"]);
+  panel._setAdvancedPinned(true);
+  panel._navigate("advanced");
+  assert.equal((await advancedBrowser(panel))._selectedAssetId, "b");
+
+  const restored = panelFixture();
+  restored._translationLanguage = "en";
+  restored.hass = { language: "en", user: { id: "user-a" }, callWS: async () => ({ resources: {} }) };
+  await settle(restored);
+  assert.equal(restored._advancedPinned, true);
+  window.localStorage.clear();
+});
+
+
+test("Add committed write is never retried after refresh failure", async () => {
+  let writes = 0;
+
+  const add = document.createElement("bindhome-add-view");
+  add.t = t;
+  add.sessionId = 1;
+  add.presets = [{
+    preset_id: "socket",
+    asset_type: "socket",
+    default_name: "Socket",
+    suggested_capabilities: [],
+    group: "x",
+  }];
+  add.hass = {
+    callWS: async (message) => {
+      if (message.type === "bindhome/assets/create_bulk") {
+        writes += 1;
+        return {
+          assets: [{
+            id: "created",
+            name: message.assets?.[0]?.name ?? "Socket",
+            asset_type: "socket",
+          }],
+        };
+      }
+      return {};
+    },
+  };
+  add.onCreated = async () => {
+    throw new Error("refresh failed");
+  };
+
+  document.body.append(add);
+  await settle(add);
+
+  add._choose(add.presets[0]);
+  add._name = "Kitchen socket";
+
+  await add._submit({ preventDefault() {} });
+
+  assert.equal(writes, 1);
+  assert.equal(add._committed, true);
+  assert.equal(add._sync, "shell.refresh_error");
+
+  await add._submit({ preventDefault() {} });
+
+  assert.equal(writes, 1);
+});
+
+
+test("new Add session ignores completion from an older in-flight session", async () => {
+  let releaseWrite;
+  let createdCallbacks = 0;
+  let createdEvents = 0;
+
+  const add = document.createElement("bindhome-add-view");
+  add.t = t;
+  add.sessionId = 1;
+  add.contextAreaId = "kitchen";
+  add.presets = [{
+    preset_id: "socket",
+    asset_type: "socket",
+    default_name: "Socket",
+    suggested_capabilities: [],
+    group: "x",
+  }];
+
+  add.hass = {
+    callWS: async (message) => {
+      if (message.type !== "bindhome/assets/create_bulk") {
+        return {};
+      }
+
+      return new Promise((resolve) => {
+        releaseWrite = resolve;
+      });
+    },
+  };
+
+  add.onCreated = async () => {
+    createdCallbacks += 1;
+  };
+
+  add.addEventListener("asset-created", () => {
+    createdEvents += 1;
+  });
+
+  document.body.append(add);
+  await settle(add);
+
+  add._choose(add.presets[0]);
+  add._name = "Old session socket";
+
+  const save = add._submit({ preventDefault() {} });
+
+  add.sessionId = 2;
+  add.contextAreaId = "bedroom";
+  await settle(add);
+
+  assert.deepEqual(
+    [add._preset, add._name, add._areaId, add._saving],
+    [null, "", "bedroom", false],
+  );
+
+  releaseWrite({
+    assets: [{
+      id: "old-created",
+      name: "Old session socket",
+      asset_type: "socket",
+      area_id: "kitchen",
+    }],
+  });
+
+  await save;
+
+  assert.equal(createdCallbacks, 0);
+  assert.equal(createdEvents, 0);
+  assert.equal(add._committed, false);
+  assert.equal(add._areaId, "bedroom");
+});
+
+
+test("Open in Advanced is temporary unless Advanced is explicitly pinned", async () => {
+  window.localStorage.clear();
+
+  const panel = panelFixture();
+  panel._translationLanguage = "en";
+  panel.hass = {
+    language: "en",
+    user: { id: "temporary-advanced-user" },
+    callWS: async () => ({ resources: {} }),
+  };
+
+  await settle(panel);
+
+  assert.equal(panel._advancedPinned, false);
+
+  panel._editAsset("a");
+  await settle(panel);
+
+  assert.equal(panel._view, "advanced");
+  assert.equal(panel._advancedPinned, false);
+  assert.equal(
+    window.localStorage.getItem(
+      "bindhome.advanced-pinned.temporary-advanced-user",
+    ),
+    null,
+  );
+
+  const labelsWhileOpen = [
+    ...panel.shadowRoot.querySelectorAll(".tabs button:not(.pin)"),
+  ].map((button) => button.textContent.trim());
+
+  assert.ok(
+    labelsWhileOpen.some((label) => /advanced|avanzado/i.test(label)),
+  );
+
+  panel._navigate("home");
+  await settle(panel);
+
+  const labelsAfterLeaving = [
+    ...panel.shadowRoot.querySelectorAll(".tabs button:not(.pin)"),
+  ].map((button) => button.textContent.trim());
+
+  assert.equal(
+    labelsAfterLeaving.some((label) => /advanced|avanzado/i.test(label)),
+    false,
+  );
+
+  window.localStorage.clear();
+});
+
+
+test("Human Edit localizes backend conflicts instead of exposing raw text", async () => {
+  const editor = document.createElement("bindhome-human-asset-editor");
+
+  editor.t = t;
+
+  editor.asset = {
+    id: "a",
+    name: "Circuit",
+    code: "CIR-A",
+    asset_type: "circuit",
+    area_id: "kitchen",
+  };
+
+  editor.hass = {
+    callWS: async () => {
+      const error = new Error(
+        "Asset code CIR-B already exists",
+      );
+      error.code = "conflict";
+      throw error;
+    },
+  };
+
+  document.body.append(editor);
+  await settle(editor);
+
+  editor._code = "CIR-B";
+
+  await editor._save({ preventDefault() {} });
+
+  assert.equal(editor._error, "editor.save_error");
+  assert.equal(editor._code, "CIR-B");
+  assert.doesNotMatch(
+    editor.shadowRoot.textContent,
+    /Asset code CIR-B already exists/,
+  );
 });
