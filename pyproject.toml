@@ -1,6 +1,6 @@
 [project]
 name = "bindhome"
-version = "0.1.0"
+version = "1.0.0"
 description = "Stable home infrastructure bound to replaceable Home Assistant hardware"
 requires-python = ">=3.14"
 license = { text = "MIT" }
@@ -12,7 +12,7 @@ authors = [
 dev = [
   "pytest>=8.0.0",
   "pytest-asyncio>=0.24.0",
-  "pytest-homeassistant-custom-component==0.13.357",
+  "pytest-homeassistant-custom-component==0.13.363",
   "ruff>=0.4.0",
 ]
 
