@@ -87,6 +87,8 @@ First public BindHome release.
 - Added HACS repository metadata, brand asset and automatic HACS publication validation. ([#20](https://github.com/alessbarb/bindhome/pull/20))
 - Added permanent Home Assistant compatibility CI for the supported floor and current stable release. ([#20](https://github.com/alessbarb/bindhome/pull/20))
 - Added release metadata consistency validation so Python, manifest and frontend versions cannot drift unnoticed. ([#20](https://github.com/alessbarb/bindhome/pull/20))
+- Development-only frontend source, tests and Node.js tooling now live outside `custom_components/bindhome`, leaving the HACS-installed integration with only the generated runtime bundle. ([#20](https://github.com/alessbarb/bindhome/pull/20))
+- GitHub Actions use the current Node 24-based official action generations, and Dependabot tracks GitHub Actions, Python and frontend npm dependencies weekly. ([#20](https://github.com/alessbarb/bindhome/pull/20))
 - Added documented installation, upgrade, downgrade, backup and release procedures. ([#20](https://github.com/alessbarb/bindhome/pull/20))
 
 ### Development milestones included in 1.0.0
