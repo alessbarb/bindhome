@@ -1,0 +1,188 @@
+name: Finalize onboarding integration
+
+on:
+  push:
+    branches:
+      - p1/release-1.0-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: p1/release-1.0-foundation
+
+      - name: Integrate onboarding
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          panel_path = Path('custom_components/bindhome/panel/frontend/src/bindhome-panel.js')
+          panel = panel_path.read_text()
+
+          replacements = [
+              (
+                  'import "./advanced/advanced-view.js";\n',
+                  'import "./advanced/advanced-view.js";\nimport "./onboarding/onboarding-view.js";\n',
+              ),
+              (
+                  '    _advancedPinned: { state: true },\n',
+                  '    _advancedPinned: { state: true },\n    _onboardingVisible: { state: true },\n',
+              ),
+              (
+                  '    this._advancedPreferenceIdentity = null;\n',
+                  '    this._advancedPreferenceIdentity = null;\n    this._onboardingVisible = false;\n    this._onboardingDismissed = false;\n    this._onboardingPreferenceIdentity = null;\n',
+              ),
+              (
+                  '    if (changed.has("hass")) this._restoreAdvancedPreference();\n',
+                  '    if (changed.has("hass")) {\n      this._restoreAdvancedPreference();\n      this._restoreOnboardingPreference();\n    }\n',
+              ),
+              (
+                  '      this._initialized = true;\n      this._loading = false;\n',
+                  '      this._initialized = true;\n      this._syncOnboardingVisibility();\n      this._loading = false;\n',
+              ),
+              (
+                  '    this._assets = assets;\n    if (this._registry) this._registry = { ...this._registry, assets };\n    return assets;\n',
+                  '    this._assets = assets;\n    if (this._registry) this._registry = { ...this._registry, assets };\n    this._syncOnboardingVisibility();\n    return assets;\n',
+              ),
+              (
+                  '  _navigate(view) {\n',
+                  '  _navigate(view) {\n    if (this._onboardingVisible) this._dismissOnboarding();\n',
+              ),
+              (
+                  '    else content = this._renderViews();\n',
+                  '''    else if (this._onboardingVisible)\n      content = html`<bindhome-onboarding-view\n        .t=${this._t}\n        .floors=${this._floors}\n        .areas=${this._areas}\n        @onboarding-complete=${this._completeOnboarding}\n      ></bindhome-onboarding-view>`;\n    else content = this._renderViews();\n''',
+              ),
+          ]
+          for old, new in replacements:
+              if old not in panel:
+                  raise SystemExit(f'Could not locate onboarding integration marker: {old[:60]!r}')
+              panel = panel.replace(old, new, 1)
+
+          marker = '''  _setAdvancedPinned(pinned) {\n    this._advancedPinned = pinned;\n    try { window.localStorage.setItem(this._advancedPreferenceKey(), String(pinned)); } catch { /* Browser storage may be unavailable. */ }\n    if (!pinned && this._view === "advanced") this._navigate("home");\n  }\n'''
+          methods = marker + '''  _onboardingPreferenceKey() {\n    return `bindhome.onboarding.v1.${this.hass?.user?.id ?? "browser"}`;\n  }\n  _restoreOnboardingPreference() {\n    const identity = this._onboardingPreferenceKey();\n    if (identity === this._onboardingPreferenceIdentity) return;\n    this._onboardingPreferenceIdentity = identity;\n    try {\n      this._onboardingDismissed = window.localStorage.getItem(identity) === "true";\n    } catch {\n      this._onboardingDismissed = false;\n    }\n    this._syncOnboardingVisibility();\n  }\n  _syncOnboardingVisibility() {\n    this._onboardingVisible =\n      this._initialized &&\n      this._assets.length === 0 &&\n      !this._onboardingDismissed;\n  }\n  _dismissOnboarding() {\n    this._onboardingDismissed = true;\n    this._onboardingVisible = false;\n    try {\n      window.localStorage.setItem(this._onboardingPreferenceKey(), "true");\n    } catch {\n      /* Browser storage may be unavailable. */\n    }\n  }\n  _completeOnboarding(event) {\n    const startInventory = Boolean(event?.detail?.startInventory);\n    this._dismissOnboarding();\n    if (startInventory) this._openAdd(null);\n    else this._view = "home";\n  }\n'''
+          if marker not in panel:
+              raise SystemExit('Could not locate onboarding method insertion point')
+          panel = panel.replace(marker, methods, 1)
+          panel_path.write_text(panel)
+
+          english = {
+              'panel_onboarding_progress_label': 'Getting started with BindHome',
+              'panel_onboarding_welcome_eyebrow': 'Welcome to BindHome',
+              'panel_onboarding_welcome_title': 'Stable home, replaceable hardware',
+              'panel_onboarding_welcome_body': 'BindHome gives the physical things in your home stable identities, while the smart devices that control or measure them can change over time.',
+              'panel_onboarding_stable_title': 'Stable infrastructure',
+              'panel_onboarding_stable_example': 'Living room ceiling light point',
+              'panel_onboarding_replaceable_title': 'Replaceable hardware',
+              'panel_onboarding_replaceable_example': 'The Shelly, Sonoff or other Home Assistant entity connected to it today',
+              'panel_onboarding_model_eyebrow': 'The model',
+              'panel_onboarding_model_title': 'Four ideas are enough to understand BindHome',
+              'panel_onboarding_model_body': 'You can start with Assets only. Bindings, topology and logical representations can be added when they are useful.',
+              'panel_onboarding_asset_title': 'Asset — the stable physical thing',
+              'panel_onboarding_asset_body': 'A socket, light point, radiator, circuit, valve, network outlet or other part of the home.',
+              'panel_onboarding_capability_title': 'Capability — what that Asset can do',
+              'panel_onboarding_capability_body': 'For example on/off, temperature, setpoint or power measurement.',
+              'panel_onboarding_binding_title': 'Binding — what implements it today',
+              'panel_onboarding_binding_body': 'A replaceable Home Assistant entity. Change the hardware later and keep the same Asset.',
+              'panel_onboarding_representation_title': 'Representation — the stable logical entity',
+              'panel_onboarding_representation_body': 'When useful, BindHome can expose the Asset back to Home Assistant as a logical entity that automations can use.',
+              'panel_onboarding_structure_eyebrow': 'Your home structure',
+              'panel_onboarding_structure_title': 'BindHome reuses Home Assistant Floors and Areas',
+              'panel_onboarding_structure_body': 'You do not maintain a second room catalogue. Create and rename Floors and Areas in Home Assistant; BindHome uses those locations for physical Assets.',
+              'panel_onboarding_floors_detected': 'Home Assistant Floors detected',
+              'panel_onboarding_areas_detected': 'Home Assistant Areas detected',
+              'panel_onboarding_no_areas': 'Create at least one Area in Home Assistant Settings, then refresh BindHome before starting the inventory.',
+              'panel_onboarding_structure_ready': 'Your Home Assistant Areas are ready to use as BindHome locations.',
+              'panel_onboarding_start_eyebrow': 'First inventory',
+              'panel_onboarding_start_title': 'Start with one room, not with the whole house',
+              'panel_onboarding_start_body': 'Choose a room and record what is physically installed there. BindHome saves the inventory independently from whether those elements are smart today.',
+              'panel_onboarding_after_inventory_title': 'After the physical inventory, you can:',
+              'panel_onboarding_after_inventory_binding': 'Connect capabilities to the Home Assistant entities that implement them.',
+              'panel_onboarding_after_inventory_topology': 'Describe direct infrastructure relationships such as feeds, contains or controls.',
+              'panel_onboarding_after_inventory_representation': 'Expose selected Assets as stable logical Home Assistant entities.',
+              'panel_onboarding_back': 'Back',
+              'panel_onboarding_next': 'Next',
+              'panel_onboarding_start_inventory': 'Inventory my first room',
+              'panel_onboarding_skip': 'Skip introduction',
+          }
+          spanish = {
+              'panel_onboarding_progress_label': 'Primeros pasos con BindHome',
+              'panel_onboarding_welcome_eyebrow': 'Bienvenido a BindHome',
+              'panel_onboarding_welcome_title': 'Casa estable, hardware reemplazable',
+              'panel_onboarding_welcome_body': 'BindHome da una identidad estable a los elementos físicos de tu casa, mientras los dispositivos inteligentes que los controlan o miden pueden cambiar con el tiempo.',
+              'panel_onboarding_stable_title': 'Infraestructura estable',
+              'panel_onboarding_stable_example': 'Punto de luz del techo del salón',
+              'panel_onboarding_replaceable_title': 'Hardware reemplazable',
+              'panel_onboarding_replaceable_example': 'El Shelly, Sonoff u otra entidad de Home Assistant conectada hoy',
+              'panel_onboarding_model_eyebrow': 'El modelo',
+              'panel_onboarding_model_title': 'Cuatro ideas bastan para entender BindHome',
+              'panel_onboarding_model_body': 'Puedes empezar solo con Assets. Bindings, topología y representaciones lógicas se añaden cuando aportan valor.',
+              'panel_onboarding_asset_title': 'Asset — el elemento físico estable',
+              'panel_onboarding_asset_body': 'Un enchufe, punto de luz, radiador, circuito, válvula, toma de red u otra parte de la vivienda.',
+              'panel_onboarding_capability_title': 'Capability — lo que ese Asset puede hacer',
+              'panel_onboarding_capability_body': 'Por ejemplo encendido/apagado, temperatura, consigna o medición de potencia.',
+              'panel_onboarding_binding_title': 'Binding — qué lo implementa hoy',
+              'panel_onboarding_binding_body': 'Una entidad reemplazable de Home Assistant. Cambia el hardware más adelante y conserva el mismo Asset.',
+              'panel_onboarding_representation_title': 'Representation — la entidad lógica estable',
+              'panel_onboarding_representation_body': 'Cuando interesa, BindHome puede volver a exponer el Asset en Home Assistant como una entidad lógica que usarán las automatizaciones.',
+              'panel_onboarding_structure_eyebrow': 'Estructura de tu casa',
+              'panel_onboarding_structure_title': 'BindHome reutiliza Pisos y Áreas de Home Assistant',
+              'panel_onboarding_structure_body': 'No mantienes un segundo catálogo de estancias. Crea y renombra Pisos y Áreas en Home Assistant; BindHome usa esas ubicaciones para los Assets físicos.',
+              'panel_onboarding_floors_detected': 'Pisos de Home Assistant detectados',
+              'panel_onboarding_areas_detected': 'Áreas de Home Assistant detectadas',
+              'panel_onboarding_no_areas': 'Crea al menos un Área en Ajustes de Home Assistant y después actualiza BindHome antes de empezar el inventario.',
+              'panel_onboarding_structure_ready': 'Tus Áreas de Home Assistant están listas para usarse como ubicaciones de BindHome.',
+              'panel_onboarding_start_eyebrow': 'Primer inventario',
+              'panel_onboarding_start_title': 'Empieza por una estancia, no por toda la casa',
+              'panel_onboarding_start_body': 'Elige una estancia y registra lo que está físicamente instalado. BindHome guarda el inventario aunque esos elementos todavía no sean inteligentes.',
+              'panel_onboarding_after_inventory_title': 'Después del inventario físico podrás:',
+              'panel_onboarding_after_inventory_binding': 'Conectar capacidades con las entidades de Home Assistant que las implementan.',
+              'panel_onboarding_after_inventory_topology': 'Describir relaciones directas de infraestructura, como alimenta, contiene o controla.',
+              'panel_onboarding_after_inventory_representation': 'Exponer Assets seleccionados como entidades lógicas estables de Home Assistant.',
+              'panel_onboarding_back': 'Atrás',
+              'panel_onboarding_next': 'Siguiente',
+              'panel_onboarding_start_inventory': 'Inventariar mi primera estancia',
+              'panel_onboarding_skip': 'Omitir introducción',
+          }
+
+          def add_common(path, additions):
+              data = json.loads(path.read_text())
+              data.setdefault('common', {}).update(additions)
+              path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + '\n')
+
+          add_common(Path('custom_components/bindhome/strings.json'), english)
+          add_common(Path('custom_components/bindhome/translations/en.json'), english)
+          add_common(Path('custom_components/bindhome/translations/es.json'), spanish)
+          PY
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: custom_components/bindhome/panel/frontend/package-lock.json
+
+      - name: Validate and build frontend
+        working-directory: custom_components/bindhome/panel/frontend
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          npm run build
+
+      - name: Commit onboarding
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add custom_components/bindhome/panel/frontend/src/bindhome-panel.js \
+                  custom_components/bindhome/panel/static/bindhome-panel.js \
+                  custom_components/bindhome/strings.json \
+                  custom_components/bindhome/translations/en.json \
+                  custom_components/bindhome/translations/es.json
+          git commit -m 'feat: integrate first-run onboarding'
+          git push origin HEAD:p1/release-1.0-foundation
