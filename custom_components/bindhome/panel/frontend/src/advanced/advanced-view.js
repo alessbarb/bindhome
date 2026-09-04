@@ -1,3 +1,4 @@
+// @ts-check
 import { LitElement, css, html } from "lit";
 import { tokens } from "../styles/shared-styles.js";
 import "../inventory/inventory-section.js";
@@ -16,6 +17,7 @@ export class BindHomeAdvancedView extends LitElement {
     deviceRegistry: { attribute: false },
     refreshBindingData: { attribute: false },
     refreshTopologyData: { attribute: false },
+    selectedAssetId: { attribute: false },
     _tab: { state: true },
   };
   constructor() {
@@ -30,7 +32,15 @@ export class BindHomeAdvancedView extends LitElement {
     this.bindingStatuses = { records: [], summary: {} };
     this.entityRegistry = [];
     this.deviceRegistry = [];
+    this.refreshBindingData = null;
+    this.refreshTopologyData = null;
+    this.selectedAssetId = null;
     this._tab = "inventory";
+  }
+  willUpdate(changed) {
+    if (changed.has("selectedAssetId") && this.selectedAssetId) {
+      this._tab = "inventory";
+    }
   }
   static styles = [
     tokens,
@@ -110,6 +120,7 @@ export class BindHomeAdvancedView extends LitElement {
           .deviceRegistry=${this.deviceRegistry}
           .refreshBindingData=${this.refreshBindingData}
           .refreshTopologyData=${this.refreshTopologyData}
+          .selectedAssetId=${this.selectedAssetId}
           @assets-refreshed=${(e) =>
             this.dispatchEvent(
               new CustomEvent("assets-refreshed", {

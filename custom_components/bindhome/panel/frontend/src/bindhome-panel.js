@@ -3,6 +3,7 @@ import { LitElement, css, html } from "lit";
 import { createBindHomeApi } from "./api/bindhome-api.js";
 import { createHomeAssistantApi } from "./api/home-assistant-api.js";
 import { createLocalizer, loadPanelTranslations } from "./i18n/localize.js";
+import { NO_AREA, STALE_AREA } from "./state/home-selectors.js";
 import "./home/home-view.js";
 import "./add/add-view.js";
 import "./search/search-view.js";
@@ -29,6 +30,7 @@ export class BindHomePanel extends LitElement {
     _contextAreaId: { state: true },
     _selectedAssetId: { state: true },
     _selectedAreaId: { state: true },
+    _advancedAssetId: { state: true },
   };
   constructor() {
     super();
@@ -56,6 +58,7 @@ export class BindHomePanel extends LitElement {
     this._contextAreaId = null;
     this._selectedAssetId = null;
     this._selectedAreaId = null;
+    this._advancedAssetId = null;
   }
   static styles = css`
     :host {
@@ -350,6 +353,8 @@ export class BindHomePanel extends LitElement {
       this._registry = { ...this._registry, assets: event.detail };
   }
   _navigate(view) {
+    // Casa intentionally retains its last Area/Asset context while another
+    // mounted top-level view is active. Only Casa navigation events own it.
     this._view = view;
     if (view !== "add") this._contextAreaId = null;
   }
@@ -360,8 +365,16 @@ export class BindHomePanel extends LitElement {
   _openAsset(id) {
     const asset = this._assets.find((item) => item.id === id);
     this._selectedAssetId = id;
-    this._selectedAreaId = asset?.area_id ?? null;
+    this._selectedAreaId = !asset?.area_id
+      ? NO_AREA
+      : this._areas.some((area) => area.area_id === asset.area_id)
+        ? asset.area_id
+        : STALE_AREA;
     this._view = "home";
+  }
+  _editAsset(id) {
+    this._advancedAssetId = id;
+    this._view = "advanced";
   }
   _renderViews() {
     const common = {
@@ -397,7 +410,7 @@ export class BindHomePanel extends LitElement {
             this._contextAreaId = e.detail;
             this._view = "add";
           }}
-          @edit-asset=${() => (this._view = "advanced")}
+          @edit-asset=${(event) => this._editAsset(event.detail)}
         ></bindhome-home-view>
       </section>
       <section class="view" ?hidden=${this._view !== "add"}>
@@ -437,6 +450,7 @@ export class BindHomePanel extends LitElement {
           .deviceRegistry=${common.deviceRegistry}
           .refreshBindingData=${common.refreshBindingData}
           .refreshTopologyData=${common.refreshTopologyData}
+          .selectedAssetId=${this._advancedAssetId}
           @assets-refreshed=${this._assetsRefreshed}
         ></bindhome-advanced-view>
       </section>`;

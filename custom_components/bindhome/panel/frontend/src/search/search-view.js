@@ -1,4 +1,4 @@
-// Typed contracts live in types.d.ts; view behavior is covered by DOM tests.
+// @ts-check
 import { LitElement, css, html } from "lit";
 import { tokens } from "../styles/shared-styles.js";
 import { searchAssets } from "../state/home-selectors.js";
@@ -13,6 +13,7 @@ export class BindHomeSearchView extends LitElement {
   };
   constructor() {
     super();
+    /** @type {import('../types.js').Localizer} */
     this.t = (key) => key;
     this.assets = [];
     this.areas = [];

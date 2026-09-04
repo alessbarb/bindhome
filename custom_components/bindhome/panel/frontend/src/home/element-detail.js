@@ -1,4 +1,4 @@
-// Typed contracts live in types.d.ts; view behavior is covered by DOM tests.
+// @ts-check
 import { LitElement, css, html, nothing } from "lit";
 import { tokens } from "../styles/shared-styles.js";
 import { assetPresentation } from "../presentation/asset-types.js";
@@ -7,7 +7,6 @@ import {
   contextualRelationActions,
 } from "../presentation/relation-types.js";
 import { relationPartitions } from "../topology/relation-state.js";
-import { indexBindingStatuses } from "../bindings/binding-state.js";
 import "../bindings/primary-connection-editor.js";
 import "./contextual-relation-editor.js";
 
@@ -26,10 +25,12 @@ export class BindHomeElementDetail extends LitElement {
     refreshBindingData: { attribute: false },
     refreshTopologyData: { attribute: false },
     _action: { state: true },
+    _sync: { state: true },
   };
   constructor() {
     super();
     this.hass = null;
+    /** @type {import('../types.js').Localizer} */
     this.t = (key) => key;
     this.asset = null;
     this.assets = [];
@@ -42,12 +43,14 @@ export class BindHomeElementDetail extends LitElement {
     this.refreshBindingData = null;
     this.refreshTopologyData = null;
     this._action = null;
+    this._sync = null;
     this._identity = null;
   }
   willUpdate() {
     if (this.asset?.id !== this._identity) {
       this._identity = this.asset?.id;
       this._action = null;
+      this._sync = null;
     }
   }
   static styles = [
@@ -228,7 +231,7 @@ export class BindHomeElementDetail extends LitElement {
       this.registry?.relations ?? [],
       this.asset?.id,
     );
-    return [
+    return /** @type {Array<{relation: import('../types.js').Relation, direction: 'incoming'|'outgoing', other: import('../types.js').Asset|null}>} */ ([
       ...parts.incoming.map((relation) => ({
         relation,
         direction: "incoming",
@@ -239,22 +242,45 @@ export class BindHomeElementDetail extends LitElement {
         direction: "outgoing",
         other: this._asset(relation.target_asset_id),
       })),
-    ];
+    ]);
   }
-  _device() {
-    const statuses = indexBindingStatuses(this.bindingStatuses);
-    const capability = this.asset?.capabilities?.[0];
-    const status = capability
-      ? statuses.get(`${this.asset.id}:${capability}:primary`)
-      : null;
-    return { capability, status };
+  _devices() {
+    const capabilities = this.asset?.capabilities ?? [];
+    const configured = (this.bindingStatuses?.records ?? [])
+      .filter(
+        (status) =>
+          status.asset_id === this.asset?.id &&
+          status.role === "primary" &&
+          Boolean(status.binding || status.entity_id),
+      )
+      .map((status) => ({ capability: status.capability, status }));
+    const shown = configured.length
+      ? configured
+      : capabilities.length
+        ? [{ capability: capabilities[0], status: null }]
+        : [];
+    const identities = new Set();
+    return shown.filter(({ capability, status }) => {
+      const entityId = status?.binding?.entity_id ?? status?.entity_id;
+      const deviceId = this.entityRegistry.find(
+        (entity) => entity.entity_id === entityId,
+      )?.device_id;
+      const identity = deviceId
+        ? `device:${deviceId}`
+        : entityId
+          ? `entity:${entityId}`
+          : `capability:${capability}`;
+      if (identities.has(identity)) return false;
+      identities.add(identity);
+      return true;
+    });
   }
   render() {
     if (!this.asset) return nothing;
     const type = assetPresentation(this.t, this.asset.asset_type),
       area = this._area(),
       relations = this._relations(),
-      device = this._device(),
+      devices = this._devices(),
       representations = (this.registry.representations ?? []).filter(
         (r) => r.asset_id === this.asset.id,
       ),
@@ -356,7 +382,10 @@ export class BindHomeElementDetail extends LitElement {
                 .onRefresh=${this.refreshTopologyData}
                 @cancel=${() => (this._action = null)}
                 @done=${() => (this._action = null)}
+                @sync-warning=${(event) => (this._sync = event.detail)}
               ></bindhome-contextual-relation-editor>`
+            : nothing}${this._sync
+            ? html`<div class="error" role="alert">${this._sync}</div>`
             : nothing}
         </section>
         <section class="section">
@@ -367,20 +396,20 @@ export class BindHomeElementDetail extends LitElement {
                 : "detail.device",
             )}
           </h3>
-          ${device.capability
-            ? html`<div class="device">
-                <bindhome-primary-connection-editor
-                  .hass=${this.hass}
-                  .t=${this.t}
-                  .asset=${this.asset}
-                  .capability=${device.capability}
-                  .status=${device.status}
-                  .areas=${this.areas}
-                  .entityRegistry=${this.entityRegistry}
-                  .deviceRegistry=${this.deviceRegistry}
-                  .refreshBindingData=${this.refreshBindingData}
-                ></bindhome-primary-connection-editor>
-              </div>`
+          ${devices.length
+            ? devices.map((device) => html`<div class="device">
+                  <bindhome-primary-connection-editor
+                    .hass=${this.hass}
+                    .t=${this.t}
+                    .asset=${this.asset}
+                    .capability=${device.capability}
+                    .status=${device.status}
+                    .areas=${this.areas}
+                    .entityRegistry=${this.entityRegistry}
+                    .deviceRegistry=${this.deviceRegistry}
+                    .refreshBindingData=${this.refreshBindingData}
+                  ></bindhome-primary-connection-editor>
+                </div>`)
             : html`<p class="passive">${this.t("detail.passive")}</p>`}
         </section>
         <section class="section">

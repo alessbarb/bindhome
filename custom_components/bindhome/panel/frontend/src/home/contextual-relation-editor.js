@@ -1,4 +1,4 @@
-// Typed contracts live in types.d.ts; view behavior is covered by DOM tests.
+// @ts-check
 import { LitElement, css, html } from "lit";
 import { tokens } from "../styles/shared-styles.js";
 import { createBindHomeApi } from "../api/bindhome-api.js";
@@ -31,6 +31,32 @@ export class BindHomeContextualRelationEditor extends LitElement {
     this._saving = false;
     this._error = null;
     this._token = 0;
+    this._identity = "";
+    this._committed = false;
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    this._resetIdentity();
+  }
+  willUpdate() {
+    const identity = this._currentIdentity();
+    if (this._identity && identity !== this._identity) this._resetIdentity();
+    this._identity = identity;
+  }
+  _currentIdentity() {
+    return `${this.asset?.id ?? ""}:${this.action?.direction ?? ""}:${this.action?.relationType ?? ""}`;
+  }
+  _resetIdentity() {
+    this._token += 1;
+    this._target = "";
+    this._query = "";
+    this._saving = false;
+    this._error = null;
+    this._committed = false;
+    this._identity = this._currentIdentity();
+  }
+  _isCurrent(token, identity) {
+    return token === this._token && identity === this._currentIdentity();
   }
   static styles = [
     tokens,
@@ -82,8 +108,9 @@ export class BindHomeContextualRelationEditor extends LitElement {
     `,
   ];
   async _save() {
-    if (this._saving || !this._target) return;
+    if (this._saving || this._committed || !this._target || !this.asset || !this.action) return;
     const token = ++this._token;
+    const identity = this._currentIdentity();
     this._saving = true;
     this._error = null;
     const incoming = this.action.direction === "incoming";
@@ -93,19 +120,33 @@ export class BindHomeContextualRelationEditor extends LitElement {
         relationType: this.action.relationType,
         targetAssetId: incoming ? this.asset.id : this._target,
       });
-      if (token !== this._token) return;
-      await this.onRefresh?.();
+      if (!this._isCurrent(token, identity)) return;
+      this._committed = true;
+      this._saving = false;
+      try {
+        await this.onRefresh?.();
+      } catch {
+        if (!this._isCurrent(token, identity)) return;
+        this.dispatchEvent(
+          new CustomEvent("sync-warning", {
+            detail: this.t("topology.sync_warning"),
+            bubbles: true,
+            composed: true,
+          }),
+        );
+      }
+      if (!this._isCurrent(token, identity)) return;
       this.dispatchEvent(
         new CustomEvent("done", { bubbles: true, composed: true }),
       );
     } catch (error) {
-      if (token === this._token)
-        this._error = normalizeWsError(
-          error,
-          this.t("topology.create_error"),
-        ).message;
+      if (!this._isCurrent(token, identity)) return;
+      const normalized = normalizeWsError(error, this.t("topology.create_error"));
+      this._error = normalized.code === "conflict"
+        ? this.t("topology.duplicate_relation")
+        : normalized.message;
     } finally {
-      if (token === this._token) this._saving = false;
+      if (this._isCurrent(token, identity) && !this._committed) this._saving = false;
     }
   }
   render() {
@@ -158,7 +199,7 @@ export class BindHomeContextualRelationEditor extends LitElement {
           ${this.t("common.cancel")}</button
         ><button
           class="primary"
-          ?disabled=${this._saving || !this._target}
+          ?disabled=${this._saving || this._committed || !this._target}
           @click=${this._save}
         >
           ${this._saving ? this.t("add.saving") : this.t("common.save")}

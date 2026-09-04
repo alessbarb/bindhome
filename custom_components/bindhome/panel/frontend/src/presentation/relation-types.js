@@ -43,42 +43,50 @@ export function relationPresentation(t, type, direction) {
 
 /** @param {string} assetType */
 export function contextualRelationActions(assetType) {
-  if (
-    ["socket", "circuit", "electrical_panel", "light_point"].includes(assetType)
-  )
-    return [
+  const actions = {
+    socket: [
       {
         direction: "outgoing",
         relationType: "feeds",
-        labelKey:
-          assetType === "circuit"
-            ? "relations.actions.add_powered"
-            : "relations.actions.indicate_feeds",
+        labelKey: "relations.actions.indicate_feeds",
       },
       {
         direction: "incoming",
         relationType: "feeds",
-        labelKey:
-          assetType === "circuit"
-            ? "relations.actions.panel_source"
-            : "relations.actions.power_source",
+        labelKey: "relations.actions.power_source",
       },
-    ];
-  if (["shutoff_valve", "valve"].includes(assetType))
-    return [
+    ],
+    circuit: [
+      { direction: "outgoing", relationType: "feeds", labelKey: "relations.actions.add_powered" },
+      { direction: "incoming", relationType: "feeds", labelKey: "relations.actions.panel_source" },
+    ],
+    electrical_panel: [
+      { direction: "outgoing", relationType: "feeds", labelKey: "relations.actions.add_powered" },
+      { direction: "outgoing", relationType: "contains", labelKey: "relations.actions.add_content" },
+    ],
+    junction_box: [
+      { direction: "outgoing", relationType: "contains", labelKey: "relations.actions.add_content" },
+    ],
+    manifold: [
+      { direction: "outgoing", relationType: "contains", labelKey: "relations.actions.add_content" },
+    ],
+    shutoff_valve: [
       {
         direction: "outgoing",
         relationType: "controls",
         labelKey: "relations.actions.indicate_controls",
       },
-    ];
-  if (["electrical_panel", "junction_box", "manifold"].includes(assetType))
-    return [
+    ],
+    valve: [
       {
         direction: "outgoing",
-        relationType: "contains",
-        labelKey: "relations.actions.add_content",
+        relationType: "controls",
+        labelKey: "relations.actions.indicate_controls",
       },
-    ];
-  return [];
+    ],
+    light_point: [
+      { direction: "incoming", relationType: "feeds", labelKey: "relations.actions.power_source" },
+    ],
+  };
+  return actions[assetType] ?? [];
 }

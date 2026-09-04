@@ -1,4 +1,4 @@
-// Typed contracts live in types.d.ts; view behavior is covered by DOM tests.
+// @ts-check
 import { LitElement, css, html, nothing } from "lit";
 import { tokens } from "../styles/shared-styles.js";
 import { assetPresentation } from "../presentation/asset-types.js";
@@ -152,7 +152,7 @@ export class BindHomeAddView extends LitElement {
   willUpdate() {
     if (this.contextAreaId !== this._identity) {
       this._identity = this.contextAreaId;
-      this._areaId = this.contextAreaId ?? this._areaId;
+      this._areaId = this.contextAreaId ?? "";
     }
   }
   _choose(preset) {

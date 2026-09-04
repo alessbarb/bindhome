@@ -1,4 +1,4 @@
-// Typed contracts live in types.d.ts; view behavior is covered by DOM tests.
+// @ts-check
 import { LitElement, css, html, nothing } from "lit";
 import { tokens } from "../styles/shared-styles.js";
 import {
@@ -28,12 +28,11 @@ export class BindHomeHomeView extends LitElement {
     refreshTopologyData: { attribute: false },
     selectedAssetId: { attribute: false },
     selectedAreaId: { attribute: false },
-    _areaId: { state: true },
-    _assetId: { state: true },
   };
   constructor() {
     super();
     this.hass = null;
+    /** @type {import('../types.js').Localizer} */
     this.t = (key) => key;
     this.floors = [];
     this.areas = [];
@@ -46,8 +45,6 @@ export class BindHomeHomeView extends LitElement {
     this.refreshTopologyData = null;
     this.selectedAssetId = null;
     this.selectedAreaId = null;
-    this._areaId = null;
-    this._assetId = null;
   }
   static styles = [
     tokens,
@@ -180,12 +177,6 @@ export class BindHomeHomeView extends LitElement {
       }
     `,
   ];
-  willUpdate() {
-    if (this.selectedAssetId && this.selectedAssetId !== this._assetId)
-      this._assetId = this.selectedAssetId;
-    if (this.selectedAreaId && !this._areaId)
-      this._areaId = this.selectedAreaId;
-  }
   _areaAssets(id) {
     if (id === NO_AREA) return this.assets.filter((asset) => !asset.area_id);
     if (id === STALE_AREA)
@@ -197,8 +188,6 @@ export class BindHomeHomeView extends LitElement {
     return this.assets.filter((asset) => asset.area_id === id);
   }
   _selectArea(id) {
-    this._areaId = id;
-    this._assetId = null;
     this.dispatchEvent(
       new CustomEvent("home-navigate", {
         detail: { areaId: id, assetId: null },
@@ -208,20 +197,26 @@ export class BindHomeHomeView extends LitElement {
     );
   }
   _selectAsset(id) {
-    this._assetId = id;
+    const target = this.assets.find((asset) => asset.id === id);
+    if (!target) return;
+    const areaId = !target.area_id
+      ? NO_AREA
+      : this.areas.some((area) => area.area_id === target.area_id)
+        ? target.area_id
+        : STALE_AREA;
     this.dispatchEvent(
       new CustomEvent("home-navigate", {
-        detail: { areaId: this._areaId, assetId: id },
+        detail: { areaId, assetId: id },
         bubbles: true,
         composed: true,
       }),
     );
   }
   _areaName() {
-    if (this._areaId === NO_AREA) return this.t("home.unassigned");
-    if (this._areaId === STALE_AREA) return this.t("home.stale_area");
+    if (this.selectedAreaId === NO_AREA) return this.t("home.unassigned");
+    if (this.selectedAreaId === STALE_AREA) return this.t("home.stale_area");
     return (
-      this.areas.find((a) => a.area_id === this._areaId)?.name ??
+      this.areas.find((a) => a.area_id === this.selectedAreaId)?.name ??
       this.t("home.choose_room")
     );
   }
@@ -232,7 +227,7 @@ export class BindHomeHomeView extends LitElement {
       this.assets,
     );
     return html`<section
-      class="tree surface ${this._areaId || this._assetId
+      class="tree surface ${this.selectedAreaId || this.selectedAssetId
         ? "hidden-mobile"
         : ""}"
       aria-label=${this.t("home.navigation_label")}
@@ -250,10 +245,10 @@ export class BindHomeHomeView extends LitElement {
               const count =
                 projection.assetsByArea.get(area.area_id)?.length ?? 0;
               return html`<button
-                class="area-row ${this._areaId === area.area_id
+                class="area-row ${this.selectedAreaId === area.area_id
                   ? "selected"
                   : ""}"
-                aria-current=${this._areaId === area.area_id
+                aria-current=${this.selectedAreaId === area.area_id
                   ? "location"
                   : "false"}
                 @click=${() => this._selectArea(area.area_id)}
@@ -269,7 +264,7 @@ export class BindHomeHomeView extends LitElement {
         ? html`<div class="specials">
             ${projection.unassigned.length
               ? html`<button
-                  class="area-row special ${this._areaId === NO_AREA
+                  class="area-row special ${this.selectedAreaId === NO_AREA
                     ? "selected"
                     : ""}"
                   @click=${() => this._selectArea(NO_AREA)}
@@ -280,7 +275,7 @@ export class BindHomeHomeView extends LitElement {
                 </button>`
               : nothing}${projection.stale.length
               ? html`<button
-                  class="area-row special ${this._areaId === STALE_AREA
+                  class="area-row special ${this.selectedAreaId === STALE_AREA
                     ? "selected"
                     : ""}"
                   @click=${() => this._selectArea(STALE_AREA)}
@@ -295,18 +290,16 @@ export class BindHomeHomeView extends LitElement {
     </section>`;
   }
   _renderRoom() {
-    if (!this._areaId)
+    if (!this.selectedAreaId)
       return html`<div class="empty room">${this.t("home.choose_room")}</div>`;
-    const items = this._areaAssets(this._areaId);
+    const items = this._areaAssets(this.selectedAreaId);
     const groups = groupRoomAssets(this.t, items);
     return html`<section
-      class="room surface ${this._assetId ? "hidden-mobile" : ""}"
+      class="room surface ${this.selectedAssetId ? "hidden-mobile" : ""}"
     >
       <button
         class="back text-button"
-        @click=${() => {
-          this._areaId = null;
-        }}
+        @click=${() => this._selectArea(null)}
       >
         <ha-icon icon="mdi:arrow-left"></ha-icon>${this.t("home.back_floors")}
       </button>
@@ -318,13 +311,13 @@ export class BindHomeHomeView extends LitElement {
             >${this.t("home.element_count", { count: items.length })}</span
           >
         </div>
-        ${![NO_AREA, STALE_AREA].includes(this._areaId)
+        ${![NO_AREA, STALE_AREA].includes(this.selectedAreaId)
           ? html`<button
               class="primary"
               @click=${() =>
                 this.dispatchEvent(
                   new CustomEvent("add-in-area", {
-                    detail: this._areaId,
+                    detail: this.selectedAreaId,
                     bubbles: true,
                     composed: true,
                   }),
@@ -363,7 +356,7 @@ export class BindHomeHomeView extends LitElement {
     </section>`;
   }
   render() {
-    const asset = this.assets.find((item) => item.id === this._assetId);
+    const asset = this.assets.find((item) => item.id === this.selectedAssetId);
     return html`<div class="page">
       <h1 class="page-title">${this.t("nav.home")}</h1>
       <p class="intro muted">${this.t("home.intro")}</p>
@@ -388,7 +381,13 @@ export class BindHomeHomeView extends LitElement {
               .refreshBindingData=${this.refreshBindingData}
               .refreshTopologyData=${this.refreshTopologyData}
               @back=${() => {
-                this._assetId = null;
+                this.dispatchEvent(
+                  new CustomEvent("home-navigate", {
+                    detail: { areaId: this.selectedAreaId, assetId: null },
+                    bubbles: true,
+                    composed: true,
+                  }),
+                );
               }}
               @navigate-asset=${(e) => this._selectAsset(e.detail)}
             ></bindhome-element-detail>`
