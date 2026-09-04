@@ -1,6 +1,10 @@
 name: HACS Publication Validation
 
 on:
+  pull_request:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
