@@ -37,15 +37,13 @@ async def test_underlying_store_write_failure_does_not_commit(
         lambda: notifications.append(None),
     )
 
+    base_write = AsyncMock(side_effect=WriteError("disk full"))
+
     try:
         # Inject the failure below _FailFastStore._async_write_data(). This
         # exercises the exact boundary where BindHome translates the errors
         # Home Assistant's Store would otherwise catch and log.
-        with patch.object(
-            Store,
-            "_async_write_data",
-            new=AsyncMock(side_effect=WriteError("disk full")),
-        ):
+        with patch.object(Store, "_async_write_data", new=base_write):
             with pytest.raises(
                 BindHomeStoreError,
                 match="Failed to persist BindHome registry",
@@ -59,6 +57,7 @@ async def test_underlying_store_write_failure_does_not_commit(
                     capabilities=[],
                 )
 
+        base_write.assert_awaited_once()
         await hass.async_block_till_done()
 
         assert manager.registry is original_registry
