@@ -53,11 +53,11 @@ BindHome deliberately does **not** duplicate Home Assistant's Device Registry or
 
 **BindHome:** `1.0.0`
 
-**Minimum Home Assistant:** `2026.4.0`
+**Minimum Home Assistant:** `2026.8.0`
 
-The minimum supported Home Assistant version is enforced by the repository compatibility matrix. The full Python suite is tested against supported monthly Home Assistant releases through the current stable release.
+The compatibility floor is verified rather than inferred. The complete BindHome Python suite passes against Home Assistant 2026.8.0 and the current stable 2026.9.0 release. Home Assistant 2026.7.0 is not supported because the panel depends on `homeassistant.components.http.server.StaticPathConfig`, which is unavailable there.
 
-If the compatibility floor changes in a future BindHome release, it will be stated in the release notes and `hacs.json`.
+The repository compatibility workflow continuously tests the minimum supported Home Assistant release and the current stable release. If the compatibility floor changes in a future BindHome release, it will be stated in the release notes and `hacs.json`.
 
 ## Installation with HACS
 
