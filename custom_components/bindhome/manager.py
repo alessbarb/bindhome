@@ -103,17 +103,25 @@ class BindHomeManager:
         """Return a resolver bound to the current registry and Home Assistant."""
         return BindingResolver(self.registry, self._probe)
 
-    async def _async_persist_and_notify(self) -> None:
-        """Persist the registry and notify runtime consumers."""
-        await self._store.async_save(self.registry)
+    def _stage_registry(self) -> BindHomeRegistry:
+        """Return an isolated validated copy of the live registry."""
+        return BindHomeRegistry.from_dict(self.registry.to_dict())
+
+    async def _async_commit_staged_registry(
+        self,
+        staged: BindHomeRegistry,
+    ) -> None:
+        """Persist staged state, then atomically publish it to runtime consumers."""
+        await self._store.async_save(staged)
+        self._adopt_staged_registry(staged)
         async_dispatcher_send(self.hass, SIGNAL_REGISTRY_CHANGED)
 
     def _adopt_staged_registry(self, staged: BindHomeRegistry) -> None:
         """Commit staged state while preserving the live registry identity.
 
         Long-lived runtime consumers may retain references to the current
-        BindHomeRegistry, so batch commits replace its contents rather than
-        replacing the registry object itself.
+        BindHomeRegistry, so commits replace its contents rather than replacing
+        the registry object itself.
         """
         self.registry.assets.clear()
         self.registry.assets.update(staged.assets)
@@ -142,7 +150,8 @@ class BindHomeManager:
     ) -> Asset:
         """Create and persist an asset."""
         async with self._mutation_lock:
-            asset = self.registry.add_asset(
+            staged = self._stage_registry()
+            asset = staged.add_asset(
                 Asset.create(
                     name=name,
                     asset_type=asset_type,
@@ -151,7 +160,7 @@ class BindHomeManager:
                     capabilities=capabilities,
                 )
             )
-            await self._async_persist_and_notify()
+            await self._async_commit_staged_registry(staged)
             return asset
 
     async def async_create_assets(
@@ -163,7 +172,7 @@ class BindHomeManager:
             raise ValueError("assets must contain at least one item")
 
         async with self._mutation_lock:
-            staged = BindHomeRegistry.from_dict(self.registry.to_dict())
+            staged = self._stage_registry()
             created: list[Asset] = []
 
             for index, spec in enumerate(specs):
@@ -181,14 +190,7 @@ class BindHomeManager:
 
                 created.append(asset)
 
-            # Persistence is deliberately performed before changing the live
-            # registry. If storage fails, the running registry remains exactly
-            # as it was before the batch.
-            await self._store.async_save(staged)
-
-            self._adopt_staged_registry(staged)
-            async_dispatcher_send(self.hass, SIGNAL_REGISTRY_CHANGED)
-
+            await self._async_commit_staged_registry(staged)
             return created
 
     async def async_update_asset(
@@ -203,7 +205,8 @@ class BindHomeManager:
     ) -> Asset:
         """Update and persist an asset without changing its identity."""
         async with self._mutation_lock:
-            asset = self.registry.update_asset(
+            staged = self._stage_registry()
+            asset = staged.update_asset(
                 asset_id,
                 name=name,
                 asset_type=asset_type,
@@ -211,35 +214,38 @@ class BindHomeManager:
                 area_id=area_id,
                 capabilities=capabilities,
             )
-            await self._async_persist_and_notify()
+            await self._async_commit_staged_registry(staged)
             return asset
 
     async def async_delete_asset(self, asset_id: str) -> None:
         """Delete and persist an asset."""
         async with self._mutation_lock:
-            self.registry.delete_asset(asset_id)
-            await self._async_persist_and_notify()
+            staged = self._stage_registry()
+            staged.delete_asset(asset_id)
+            await self._async_commit_staged_registry(staged)
 
     async def async_add_relation(
         self, *, source_asset_id: str, relation_type: str, target_asset_id: str
     ) -> Relation:
         """Create and persist a topology relation."""
         async with self._mutation_lock:
-            relation = self.registry.add_relation(
+            staged = self._stage_registry()
+            relation = staged.add_relation(
                 Relation.create(
                     source_asset_id=source_asset_id,
                     relation_type=relation_type,
                     target_asset_id=target_asset_id,
                 )
             )
-            await self._async_persist_and_notify()
+            await self._async_commit_staged_registry(staged)
             return relation
 
     async def async_remove_relation(self, relation_id: str) -> None:
         """Remove and persist a topology relation."""
         async with self._mutation_lock:
-            self.registry.remove_relation(relation_id)
-            await self._async_persist_and_notify()
+            staged = self._stage_registry()
+            staged.remove_relation(relation_id)
+            await self._async_commit_staged_registry(staged)
 
     async def async_set_binding(
         self,
@@ -251,20 +257,26 @@ class BindHomeManager:
     ) -> Binding:
         """Create or replace and persist a capability binding."""
         async with self._mutation_lock:
+            staged = self._stage_registry()
             binding = Binding.create(
                 asset_id=asset_id,
                 capability=capability,
                 entity_id=entity_id,
                 role=role,
             )
-            self._validate_binding_target(binding)
-            binding = self.registry.set_binding(binding)
-            await self._async_persist_and_notify()
+            self._validate_binding_target(binding, registry=staged)
+            binding = staged.set_binding(binding)
+            await self._async_commit_staged_registry(staged)
             return binding
 
-    def _validate_binding_target(self, proposed: Binding) -> None:
+    def _validate_binding_target(
+        self,
+        proposed: Binding,
+        *,
+        registry: BindHomeRegistry,
+    ) -> None:
         """Validate HA target and reject only functional BindHome cycles."""
-        asset = self.registry.get_asset(proposed.asset_id)
+        asset = registry.get_asset(proposed.asset_id)
         if proposed.capability not in asset.capabilities:
             raise RegistryValidationError(
                 f"Asset {proposed.asset_id} does not declare capability "
@@ -275,28 +287,28 @@ class BindHomeManager:
 
         source = binding_key(proposed)
         adjacency: dict[tuple[str, str, str], set[tuple[str, str, str]]] = {}
-        for existing in self.registry.bindings.values():
+        for existing in registry.bindings.values():
             key = binding_key(existing)
             if key == source:
                 continue
             target_asset = representation_asset_for_entity(
-                self.hass, existing.entity_id, self.registry.representations
+                self.hass, existing.entity_id, registry.representations
             )
             if target_asset is None:
                 continue
             contract = runtime_contract(
-                self.registry.representations[target_asset], target_asset
+                registry.representations[target_asset], target_asset
             )
             if contract is not None:
                 adjacency.setdefault(key, set()).update(contract.dependencies)
 
         target_asset = representation_asset_for_entity(
-            self.hass, proposed.entity_id, self.registry.representations
+            self.hass, proposed.entity_id, registry.representations
         )
         if target_asset is None:
             return
         contract = runtime_contract(
-            self.registry.representations[target_asset], target_asset
+            registry.representations[target_asset], target_asset
         )
         if contract is None:
             return
@@ -331,8 +343,9 @@ class BindHomeManager:
     async def async_remove_binding(self, binding_id: str) -> None:
         """Remove and persist a binding."""
         async with self._mutation_lock:
-            self.registry.remove_binding(binding_id)
-            await self._async_persist_and_notify()
+            staged = self._stage_registry()
+            staged.remove_binding(binding_id)
+            await self._async_commit_staged_registry(staged)
 
     async def async_set_representation(
         self,
@@ -342,17 +355,19 @@ class BindHomeManager:
     ) -> Representation:
         """Create and persist an Asset's logical representation."""
         async with self._mutation_lock:
-            representation = self.registry.set_representation(
+            staged = self._stage_registry()
+            representation = staged.set_representation(
                 Representation.create(
                     asset_id=asset_id,
                     platform=platform,
                 )
             )
-            await self._async_persist_and_notify()
+            await self._async_commit_staged_registry(staged)
             return representation
 
     async def async_remove_representation(self, asset_id: str) -> None:
         """Remove and persist an Asset's logical representation."""
         async with self._mutation_lock:
-            self.registry.remove_representation(asset_id)
-            await self._async_persist_and_notify()
+            staged = self._stage_registry()
+            staged.remove_representation(asset_id)
+            await self._async_commit_staged_registry(staged)
