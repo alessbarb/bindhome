@@ -13,7 +13,7 @@ updates:
     open-pull-requests-limit: 5
 
   - package-ecosystem: npm
-    directory: /custom_components/bindhome/panel/frontend
+    directory: /frontend
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
