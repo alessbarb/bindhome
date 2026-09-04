@@ -14,7 +14,10 @@ The release version must match in:
 
 - `pyproject.toml`;
 - `custom_components/bindhome/manifest.json`;
-- `custom_components/bindhome/panel/frontend/package.json`.
+- `custom_components/bindhome/panel/frontend/package.json`;
+- the root package metadata in `custom_components/bindhome/panel/frontend/package-lock.json`.
+
+CI verifies this metadata before a release can be accepted.
 
 Release tags use the same version prefixed with `v`, for example `v1.0.0`.
 
@@ -23,6 +26,8 @@ Release tags use the same version prefixed with `v`, for example `v1.0.0`.
 `hacs.json.homeassistant` is the minimum Home Assistant release supported by the current BindHome release.
 
 The minimum is not inferred from development history. It must be covered by the Home Assistant compatibility workflow and pass the complete BindHome Python test suite. CI also tests the current supported Home Assistant release so compatibility is checked at both ends of the supported range.
+
+BindHome 1.0.0 supports Home Assistant `2026.8.0` and newer compatible releases. Home Assistant `2026.7.0` is below the supported floor because the BindHome panel uses `homeassistant.components.http.server.StaticPathConfig`, which is unavailable there.
 
 When the minimum supported Home Assistant version changes, the HACS metadata, README, compatibility matrix, and release notes must change together.
 
@@ -33,15 +38,16 @@ When the minimum supported Home Assistant version changes, the HACS metadata, RE
 3. Confirm the Home Assistant compatibility matrix is green.
 4. Confirm Validate, Hassfest, frontend and HACS validation are green.
 5. Confirm the README and release notes describe the supported Home Assistant range and any migrations.
-6. Merge the release PR into `main`.
-7. Confirm all workflows are green on the exact merged `main` commit.
-8. Create tag `v<version>` on that exact commit.
-9. Create the GitHub Release from that tag; do not move or reuse an existing release tag.
-10. Install or upgrade the release through HACS in a development Home Assistant instance.
-11. Restart Home Assistant and verify BindHome loads, the Registry is intact, logical entities reconcile, and the panel opens.
-12. Keep the previous release available for controlled downgrade.
+6. For a public release, confirm the repository itself satisfies HACS publication metadata requirements.
+7. Merge the release PR into `main`.
+8. Confirm all workflows are green on the exact merged `main` commit.
+9. Create tag `v<version>` on that exact commit.
+10. Create the GitHub Release from that tag; do not move or reuse an existing release tag.
+11. Install or upgrade the release through HACS in a development Home Assistant instance.
+12. Restart Home Assistant and verify BindHome loads, the Registry is intact, logical entities reconcile, and the panel opens.
+13. Keep the previous release available for controlled downgrade when one exists.
 
-For the first public release, repository visibility is changed to public only after the release-preparation PR has been merged and `main` is green. `v1.0.0` is then created from that exact public `main` commit.
+For the first public release, the repository must be public before the final HACS publication validation. `v1.0.0` is created only after the release-preparation PR is merged and the exact resulting `main` commit is green.
 
 ## Upgrade
 
