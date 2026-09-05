@@ -308,9 +308,9 @@ BindHome is distributed as a standard HACS integration repository.
 5. Download BindHome.
 6. Restart Home Assistant when HACS asks you to do so.
 7. Go to **Settings → Devices & services → Add integration**.
-8. Search for **BindHome** and add it.
+8. Select **BindHome**. Home Assistant creates the single BindHome config entry immediately; there is no empty confirmation form to submit.
 
-BindHome supports a single config entry. Once configured, the BindHome panel is registered in the Home Assistant sidebar.
+HACS installs the integration files, while Home Assistant remains responsible for the user-initiated config-entry creation step. Once configured, the BindHome panel is registered in the Home Assistant sidebar.
 
 ### Updates
 
