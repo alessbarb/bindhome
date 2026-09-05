@@ -78,6 +78,8 @@ jobs:
       - name: Format and verify
         run: |
           ruff format custom_components/bindhome tests
+          ruff check --fix custom_components/bindhome tests
+          ruff format custom_components/bindhome tests
           ruff check custom_components/bindhome tests
           ruff format --check custom_components/bindhome tests
           pytest
