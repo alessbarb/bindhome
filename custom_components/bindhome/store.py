@@ -12,6 +12,7 @@ from homeassistant.util import json as json_util
 from homeassistant.util.file import WriteError
 
 from .const import STORAGE_KEY, STORAGE_VERSION
+from .migrations import RegistrySchemaFutureError, migrate_registry_payload
 from .registry import BindHomeRegistry, RegistryValidationError
 
 
@@ -29,6 +30,10 @@ class BindHomeStoreCorruptionError(BindHomeStoreLoadError):
 
 class BindHomeStoreVersionError(BindHomeStoreLoadError):
     """Raised when the Home Assistant storage envelope is incompatible."""
+
+
+class BindHomeRegistryVersionError(BindHomeStoreLoadError):
+    """Raised when the Registry schema itself is newer than this BindHome."""
 
 
 class _FailFastStore(Store[dict[str, Any]]):
@@ -65,11 +70,11 @@ class BindHomeStore:
             data = await self._store.async_load()
         except UnsupportedStorageVersionError as err:
             raise BindHomeStoreVersionError(
-                "BindHome storage was written by a newer incompatible version"
+                "BindHome storage envelope was written by a newer incompatible version"
             ) from err
         except NotImplementedError as err:
             raise BindHomeStoreVersionError(
-                "BindHome storage uses an unsupported older storage version"
+                "BindHome storage envelope uses an unsupported older version"
             ) from err
         except (HomeAssistantError, KeyError, TypeError) as err:
             raise BindHomeStoreLoadError(
@@ -91,17 +96,20 @@ class BindHomeStore:
             )
 
         try:
-            registry = BindHomeRegistry.from_dict(data)
+            migration = migrate_registry_payload(data)
+        except RegistrySchemaFutureError as err:
+            raise BindHomeRegistryVersionError(str(err)) from err
         except RegistryValidationError as err:
             raise BindHomeStoreLoadError(
                 f"Persisted BindHome registry is invalid: {err}"
             ) from err
 
-        # Startup canonicalization deliberately uses the same manager-independent
-        # validate-before-write persistence primitive as runtime commits. Future
-        # schema migrations can therefore persist a canonical payload without
-        # inventing a third write path before a live manager exists.
-        if "schema_version" not in data or "representations" not in data:
+        registry = migration.registry
+
+        # Startup migration/canonicalization uses the manager-independent
+        # validate-before-write primitive established by the transaction contract.
+        # Failed migration never reaches this write, and failed writes abort setup.
+        if migration.changed:
             await self.async_save(registry)
 
         return registry
