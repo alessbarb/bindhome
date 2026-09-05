@@ -2,6 +2,7 @@
 
 import pytest
 
+from custom_components.bindhome.const import REGISTRY_SCHEMA_VERSION
 from custom_components.bindhome.models import Asset, Binding, Relation
 from custom_components.bindhome.registry import (
     BindHomeRegistry,
@@ -383,7 +384,7 @@ def test_registry_full_serialization_and_deserialization() -> None:
     )
 
     data = registry.to_dict()
-    assert data["schema_version"] == 1
+    assert data["schema_version"] == REGISTRY_SCHEMA_VERSION
     assert len(data["assets"]) == 2
     assert len(data["relations"]) == 1
     assert len(data["bindings"]) == 1
@@ -415,7 +416,7 @@ def test_registry_deserialization_malformed_objects() -> None:
 
     # Invalid asset in persisted data
     malformed_asset_data = {
-        "schema_version": 1,
+        "schema_version": REGISTRY_SCHEMA_VERSION,
         "assets": [{"id": "a-1", "name": ""}],  # missing asset_type, empty name
     }
     with pytest.raises(RegistryValidationError, match="Invalid asset in registry"):
@@ -423,7 +424,7 @@ def test_registry_deserialization_malformed_objects() -> None:
 
     # Invalid relation in persisted data (referencing non-existent asset)
     malformed_relation_data = {
-        "schema_version": 1,
+        "schema_version": REGISTRY_SCHEMA_VERSION,
         "assets": [{"id": "a-1", "name": "Asset 1", "asset_type": "socket"}],
         "relations": [
             {
@@ -439,7 +440,7 @@ def test_registry_deserialization_malformed_objects() -> None:
 
     # Invalid binding in persisted data (undeclared capability)
     malformed_binding_data = {
-        "schema_version": 1,
+        "schema_version": REGISTRY_SCHEMA_VERSION,
         "assets": [
             {
                 "id": "a-1",

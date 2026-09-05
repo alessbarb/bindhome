@@ -12,7 +12,7 @@ BindHome exposes an administrator-only WebSocket contract for exporting and rest
     "format": "bindhome.registry",
     "format_version": 1,
     "registry": {
-      "schema_version": 1,
+      "schema_version": 2,
       "assets": [],
       "relations": [],
       "bindings": [],
@@ -47,6 +47,6 @@ A persistence failure leaves the live Registry unchanged and emits no Registry-c
 
 Both commands require a Home Assistant administrator.
 
-A backup may contain Home Assistant entity references that have since become stale. BindHome preserves those references during restore just as it does during normal persisted startup; runtime resolution reports stale or unavailable targets separately.
+A backup may contain Home Assistant entity references that have since become stale. Schema-v2 Bindings preserve both the last-known `entity_id` and, when available, the stable Home Assistant `entity_registry_id`. Historical backups are upgraded to stable Entity Registry identity only when an exact current Registry entry proves that identity; otherwise the original `entity_id` remains an explicit compatibility fallback. Runtime lookup of the current entity id is handled separately from backup migration.
 
 Do not manipulate Home Assistant `.storage` files to create or restore a BindHome backup. Use this API or a future UX built on top of it.

@@ -240,6 +240,7 @@ def test_binding_valid_creation() -> None:
     assert binding.asset_id == "asset-1"
     assert binding.capability == "on_off"
     assert binding.entity_id == "switch.relay_1"
+    assert binding.entity_registry_id is None
     assert binding.role == "primary"
 
 
@@ -294,3 +295,30 @@ def test_binding_serialization_deserialization() -> None:
 
     with pytest.raises(ModelValidationError, match="Missing required binding field"):
         Binding.from_dict({"id": "b-1", "asset_id": "a-1"})
+
+
+def test_binding_stable_entity_registry_identity_roundtrip() -> None:
+    binding = Binding.create(
+        asset_id="asset-1",
+        capability="on_off",
+        entity_id="switch.relay",
+        entity_registry_id="  registry-entry-1  ",
+    )
+
+    assert binding.entity_registry_id == "registry-entry-1"
+    assert Binding.from_dict(binding.to_dict()) == binding
+
+
+def test_binding_replacement_clears_old_stable_identity_by_default() -> None:
+    binding = Binding.create(
+        asset_id="asset-1",
+        capability="on_off",
+        entity_id="switch.old",
+        entity_registry_id="old-registry-entry",
+    )
+
+    replaced = binding.with_entity_id("switch.new")
+
+    assert replaced.id == binding.id
+    assert replaced.entity_id == "switch.new"
+    assert replaced.entity_registry_id is None

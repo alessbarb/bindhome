@@ -62,7 +62,7 @@ async def _async_restore_recovery_registry(
         )
 
     # Parse/migrate the complete backup before touching persistent storage.
-    registry = parse_registry_backup(data)
+    registry = parse_registry_backup(data, hass=hass)
     store = BindHomeStore(hass)
     await store.async_save(registry)
 

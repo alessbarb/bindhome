@@ -81,22 +81,35 @@ def _migrate_v0_to_v1(data: dict[str, Any]) -> dict[str, Any]:
     return migrated
 
 
+def _migrate_v1_to_v2(data: dict[str, Any]) -> dict[str, Any]:
+    """Add stable Entity Registry identity slots to persisted Bindings."""
+    migrated = deepcopy(data)
+
+    # Early v1 payloads may still predate explicit Representations. Canonicalize
+    # that historical v1 shape before advancing the schema.
+    migrated.setdefault("representations", _infer_legacy_representations(migrated))
+
+    bindings = migrated.get("bindings", [])
+    if isinstance(bindings, list):
+        for binding in bindings:
+            if isinstance(binding, dict):
+                # v1 persisted only entity_id. The HA-aware startup/restore phase
+                # enriches exact registered targets before canonical persistence.
+                binding.setdefault("entity_registry_id", None)
+
+    migrated["schema_version"] = 2
+    return migrated
+
+
 REGISTRY_MIGRATIONS: dict[int, MigrationStep] = {
     0: _migrate_v0_to_v1,
+    1: _migrate_v1_to_v2,
 }
 
 
 def _canonicalize_current_payload(data: dict[str, Any]) -> dict[str, Any]:
     """Normalize historically accepted shapes within the current schema version."""
-    canonical = deepcopy(data)
-
-    # Early schema-v1 builds persisted schema_version=1 before Representations
-    # became explicit. Keep that historical shape readable without putting
-    # migration behavior back into BindHomeRegistry.from_dict().
-    if REGISTRY_SCHEMA_VERSION == 1 and "representations" not in canonical:
-        canonical["representations"] = _infer_legacy_representations(canonical)
-
-    return canonical
+    return deepcopy(data)
 
 
 def migrate_registry_payload(data: object) -> RegistryMigrationResult:

@@ -203,7 +203,11 @@ class BindHomeRegistry:
             None,
         )
         if existing is not None:
-            updated = replace(existing, entity_id=binding.entity_id)
+            updated = replace(
+                existing,
+                entity_id=binding.entity_id,
+                entity_registry_id=binding.entity_registry_id,
+            )
             self.bindings[existing.id] = updated
             return updated
 

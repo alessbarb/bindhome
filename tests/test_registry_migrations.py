@@ -29,16 +29,61 @@ def _fixture(name: str) -> dict[str, object]:
     return json.loads((_FIXTURES / name).read_text(encoding="utf-8"))
 
 
-def test_current_v1_golden_payload_loads_unchanged() -> None:
-    payload = _fixture("v1_canonical.json")
+def test_current_v2_golden_payload_loads_unchanged() -> None:
+    payload = _fixture("v2_canonical.json")
 
     result = migrate_registry_payload(payload)
 
-    assert result.source_version == 1
-    assert result.target_version == REGISTRY_SCHEMA_VERSION == 1
+    assert result.source_version == 2
+    assert result.target_version == REGISTRY_SCHEMA_VERSION == 2
     assert result.changed is False
     assert result.canonical_payload == payload
     assert result.registry.to_dict() == payload
+
+
+def test_v1_golden_payload_migrates_to_v2() -> None:
+    payload = _fixture("v1_canonical.json")
+    original = deepcopy(payload)
+
+    result = migrate_registry_payload(payload)
+
+    assert payload == original
+    assert result.source_version == 1
+    assert result.target_version == 2
+    assert result.changed is True
+    assert result.canonical_payload["schema_version"] == 2
+
+
+def test_v1_binding_gets_explicit_entity_registry_fallback() -> None:
+    payload = {
+        "schema_version": 1,
+        "assets": [
+            {
+                "id": "socket",
+                "name": "Socket",
+                "asset_type": "socket",
+                "capabilities": ["on_off"],
+            }
+        ],
+        "relations": [],
+        "bindings": [
+            {
+                "id": "binding-1",
+                "asset_id": "socket",
+                "capability": "on_off",
+                "entity_id": "switch.legacy",
+                "role": "primary",
+            }
+        ],
+        "representations": [],
+    }
+
+    result = migrate_registry_payload(payload)
+
+    binding = result.registry.bindings["binding-1"]
+    assert binding.entity_id == "switch.legacy"
+    assert binding.entity_registry_id is None
+    assert result.canonical_payload["bindings"][0]["entity_registry_id"] is None
 
 
 def test_legacy_v0_golden_payload_migrates_to_current_schema() -> None:
@@ -49,9 +94,9 @@ def test_legacy_v0_golden_payload_migrates_to_current_schema() -> None:
 
     assert payload == original
     assert result.source_version == 0
-    assert result.target_version == 1
+    assert result.target_version == 2
     assert result.changed is True
-    assert result.canonical_payload["schema_version"] == 1
+    assert result.canonical_payload["schema_version"] == 2
     assert result.canonical_payload["representations"] == [
         {"asset_id": "legacy-light", "platform": "light"}
     ]
@@ -61,7 +106,7 @@ def test_legacy_v0_golden_payload_migrates_to_current_schema() -> None:
     assert result.registry.get_representation("legacy-socket") is None
 
 
-def test_historical_v1_shape_without_representations_is_canonicalized() -> None:
+def test_historical_v1_shape_without_representations_is_migrated() -> None:
     payload = {
         "schema_version": 1,
         "assets": [
@@ -132,7 +177,7 @@ def test_current_schema_parser_does_not_hide_migration_logic() -> None:
     ):
         BindHomeRegistry.from_dict(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "assets": [],
                 "relations": [],
                 "bindings": [],

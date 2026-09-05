@@ -31,6 +31,7 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ### Reliability
 
+- Registry schema v2 adds stable Home Assistant Entity Registry identity to persisted Bindings while retaining `entity_id` as the last-known/state-machine fallback. v1 data and backups migrate deterministically, exact registered targets are enriched before canonical persistence, and unresolved targets are never guessed or silently rebound. ([#50](https://github.com/alessbarb/bindhome/issues/50))
 - Registry load failures now enter an explicit fail-closed recovery state with a critical Home Assistant Repair. Administrators can validate and restore a BindHome backup directly to storage even when the normal manager cannot load; successful restore reloads the config entry instead of requiring manual `.storage` edits. ([#65](https://github.com/alessbarb/bindhome/pull/65))
 - Same-task nested manager mutations inside an open Registry transaction now fail immediately with an explicit transaction error instead of being able to deadlock on a non-reentrant `asyncio.Lock`; concurrent mutations from different tasks continue to serialize normally. ([#62](https://github.com/alessbarb/bindhome/pull/62))
 - Staged Registry state is revalidated before persistence, and the manager-independent store write path now validates canonical state before touching Home Assistant storage, giving future startup migrations a documented validate-before-write persistence primitive. ([#62](https://github.com/alessbarb/bindhome/pull/62))

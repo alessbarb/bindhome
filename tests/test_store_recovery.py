@@ -11,6 +11,7 @@ from homeassistant.exceptions import (
 )
 
 from custom_components.bindhome import async_setup_entry
+from custom_components.bindhome.const import REGISTRY_SCHEMA_VERSION
 from custom_components.bindhome.registry import BindHomeRegistry
 from custom_components.bindhome.store import (
     BindHomeStore,
@@ -177,7 +178,7 @@ async def test_canonical_registry_is_not_rewritten_on_load(
     store._async_path_exists = AsyncMock(return_value=True)
     store._store.async_load = AsyncMock(
         return_value={
-            "schema_version": 1,
+            "schema_version": REGISTRY_SCHEMA_VERSION,
             "assets": [],
             "relations": [],
             "bindings": [],
