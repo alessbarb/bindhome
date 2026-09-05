@@ -18,6 +18,10 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ## [Unreleased]
 
+### Added
+
+- Added privacy-preserving Home Assistant config-entry diagnostics with integration/storage/schema versions, aggregate Registry counts, aggregate Binding resolver statuses and fail-closed recovery context without exporting Registry contents or stable/hardware identifiers. ([#67](https://github.com/alessbarb/bindhome/pull/67))
+
 ### Changed
 
 - Home Assistant-facing English and Spanish translations now have enforced key and placeholder parity across config flow, services, system health, Repairs and panel resources; system health also covers Representations, and frontend localization preserves unresolved optional placeholders. ([#66](https://github.com/alessbarb/bindhome/pull/66))
