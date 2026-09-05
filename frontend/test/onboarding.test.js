@@ -21,13 +21,13 @@ Object.assign(globalThis, {
 await import("../src/onboarding/onboarding-view.js");
 
 const messages = new Map([
+  ["nav.home", "Home"],
   ["onboarding.welcome_title", "Stable home, replaceable hardware"],
   ["onboarding.model_title", "The BindHome model"],
   ["onboarding.structure_title", "Your Home Assistant structure"],
   ["onboarding.start_title", "Start with one room"],
   ["onboarding.next", "Next"],
   ["onboarding.back", "Back"],
-  ["onboarding.start_inventory", "Inventory my first room"],
   ["onboarding.skip", "Skip introduction"],
 ]);
 
@@ -39,7 +39,7 @@ async function settle(element) {
   await element.updateComplete;
 }
 
-test("onboarding teaches the model before starting inventory", async () => {
+test("onboarding teaches the model before opening Casa", async () => {
   const element = document.createElement("bindhome-onboarding-view");
   element.t = t;
   element.floors = [{ floor_id: "ground", name: "Ground" }];
@@ -66,7 +66,7 @@ test("onboarding teaches the model before starting inventory", async () => {
   assert.match(element.shadowRoot.textContent, /Start with one room/);
 });
 
-test("start inventory emits completion intent and requires an HA Area", async () => {
+test("final onboarding action completes into Casa and requires an HA Area", async () => {
   const element = document.createElement("bindhome-onboarding-view");
   element.t = t;
   element.areas = [];
@@ -81,11 +81,12 @@ test("start inventory emits completion intent and requires an HA Area", async ()
   await settle(element);
   primary = element.shadowRoot.querySelector("button.primary");
   assert.equal(primary.disabled, false);
+  assert.match(primary.textContent, /Home/);
 
   const eventPromise = new Promise((resolve) => {
     element.addEventListener("onboarding-complete", resolve, { once: true });
   });
   primary.click();
   const event = await eventPromise;
-  assert.deepEqual(event.detail, { startInventory: true });
+  assert.deepEqual(event.detail, { startInventory: false });
 });

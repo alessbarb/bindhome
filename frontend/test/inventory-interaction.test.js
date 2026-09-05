@@ -301,7 +301,12 @@ test("changing HA language localizes presentation without touching an active bat
   assert.equal(workflow._activeDrafts[0].name, "My edited socket");
   assert.equal(workflow._activeDrafts[0].asset_type, "socket");
   assert.deepEqual(workflow._activeDrafts[0].capabilities, ["on_off"]);
-  assert.match(panel.shadowRoot.textContent, /Casa\s+Añadir\s+Buscar/);
+  assert.deepEqual(
+    [...panel.shadowRoot.querySelectorAll(".tabs button:not(.advanced)")]
+      .slice(0, 3)
+      .map((button) => button.textContent.trim()),
+    ["Casa", "Añadir", "Buscar"],
+  );
   const advancedButton =
     panel.shadowRoot.querySelector(".tabs button.advanced");
 

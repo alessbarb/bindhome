@@ -84,5 +84,19 @@ export function createBindHomeApi(hass) {
         asset_id: assetId,
       });
     },
+
+    async getDeleteImpact(assetId) {
+      return hass.callWS({
+        type: "bindhome/assets/delete_impact",
+        asset_id: assetId,
+      });
+    },
+
+    async deleteAssetWithDependencies(assetId) {
+      return hass.callWS({
+        type: "bindhome/assets/delete_with_dependencies",
+        asset_id: assetId,
+      });
+    },
   };
 }

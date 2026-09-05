@@ -79,23 +79,24 @@ You only need four concepts to understand most of BindHome.
 
 ### 1. Asset — the stable physical thing
 
-An **Asset** represents something that exists in the home independently from smart hardware.
+An Asset represents something that belongs to the home itself.
 
 Examples:
 
 ```text
 Living room ceiling light
 Kitchen socket 03
-Heating circuit ground floor
+Main electrical panel
 Bedroom radiator
-Network outlet office
+Garden shut-off valve
+Garage Ethernet outlet
 ```
 
-An Asset has a stable BindHome identity and can reference a Home Assistant Area.
+An Asset has a stable identity that should not change when a smart device is replaced.
 
 ### 2. Capability — what the Asset can do
 
-A **Capability** describes a logical function of the Asset.
+Capabilities describe logical functions of the Asset.
 
 Examples:
 
@@ -106,65 +107,64 @@ setpoint
 power_measurement
 ```
 
-A ceiling light may have `on_off`. A radiator may have no smart capability yet. Both are valid Assets.
+A capability does **not** imply that Home Assistant currently has an entity for it.
 
-### 3. Binding — what implements that capability today
+A radiator may exist as an Asset with no smart hardware at all. A light point may have `on_off`, even if the current relay is temporarily missing.
 
-A **Binding** connects one Asset capability to the Home Assistant entity that currently implements it.
+### 3. Binding — what implements the capability today
+
+A Binding connects a stable Asset capability to the Home Assistant entity that currently implements it.
 
 ```text
-Asset: Living room ceiling light
-Capability: on_off
-Binding: switch.shelly_living_room
+Living room ceiling light
+  capability: on_off
+  binding: switch.shelly_living_room
 ```
 
-Bindings are intentionally replaceable.
-
-If the Shelly is replaced, the Asset does not need to be recreated:
+If the relay is replaced:
 
 ```text
-Asset: Living room ceiling light
-Capability: on_off
-Binding: switch.new_relay
+Living room ceiling light
+  capability: on_off
+  binding: switch.new_relay
 ```
 
-### 4. Representation — how the Asset is exposed back to Home Assistant
+The Asset did not change. Only the Binding changed.
 
-A **Representation** is optional. It tells BindHome to expose an Asset as a stable logical Home Assistant entity.
+### 4. Representation — how BindHome exposes the Asset back to Home Assistant
 
-For example:
+A Representation is optional.
+
+For example, an Asset representing a physical light point can be exposed as a stable logical Home Assistant light:
 
 ```text
-Physical Asset
+Asset
   Living room ceiling light
-        |
-        +-- capability: on_off
-        |
-        +-- binding: switch.shelly_living_room
-        |
-        +-- representation: light
-                       |
-                       v
-          light.living_room_ceiling_light
+
+Binding
+  on_off -> switch.shelly_living_room
+
+Representation
+  light.living_room_ceiling_light
 ```
 
-The logical entity represents the physical light, while the bound entity represents the replaceable hardware underneath it.
+Automations can then target the stable logical light instead of the replaceable relay entity.
 
-BindHome 1.0 implements the logical `light` Representation for Assets with the `on_off` capability.
+Not every Asset needs a Representation. Passive infrastructure such as junction boxes, drains or many sockets may only need to exist in the inventory and topology.
 
 ---
 
-## How you use BindHome
+## Recommended workflow
 
-The intended workflow is progressive. You do **not** need to configure everything at once.
+BindHome is designed to be adopted progressively.
 
 ### Step 1 — Inventory the physical home
 
-Start with what physically exists.
+Start room by room and record what physically exists.
 
 ```text
 Ground floor
-└── Living room
+  Living room
     ├── Ceiling light
     ├── Socket 01
     ├── Socket 02
@@ -267,293 +267,194 @@ That separation is the core purpose of BindHome.
 
 ## First-run onboarding
 
-BindHome 1.0 includes an onboarding flow for new installations.
+BindHome includes an onboarding flow for new installations.
 
 When the Registry is empty, the panel guides the user through:
 
 1. the difference between stable infrastructure and replaceable hardware;
 2. Asset, Capability, Binding and Representation;
 3. how BindHome reuses Home Assistant Floors and Areas;
-4. starting the first room inventory.
+4. the recommended first-room inventory workflow.
+
+Completing the walkthrough opens **Casa**. From there the user can browse the home or move to **Añadir**, where both single-element and bulk room inventory are available.
 
 Existing installations that already contain Assets do not receive the first-run walkthrough.
 
-The onboarding can be skipped and is remembered per Home Assistant user/browser. It does not create sample Assets or modify the Registry automatically.
-
 ---
 
-## What BindHome does not replace
+## Installation
 
-BindHome is deliberately **not** a replacement for Home Assistant core registries.
+### Requirements
 
-Home Assistant remains the source of truth for:
+- Home Assistant `2026.8.0` or newer.
+- HACS installed for the normal installation path.
+- Administrator access to Home Assistant for setup and Registry backup/restore operations.
 
-- Devices;
-- Entities;
-- Areas;
-- Floors;
-- runtime state;
-- integrations that communicate with hardware.
+BindHome is a local custom integration. It does not require a cloud account and declares `local_push` as its Home Assistant IoT class.
 
-BindHome is the source of truth for the additional infrastructure model:
+### Install with HACS
+
+BindHome is distributed as a standard HACS integration repository.
+
+1. Open **HACS** in Home Assistant.
+2. Open **Custom repositories**.
+3. Add:
+
+   ```text
+   https://github.com/alessbarb/bindhome
+   ```
+
+4. Select **Integration** as the repository category.
+5. Download BindHome.
+6. Restart Home Assistant when HACS asks you to do so.
+7. Go to **Settings → Devices & services → Add integration**.
+8. Select **BindHome**. Home Assistant creates the single BindHome config entry immediately; there is no empty confirmation form to submit.
+
+HACS installs the integration files, while Home Assistant remains responsible for the user-initiated config-entry creation step. Once configured, the BindHome panel is registered in the Home Assistant sidebar.
+
+### Updates
+
+When a new stable GitHub Release is published, HACS can offer that version as an update.
+
+The recommended upgrade path is:
 
 ```text
-Assets
-Capabilities
-Relations
-Bindings
-Representations
+HACS update
+  -> restart Home Assistant
+  -> open BindHome
+  -> verify System Health / Registry state
 ```
 
-It does not duplicate the Home Assistant Device Registry or Entity Registry.
+Back up the BindHome Registry before an important upgrade. See [Backup and restore](docs/backup-restore.md).
+
+### Downgrade
+
+If a release causes a problem:
+
+1. Export a BindHome Registry backup first if the integration is still operational.
+2. In HACS, open BindHome and select a previous released version.
+3. Restart Home Assistant.
+4. Verify that the Registry loads and that logical Representations reconcile correctly.
+
+Do not edit Home Assistant `.storage` files manually as a downgrade mechanism.
 
 ---
 
-## BindHome 1.0
+## Compatibility policy
 
-The first public release includes:
+The verified minimum Home Assistant release is declared in [`hacs.json`](hacs.json).
 
-- first-run onboarding for new users;
-- stable infrastructure Assets;
-- Home Assistant Area references;
-- generic Asset-to-Asset topology Relations;
-- Asset Capabilities;
-- capability-level hardware Bindings;
-- explicit logical Representations;
-- logical `light` entities for `on_off` Assets;
-- dynamic entity reconciliation;
-- room-based inventory and bulk creation presets;
-- search and home navigation;
-- human-oriented connection and topology workflows;
-- an optional Advanced workspace for direct Registry operations;
-- CRUD and query WebSocket APIs;
-- Home Assistant actions;
-- transactional Registry mutations;
-- atomic persistent storage;
-- fail-closed storage recovery;
-- storage schema/version handling;
-- administrator-only Registry backup and transactional restore;
-- system health reporting;
-- HACS-compatible release packaging and validation.
+The project CI tests:
+
+- the minimum supported Home Assistant release;
+- the current stable Home Assistant release used by the development test environment;
+- Python and frontend lint/type/test gates;
+- HACS publication structure;
+- release metadata consistency.
+
+BindHome may use Home Assistant internal APIs that are appropriate for custom integrations but can change between Home Assistant releases. Compatibility is therefore tested explicitly instead of being assumed.
 
 ---
 
-## Compatibility
+## Recovery and backups
 
-**BindHome:** `1.0.0`
+BindHome Registry state is persistent and is deliberately treated as infrastructure data.
 
-**Minimum Home Assistant:** `2026.8.0`
+The integration supports deterministic Registry backup/export and transactional restore through administrator-only WebSocket commands. A restore validates the complete backup before it replaces live state.
 
-The compatibility floor is verified by CI rather than inferred from development history.
+See [docs/backup-restore.md](docs/backup-restore.md) for the exact format and recovery procedure.
 
-The complete BindHome Python suite passes against:
+Key guarantee:
 
-- Home Assistant `2026.8.0` — minimum supported release;
-- Home Assistant `2026.9.0` — current stable release when BindHome 1.0 was prepared.
-
-Home Assistant `2026.7.0` is not supported because the BindHome panel depends on `homeassistant.components.http.server.StaticPathConfig`, which is unavailable there.
-
-The compatibility workflow continuously tests the minimum supported Home Assistant release and the current stable release.
+> If a Registry write fails, BindHome does not publish the staged change into live memory.
 
 ---
 
-## Installation with HACS
+## Safety model
 
-BindHome is designed to be installed and updated through HACS using tagged GitHub Releases.
+BindHome separates physical infrastructure from Home Assistant runtime state. That distinction is intentional:
 
-For the initial public release:
+- Home Assistant remains the source of truth for Floors, Areas, Devices, Entities, service routing and live runtime state.
+- BindHome owns stable Assets, Relations, Bindings and Representations.
+- Binding an Asset does not transfer ownership of the underlying Home Assistant entity to BindHome.
+- Removing or changing a Binding must not delete the Home Assistant device that implements it.
 
-1. Open **HACS**.
-2. Open the HACS menu and choose **Custom repositories**.
-3. Add `https://github.com/alessbarb/bindhome`.
-4. Select **Integration** as the repository type.
-5. Search for **BindHome** and install the latest release.
-6. Restart Home Assistant.
-7. Open **Settings -> Devices & services -> Add integration**.
-8. Search for **BindHome** and add it.
-9. Open the **BindHome** panel in the Home Assistant sidebar.
-10. Follow the first-run onboarding and inventory one room.
-
-BindHome supports one config entry per Home Assistant installation. The BindHome sidebar panel requires a Home Assistant administrator account.
-
-Published installations should use tagged releases rather than development branches.
-
----
-
-## Updating
-
-Use HACS to install newer BindHome releases.
-
-For material upgrades, export a BindHome Registry backup first.
-
-After updating:
-
-1. restart Home Assistant;
-2. confirm BindHome loads without errors;
-3. verify the Registry and logical entities;
-4. open the BindHome panel;
-5. review system health if anything looks unexpected.
-
-Do not manually edit Home Assistant `.storage` files during an upgrade or rollback.
-
-See [Release process, upgrades and downgrades](docs/release.md).
-
----
-
-## Registry reliability
-
-BindHome treats the Registry as persistent infrastructure data, not as disposable UI state.
-
-Every mutation follows the same transaction contract:
-
-```text
-stage isolated Registry
-        |
-        v
-validate mutation
-        |
-        v
-persist staged state atomically
-        |
-        v
-adopt into the existing live Registry
-        |
-        v
-emit Registry changed signal
-```
-
-If persistence fails:
-
-- live Registry memory is not modified;
-- the previous persisted Registry remains authoritative;
-- no Registry-changed signal is emitted.
-
-Startup also fails closed. Malformed, corrupt or unsupported storage is not silently replaced by an empty Registry.
-
----
-
-## Backup and restore
-
-BindHome exposes administrator-only WebSocket commands:
-
-```text
-bindhome/backup/export
-bindhome/backup/restore
-```
-
-Backups contain the complete versioned BindHome Registry.
-
-Restore validates the entire backup before persistence and uses the same transaction guarantees as normal Registry mutations.
-
-See [Registry backup and restore](docs/backup-restore.md).
-
----
-
-## Home Assistant actions
-
-BindHome exposes actions for Registry maintenance, including:
-
-```text
-bindhome.create_asset
-bindhome.update_asset
-bindhome.delete_asset
-bindhome.add_relation
-bindhome.remove_relation
-bindhome.set_binding
-bindhome.remove_binding
-bindhome.get_registry
-```
-
-`get_registry` is read-only and returns the serialized Registry.
-
-Most normal users should use the BindHome panel. The actions and WebSocket APIs are useful for automation, administration, tooling and integration development.
-
----
-
-## Design principles
-
-BindHome follows a small set of rules:
-
-1. **Infrastructure identities are stable.**
-2. **Hardware identities are replaceable.**
-3. **Home Assistant remains the source of truth for hardware and runtime state.**
-4. **BindHome does not duplicate hardware inventory.**
-5. **Bindings happen at capability level.**
-6. **Representation is explicit.** Having a capability does not automatically create a logical HA entity.
-7. **Passive Assets are valid.** Physical infrastructure does not need smart hardware to belong in BindHome.
-8. **BindHome is installation-agnostic.** The integration contains no knowledge of a particular house.
-9. **Persistent data is protected.** Registry writes and restores are transactional.
-10. **Manual `.storage` editing is not part of the operating model.**
-
-See [Architecture](docs/architecture.md) for the deeper technical model.
+For home electrical, heating, gas, water-pressure or structural work, BindHome is documentation and automation infrastructure. It is not a substitute for electrical measurements, commissioning, certification or a qualified professional.
 
 ---
 
 ## Development
 
-The Home Assistant runtime integration lives under:
+### Python
 
-```text
-custom_components/bindhome
+Create a development environment and install the project extras:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -e '.[dev]'
 ```
 
-The frontend source, tests and Node.js build tooling live outside the HACS runtime tree under:
+Run the backend tests:
 
-```text
-frontend
+```bash
+pytest
 ```
 
-The generated frontend runtime bundle is committed at:
+Run Ruff:
 
-```text
-custom_components/bindhome/panel/static/bindhome-panel.js
+```bash
+ruff check .
+ruff format --check .
 ```
 
-Validation includes:
+### Frontend
 
-- Ruff lint and format checks;
-- the complete Python test suite;
-- Home Assistant compatibility testing;
-- Hassfest;
-- HACS publication validation;
-- frontend type checking;
-- frontend tests;
-- production bundle verification;
-- release metadata consistency checks.
+The editable frontend source lives in [`frontend/`](frontend/). The HACS-installed integration only contains the generated runtime bundle under `custom_components/bindhome/panel/static/`.
+
+Install dependencies:
+
+```bash
+cd frontend
+npm ci
+```
+
+Run type checks and tests:
+
+```bash
+npm run typecheck
+npm test
+```
+
+Build the production bundle:
+
+```bash
+npm run build
+```
+
+The generated bundle is committed. CI rebuilds it and fails if the committed artifact differs from the current frontend source.
 
 ---
 
-## Releases
+## Release process
 
 BindHome follows Semantic Versioning.
 
-Public releases are immutable GitHub Releases tagged:
+A release requires all protected gates to pass before the version is tagged and published. The release checklist is documented in [docs/release.md](docs/release.md).
 
-```text
-vMAJOR.MINOR.PATCH
-```
-
-They are intended to be consumed through HACS.
-
-See [Release process](docs/release.md).
+Stable releases are the normal HACS installation target. The default branch is development state and should not be treated as the rollback mechanism.
 
 ---
 
-## Issues and contributions
+## Project status
 
-Bug reports and focused feature proposals are welcome through GitHub Issues.
+BindHome is under active development. The stable public release line is intended for normal HACS installs, while new functionality lands through reviewed and tested releases.
 
-When reporting a problem, include:
-
-- BindHome version;
-- Home Assistant version;
-- relevant logs;
-- the smallest reproducible Registry scenario when possible.
-
-Do not include Home Assistant access tokens or other credentials.
+The Registry schema and public behavior follow the migration, backup and compatibility policies documented in the repository.
 
 ---
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
