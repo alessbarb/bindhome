@@ -46,9 +46,17 @@ Generated bundles, formatting-only changes and internal refactors do not need ch
 
 The minimum is not inferred from development history. It must be covered by the Home Assistant compatibility workflow and pass the complete BindHome Python test suite. CI also tests the current supported Home Assistant release so compatibility is checked at both ends of the supported range.
 
-BindHome 1.0.0 supports Home Assistant `2026.8.0` and newer compatible releases. Home Assistant `2026.7.0` is below the supported floor because the BindHome panel uses `homeassistant.components.http.server.StaticPathConfig`, which is unavailable there.
+The BindHome 1.x compatibility baseline starts at Home Assistant `2026.8.0`. Home Assistant `2026.7.0` is below the supported floor because the BindHome panel uses `homeassistant.components.http.server.StaticPathConfig`, which is unavailable there.
 
 When the minimum supported Home Assistant version changes, the HACS metadata, README, compatibility matrix, changelog and release notes must change together.
+
+## Registry schema policy
+
+Home Assistant's storage-envelope version and BindHome's Registry schema version are independent compatibility layers. The complete policy is documented in [`docs/registry-schema.md`](registry-schema.md).
+
+A supported historical Registry schema is migrated one version at a time to the current schema before model parsing. An unsupported future Registry schema fails closed and must never be silently rewritten by an older release. Corrupt or invalid payloads are validation failures, not migration candidates to be guessed or repaired heuristically.
+
+Every future Registry schema bump must include the corresponding stepwise migration test and release/downgrade guidance in the same change.
 
 ## Distribution layout
 
@@ -104,9 +112,11 @@ BindHome storage migrations run through the integration. Do not edit Home Assist
 
 ## Downgrade
 
-Downgrade only to a BindHome release whose documented storage schema can read the current Registry. Use HACS to select the previous release, restart Home Assistant, and verify the integration.
+Downgrade only to a BindHome release whose documented Registry schema can read the Registry currently on disk. A code downgrade does not downgrade persisted data.
 
-If a newer release introduced a storage schema that the older release cannot read, restore a backup created while the older compatible schema was active instead of manipulating `.storage` manually.
+Before any release that bumps the Registry schema, retain a backup created while the older compatible release/schema was active. If the current Registry has already been written in a schema newer than the target release understands, an in-place downgrade is unsafe: use the supported recovery workflow with a backup that the target release can read. If that older target release predates an in-product recovery path for an unloadable Registry, reinstall the newer compatible BindHome release rather than editing `.storage` or repeatedly starting the incompatible version.
+
+See [`docs/registry-schema.md`](registry-schema.md) for the exact version policy and downgrade constraints.
 
 ## Release failure
 
@@ -114,8 +124,8 @@ If installation succeeds but post-restart validation fails:
 
 1. stop making Registry mutations;
 2. capture the BindHome and Home Assistant logs;
-3. reinstall the previous known-good BindHome release through HACS;
+3. reinstall the previous known-good BindHome release through HACS only when its documented Registry schema can read the current data;
 4. restart Home Assistant;
-5. restore a compatible BindHome Registry backup only if required.
+5. restore a compatible BindHome Registry backup only through the supported recovery path if required.
 
 A failed release must never be repaired by changing Home Assistant `.storage` directly.

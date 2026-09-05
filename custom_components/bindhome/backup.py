@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from .migrations import migrate_registry_payload
 from .registry import BindHomeRegistry, RegistryValidationError
 from .registry_state import replace_registry_contents
 
@@ -28,7 +29,7 @@ def export_registry_backup(registry: BindHomeRegistry) -> dict[str, Any]:
 
 
 def parse_registry_backup(data: object) -> BindHomeRegistry:
-    """Validate a backup envelope and return its isolated Registry."""
+    """Validate a backup envelope and return its current-schema Registry."""
     if not isinstance(data, dict):
         raise BackupValidationError("BindHome backup must be a dictionary")
 
@@ -52,7 +53,7 @@ def parse_registry_backup(data: object) -> BindHomeRegistry:
         raise BackupValidationError("BindHome backup registry must be a dictionary")
 
     try:
-        return BindHomeRegistry.from_dict(registry_data)
+        return migrate_registry_payload(registry_data).registry
     except RegistryValidationError as err:
         raise BackupValidationError(f"Invalid BindHome backup registry: {err}") from err
 

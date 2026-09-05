@@ -21,12 +21,14 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 ### Changed
 
 - Registry multi-step mutations now have a supported public `BindHomeManager.transaction()` boundary. Backup restore and dependency-aware Asset deletion use that API instead of reaching into private manager locking/staging/commit internals. ([#62](https://github.com/alessbarb/bindhome/pull/62))
+- Registry schema evolution now uses an explicit stepwise migration layer separate from current-schema model parsing. The real pre-version Registry payload and early schema-v1 payloads that predate explicit Representations are migrated/canonicalized to the current v1 schema without introducing a fake schema bump. ([#63](https://github.com/alessbarb/bindhome/pull/63))
 
 ### Reliability
 
 - Same-task nested manager mutations inside an open Registry transaction now fail immediately with an explicit transaction error instead of being able to deadlock on a non-reentrant `asyncio.Lock`; concurrent mutations from different tasks continue to serialize normally. ([#62](https://github.com/alessbarb/bindhome/pull/62))
 - Staged Registry state is revalidated before persistence, and the manager-independent store write path now validates canonical state before touching Home Assistant storage, giving future startup migrations a documented validate-before-write persistence primitive. ([#62](https://github.com/alessbarb/bindhome/pull/62))
 - Live Registry adoption derives its persisted collection set from the Registry serialization contract instead of maintaining a separate hand-written list, so future persisted collections cannot be silently omitted; new persisted fields without collection semantics fail closed until explicitly handled. ([#62](https://github.com/alessbarb/bindhome/pull/62))
+- Unsupported future Registry schemas fail closed without rewrite, while supported historical Registry schemas—including schemas contained in compatible backup envelopes—are migrated only through explicit validated steps. Golden fixtures and CI require a complete migration path whenever `REGISTRY_SCHEMA_VERSION` is raised. ([#63](https://github.com/alessbarb/bindhome/pull/63))
 
 ---
 

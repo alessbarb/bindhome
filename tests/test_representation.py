@@ -6,6 +6,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from custom_components.bindhome.const import SIGNAL_REGISTRY_CHANGED
 from custom_components.bindhome.manager import BindHomeManager
+from custom_components.bindhome.migrations import migrate_registry_payload
 from custom_components.bindhome.models import Asset, Representation
 from custom_components.bindhome.registry import (
     BindHomeRegistry,
@@ -159,7 +160,7 @@ def test_representation_serialization_roundtrip() -> None:
 
 
 def test_legacy_registry_migrates_implicit_on_off_lights() -> None:
-    legacy = BindHomeRegistry.from_dict(
+    legacy = migrate_registry_payload(
         {
             "schema_version": 1,
             "assets": [
@@ -179,7 +180,7 @@ def test_legacy_registry_migrates_implicit_on_off_lights() -> None:
             "relations": [],
             "bindings": [],
         }
-    )
+    ).registry
 
     representation = legacy.get_representation("old-light")
 
@@ -187,7 +188,7 @@ def test_legacy_registry_migrates_implicit_on_off_lights() -> None:
     assert representation.platform == "light"
     assert legacy.get_representation("old-socket") is None
 
-    # Once serialized by the new model, the distinction becomes explicit.
+    # Once serialized by the current model, the distinction is explicit.
     assert "representations" in legacy.to_dict()
 
 
