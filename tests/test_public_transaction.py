@@ -12,7 +12,10 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from custom_components.bindhome.const import SIGNAL_REGISTRY_CHANGED
 from custom_components.bindhome.manager import BindHomeManager
 from custom_components.bindhome.models import Asset, Relation
-from custom_components.bindhome.registry import BindHomeRegistry, RegistryValidationError
+from custom_components.bindhome.registry import (
+    BindHomeRegistry,
+    RegistryValidationError,
+)
 from custom_components.bindhome.registry_state import replace_registry_contents
 from custom_components.bindhome.store import BindHomeStore
 from custom_components.bindhome.transaction import BindHomeTransactionError
@@ -101,7 +104,10 @@ async def test_public_mutation_inside_transaction_fails_fast(
             )
         )
 
-        with pytest.raises(BindHomeTransactionError, match="active Registry transaction"):
+        with pytest.raises(
+            BindHomeTransactionError,
+            match="active Registry transaction",
+        ):
             async with asyncio.timeout(0.1):
                 await manager.async_create_asset(
                     name="Nested socket",
