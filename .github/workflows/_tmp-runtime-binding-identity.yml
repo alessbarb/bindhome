@@ -1,0 +1,48 @@
+name: Temporary runtime Binding identity
+
+on:
+  push:
+    branches:
+      - architecture/runtime-binding-identity
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Apply final runtime identity tests and docs
+        run: python _tmp_finish_runtime_binding_identity.py
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[dev]
+
+      - name: Format and verify committed Python sources
+        run: |
+          ruff format custom_components tests
+          ruff check custom_components tests --fix
+          ruff format --check custom_components tests
+          ruff check custom_components tests
+          pytest
+
+      - name: Remove temporary helpers and commit verified tree
+        run: |
+          rm _tmp_finish_runtime_binding_identity.py
+          rm .github/workflows/_tmp-runtime-binding-identity.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: resolve Bindings through stable Entity Registry identity"
+          git push origin HEAD:architecture/runtime-binding-identity
