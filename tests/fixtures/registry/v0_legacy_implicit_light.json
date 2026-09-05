@@ -1,0 +1,22 @@
+{
+  "assets": [
+    {
+      "id": "legacy-light",
+      "name": "Legacy light",
+      "asset_type": "light_point",
+      "code": "LGT-OLD",
+      "area_id": "living_room",
+      "capabilities": ["on_off"]
+    },
+    {
+      "id": "legacy-socket",
+      "name": "Legacy socket",
+      "asset_type": "socket",
+      "code": null,
+      "area_id": null,
+      "capabilities": []
+    }
+  ],
+  "relations": [],
+  "bindings": []
+}
