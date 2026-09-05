@@ -1,0 +1,77 @@
+name: Temporary diagnostics completion
+
+on:
+  push:
+    branches:
+      - support/ha-diagnostics
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: support/ha-diagnostics
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+          cache: pip
+      - name: Add diagnostics documentation and changelog
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          readme = Path('README.md')
+          text = readme.read_text()
+          heading = '## Diagnostics and support'
+          if heading not in text:
+              anchor = '## Safety model\n'
+              block = '''## Diagnostics and support
+
+When reporting a BindHome problem, use Home Assistant's **Download diagnostics** action for the BindHome config entry and attach that diagnostics file to the issue when it is relevant.
+
+BindHome diagnostics are intentionally aggregated. They include the integration/storage/schema versions, config-entry state, Registry object counts and Binding resolver status counts. They do **not** export Asset names or codes, BindHome UUIDs, Home Assistant entity IDs, config-entry IDs or the Registry itself.
+
+If Registry loading has failed closed, diagnostics remain useful where Home Assistant can invoke them: the recovery category is reported, while the stored error message and unsafe Registry contents are omitted. Registry backup/export remains a separate administrator operation and is never embedded in diagnostics.
+
+---
+
+'''
+              if anchor not in text:
+                  raise SystemExit('README Safety model anchor not found')
+              readme.write_text(text.replace(anchor, block + anchor, 1))
+
+          changelog = Path('CHANGELOG.md')
+          text = changelog.read_text()
+          entry = '- Added privacy-preserving Home Assistant config-entry diagnostics with integration/storage/schema versions, aggregate Registry counts, aggregate Binding resolver statuses and fail-closed recovery context without exporting Registry contents or stable/hardware identifiers. ([#67](https://github.com/alessbarb/bindhome/pull/67))\n'
+          if entry not in text:
+              anchor = '## [Unreleased]\n\n'
+              if anchor not in text:
+                  raise SystemExit('Unreleased changelog anchor not found')
+              text = text.replace(anchor, anchor + '### Added\n\n' + entry + '\n', 1)
+              changelog.write_text(text)
+          PY
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[dev]
+      - name: Normalize and verify Python
+        run: |
+          ruff check --fix custom_components/bindhome/diagnostics.py tests/test_diagnostics.py
+          ruff format custom_components/bindhome/diagnostics.py tests/test_diagnostics.py
+          ruff check custom_components/bindhome tests
+          ruff format --check custom_components/bindhome tests
+          pytest
+      - name: Commit verified diagnostics and remove temporary workflow
+        run: |
+          rm -f .github/workflows/_tmp-diagnostics.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'docs: document privacy-preserving diagnostics'
+          git push origin HEAD:support/ha-diagnostics
