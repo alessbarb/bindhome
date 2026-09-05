@@ -25,6 +25,7 @@ jobs:
         run: |
           sed -i 's/if count != 1:/if count < 1:/' _tmp_apply_binding_target_v2.py
           python _tmp_apply_binding_target_v2.py
+          python _tmp_update_v2_contract_tests.py
 
       - name: Install dependencies
         run: |
@@ -42,6 +43,7 @@ jobs:
       - name: Remove temporary helpers and commit verified tree
         run: |
           rm _tmp_apply_binding_target_v2.py
+          rm _tmp_update_v2_contract_tests.py
           rm .github/workflows/_tmp-binding-target-v2.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
