@@ -379,7 +379,9 @@ class BindHomeManager:
         )
         if target_asset is None:
             return
-        contract = runtime_contract(registry.representations[target_asset], target_asset)
+        contract = runtime_contract(
+            registry.representations[target_asset], target_asset
+        )
         if contract is None:
             return
         adjacency[source] = set(contract.dependencies)
