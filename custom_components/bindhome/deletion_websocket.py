@@ -18,7 +18,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN
-from .deletion import build_asset_delete_impact, async_delete_asset_with_dependencies
+from .deletion import async_delete_asset_with_dependencies, build_asset_delete_impact
 from .manager import BindHomeManager
 from .registry import RegistryNotFoundError
 
