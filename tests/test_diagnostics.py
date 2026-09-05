@@ -120,7 +120,7 @@ async def test_loaded_config_entry_diagnostics_snapshot(monkeypatch) -> None:
 
     assert result == {
         "integration": {
-            "version": "1.1.1",
+            "version": "1.2.0",
             "storage_version": 1,
             "registry_schema_version": 1,
         },
