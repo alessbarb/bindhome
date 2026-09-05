@@ -18,12 +18,13 @@ from homeassistant.components.websocket_api.decorators import (
     require_admin,
     websocket_command,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from . import query
-from .const import DOMAIN
+from .const import DOMAIN, SIGNAL_REGISTRY_CHANGED
 from .manager import (
     AssetCreateSpec,
     BindHomeManager,
@@ -42,6 +43,7 @@ from .registry import (
 from .validation import validate_area
 
 WS_REGISTRY_GET = f"{DOMAIN}/registry/get"
+WS_REGISTRY_SUBSCRIBE = f"{DOMAIN}/registry/subscribe"
 WS_ASSET_CREATE = f"{DOMAIN}/assets/create"
 WS_ASSET_CREATE_BULK = f"{DOMAIN}/assets/create_bulk"
 WS_ASSET_UPDATE = f"{DOMAIN}/assets/update"
@@ -61,6 +63,9 @@ WS_GRAPH_PATH = f"{DOMAIN}/graph/path"
 WS_BINDING_STATUS = f"{DOMAIN}/bindings/status"
 
 _DIRECTIONS = [direction.value for direction in Direction]
+_REVISION_FIELD = {
+    vol.Optional("based_on_revision"): vol.All(int, vol.Range(min=0)),
+}
 
 _ASSET_CREATE_ITEM_SCHEMA = vol.Schema(
     {
@@ -130,13 +135,37 @@ def _send_bulk_asset_error(
 async def ws_registry_get(
     hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Return the complete serialized registry."""
+    """Return the complete serialized Registry with its current runtime revision."""
     try:
-        result = _get_manager(hass).registry.to_dict()
+        manager = _get_manager(hass)
+        result = manager.registry.to_dict()
+        result["revision"] = manager.revision
     except RegistryError as err:
         _send_error(connection, msg, err)
         return
     connection.send_result(msg["id"], result)
+
+
+@require_admin
+@websocket_command({vol.Required("type"): WS_REGISTRY_SUBSCRIBE})
+def ws_registry_subscribe(
+    hass: HomeAssistant,
+    connection: ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Subscribe one WebSocket client to committed Registry revision changes."""
+    manager = _get_manager(hass)
+
+    @callback
+    def async_registry_changed() -> None:
+        connection.send_event(msg["id"], {"revision": manager.revision})
+
+    connection.subscriptions[msg["id"]] = async_dispatcher_connect(
+        hass,
+        SIGNAL_REGISTRY_CHANGED,
+        async_registry_changed,
+    )
+    connection.send_result(msg["id"], {"revision": manager.revision})
 
 
 @require_admin
@@ -148,6 +177,7 @@ async def ws_registry_get(
         vol.Optional("code"): cv.string,
         vol.Optional("area_id"): cv.string,
         vol.Optional("capabilities", default=[]): [cv.string],
+        **_REVISION_FIELD,
     }
 )
 @async_response
@@ -157,17 +187,22 @@ async def ws_asset_create(
     """Create an asset."""
     try:
         validate_area(hass, msg.get("area_id"))
-        asset = await _get_manager(hass).async_create_asset(
+        manager = _get_manager(hass)
+        asset = await manager.async_create_asset(
             name=msg["name"],
             asset_type=msg["asset_type"],
             code=msg.get("code"),
             area_id=msg.get("area_id"),
             capabilities=list(msg.get("capabilities", [])),
+            expected_revision=msg.get("based_on_revision"),
         )
     except (ModelValidationError, RegistryError, ServiceValidationError) as err:
         _send_error(connection, msg, err)
         return
-    connection.send_result(msg["id"], {"asset": asset.to_dict()})
+    connection.send_result(
+        msg["id"],
+        {"asset": asset.to_dict(), "revision": manager.revision},
+    )
 
 
 @require_admin
@@ -178,6 +213,7 @@ async def ws_asset_create(
             [_ASSET_CREATE_ITEM_SCHEMA],
             vol.Length(min=1),
         ),
+        **_REVISION_FIELD,
     }
 )
 @async_response
@@ -210,15 +246,25 @@ async def ws_asset_create_bulk(
             )
         )
 
+    manager = _get_manager(hass)
     try:
-        assets = await _get_manager(hass).async_create_assets(specs)
+        assets = await manager.async_create_assets(
+            specs,
+            expected_revision=msg.get("based_on_revision"),
+        )
     except BulkAssetCreateError as err:
         _send_bulk_asset_error(connection, msg, err)
+        return
+    except RegistryError as err:
+        _send_error(connection, msg, err)
         return
 
     connection.send_result(
         msg["id"],
-        {"assets": [asset.to_dict() for asset in assets]},
+        {
+            "assets": [asset.to_dict() for asset in assets],
+            "revision": manager.revision,
+        },
     )
 
 
@@ -232,6 +278,7 @@ async def ws_asset_create_bulk(
         vol.Optional("code"): vol.Any(None, cv.string),
         vol.Optional("area_id"): vol.Any(None, cv.string),
         vol.Optional("capabilities"): [cv.string],
+        **_REVISION_FIELD,
     }
 )
 @async_response
@@ -255,6 +302,7 @@ async def ws_asset_update(
             code=msg.get("code", existing.code),
             area_id=area_id,
             capabilities=list(msg.get("capabilities", existing.capabilities)),
+            expected_revision=msg.get("based_on_revision"),
         )
     except (
         ModelValidationError,
@@ -264,24 +312,38 @@ async def ws_asset_update(
         _send_error(connection, msg, err)
         return
 
-    connection.send_result(msg["id"], {"asset": asset.to_dict()})
+    connection.send_result(
+        msg["id"],
+        {"asset": asset.to_dict(), "revision": manager.revision},
+    )
 
 
 @require_admin
 @websocket_command(
-    {vol.Required("type"): WS_ASSET_DELETE, vol.Required("asset_id"): cv.string}
+    {
+        vol.Required("type"): WS_ASSET_DELETE,
+        vol.Required("asset_id"): cv.string,
+        **_REVISION_FIELD,
+    }
 )
 @async_response
 async def ws_asset_delete(
     hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Delete an asset."""
+    manager = _get_manager(hass)
     try:
-        await _get_manager(hass).async_delete_asset(msg["asset_id"])
+        await manager.async_delete_asset(
+            msg["asset_id"],
+            expected_revision=msg.get("based_on_revision"),
+        )
     except RegistryError as err:
         _send_error(connection, msg, err)
         return
-    connection.send_result(msg["id"], {"deleted": True})
+    connection.send_result(
+        msg["id"],
+        {"deleted": True, "revision": manager.revision},
+    )
 
 
 @require_admin
@@ -291,6 +353,7 @@ async def ws_asset_delete(
         vol.Required("source_asset_id"): cv.string,
         vol.Required("relation_type"): cv.string,
         vol.Required("target_asset_id"): cv.string,
+        **_REVISION_FIELD,
     }
 )
 @async_response
@@ -298,33 +361,49 @@ async def ws_relation_create(
     hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Create a relation."""
+    manager = _get_manager(hass)
     try:
-        relation = await _get_manager(hass).async_add_relation(
+        relation = await manager.async_add_relation(
             source_asset_id=msg["source_asset_id"],
             relation_type=msg["relation_type"],
             target_asset_id=msg["target_asset_id"],
+            expected_revision=msg.get("based_on_revision"),
         )
     except (ModelValidationError, RegistryError) as err:
         _send_error(connection, msg, err)
         return
-    connection.send_result(msg["id"], {"relation": relation.to_dict()})
+    connection.send_result(
+        msg["id"],
+        {"relation": relation.to_dict(), "revision": manager.revision},
+    )
 
 
 @require_admin
 @websocket_command(
-    {vol.Required("type"): WS_RELATION_DELETE, vol.Required("relation_id"): cv.string}
+    {
+        vol.Required("type"): WS_RELATION_DELETE,
+        vol.Required("relation_id"): cv.string,
+        **_REVISION_FIELD,
+    }
 )
 @async_response
 async def ws_relation_delete(
     hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Delete a relation."""
+    manager = _get_manager(hass)
     try:
-        await _get_manager(hass).async_remove_relation(msg["relation_id"])
+        await manager.async_remove_relation(
+            msg["relation_id"],
+            expected_revision=msg.get("based_on_revision"),
+        )
     except RegistryError as err:
         _send_error(connection, msg, err)
         return
-    connection.send_result(msg["id"], {"deleted": True})
+    connection.send_result(
+        msg["id"],
+        {"deleted": True, "revision": manager.revision},
+    )
 
 
 @require_admin
@@ -335,6 +414,7 @@ async def ws_relation_delete(
         vol.Required("capability"): cv.string,
         vol.Required("entity_id"): cv.entity_id,
         vol.Optional("role", default="primary"): cv.string,
+        **_REVISION_FIELD,
     }
 )
 @async_response
@@ -342,34 +422,50 @@ async def ws_binding_set(
     hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Create or replace a binding."""
+    manager = _get_manager(hass)
     try:
-        binding = await _get_manager(hass).async_set_binding(
+        binding = await manager.async_set_binding(
             asset_id=msg["asset_id"],
             capability=msg["capability"],
             entity_id=msg["entity_id"],
             role=msg.get("role", "primary"),
+            expected_revision=msg.get("based_on_revision"),
         )
     except (ModelValidationError, RegistryError, ServiceValidationError) as err:
         _send_error(connection, msg, err)
         return
-    connection.send_result(msg["id"], {"binding": binding.to_dict()})
+    connection.send_result(
+        msg["id"],
+        {"binding": binding.to_dict(), "revision": manager.revision},
+    )
 
 
 @require_admin
 @websocket_command(
-    {vol.Required("type"): WS_BINDING_DELETE, vol.Required("binding_id"): cv.string}
+    {
+        vol.Required("type"): WS_BINDING_DELETE,
+        vol.Required("binding_id"): cv.string,
+        **_REVISION_FIELD,
+    }
 )
 @async_response
 async def ws_binding_delete(
     hass: HomeAssistant, connection: ActiveConnection, msg: dict[str, Any]
 ) -> None:
     """Delete a binding."""
+    manager = _get_manager(hass)
     try:
-        await _get_manager(hass).async_remove_binding(msg["binding_id"])
+        await manager.async_remove_binding(
+            msg["binding_id"],
+            expected_revision=msg.get("based_on_revision"),
+        )
     except RegistryError as err:
         _send_error(connection, msg, err)
         return
-    connection.send_result(msg["id"], {"deleted": True})
+    connection.send_result(
+        msg["id"],
+        {"deleted": True, "revision": manager.revision},
+    )
 
 
 @require_admin
@@ -378,6 +474,7 @@ async def ws_binding_delete(
         vol.Required("type"): WS_REPRESENTATION_SET,
         vol.Required("asset_id"): cv.string,
         vol.Required("platform"): cv.string,
+        **_REVISION_FIELD,
     }
 )
 @async_response
@@ -387,10 +484,12 @@ async def ws_representation_set(
     msg: dict[str, Any],
 ) -> None:
     """Create an Asset's logical Home Assistant representation."""
+    manager = _get_manager(hass)
     try:
-        representation = await _get_manager(hass).async_set_representation(
+        representation = await manager.async_set_representation(
             asset_id=msg["asset_id"],
             platform=msg["platform"],
+            expected_revision=msg.get("based_on_revision"),
         )
     except (ModelValidationError, RegistryError) as err:
         _send_error(connection, msg, err)
@@ -398,7 +497,10 @@ async def ws_representation_set(
 
     connection.send_result(
         msg["id"],
-        {"representation": representation.to_dict()},
+        {
+            "representation": representation.to_dict(),
+            "revision": manager.revision,
+        },
     )
 
 
@@ -407,6 +509,7 @@ async def ws_representation_set(
     {
         vol.Required("type"): WS_REPRESENTATION_DELETE,
         vol.Required("asset_id"): cv.string,
+        **_REVISION_FIELD,
     }
 )
 @async_response
@@ -416,13 +519,20 @@ async def ws_representation_delete(
     msg: dict[str, Any],
 ) -> None:
     """Remove an Asset's logical Home Assistant representation."""
+    manager = _get_manager(hass)
     try:
-        await _get_manager(hass).async_remove_representation(msg["asset_id"])
+        await manager.async_remove_representation(
+            msg["asset_id"],
+            expected_revision=msg.get("based_on_revision"),
+        )
     except RegistryError as err:
         _send_error(connection, msg, err)
         return
 
-    connection.send_result(msg["id"], {"deleted": True})
+    connection.send_result(
+        msg["id"],
+        {"deleted": True, "revision": manager.revision},
+    )
 
 
 @require_admin
@@ -599,6 +709,7 @@ def async_register_websocket_commands(hass: HomeAssistant) -> None:
     """Register BindHome WebSocket commands once during integration setup."""
     for handler in (
         ws_registry_get,
+        ws_registry_subscribe,
         ws_asset_create,
         ws_asset_create_bulk,
         ws_asset_update,
