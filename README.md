@@ -1,5 +1,7 @@
 # BindHome
 
+**Current stable release: `1.2.0` · Home Assistant `2026.8.0+`**
+
 **Model the home, not the hardware.**
 
 BindHome is a Home Assistant custom integration for describing the **stable physical infrastructure of a home** independently from the smart devices that happen to control or measure it today.
@@ -279,6 +281,14 @@ When the Registry is empty, the panel guides the user through:
 Completing the walkthrough opens **Casa**. From there the user can browse the home or move to **Añadir**, where both single-element and bulk room inventory are available.
 
 Existing installations that already contain Assets do not receive the first-run walkthrough.
+
+---
+
+## BindHome 1.2.0
+
+BindHome 1.2.0 is a reliability-focused release. It keeps the public Registry schema at v1 while making future evolution and recovery safer: multi-step mutations now use a supported manager transaction boundary, historical Registry payloads migrate through explicit validated steps, failed loads expose a fail-closed Home Assistant Repair with backup recovery, and config-entry diagnostics provide aggregate support data without exporting home or hardware identifiers.
+
+The release also enforces English/Spanish translation parity and real JavaScript typechecking for the production panel source. Existing Assets, Relations, Bindings and Representations remain compatible with the 1.1 release line.
 
 ---
 
