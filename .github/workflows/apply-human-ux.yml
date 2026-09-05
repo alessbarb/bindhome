@@ -1,0 +1,128 @@
+name: Apply Human UX Integration
+
+on:
+  push:
+    branches:
+      - ux/post-1.0-human-workflows
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ux/post-1.0-human-workflows
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Apply integration patches
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          def replace_one(path, old, new):
+              file = Path(path)
+              text = file.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one match in {path}, found {count}: {old[:80]!r}")
+              file.write_text(text.replace(old, new, 1))
+
+          replace_one(
+              "frontend/src/bindhome-panel.js",
+              '''  _completeOnboarding(event) {\n    const startInventory = Boolean(event?.detail?.startInventory);\n    this._dismissOnboarding();\n    if (startInventory) this._openAdd(null);\n    else this._view = "home";\n  }''',
+              '''  _completeOnboarding() {\n    this._dismissOnboarding();\n    this._contextAreaId = null;\n    this._view = "home";\n  }''',
+          )
+          replace_one(
+              "frontend/src/bindhome-panel.js",
+              '''          .presets=${this._presets}\n          .areas=${this._areas}\n          .contextAreaId=${this._contextAreaId}''',
+              '''          .presets=${this._presets}\n          .floors=${this._floors}\n          .areas=${this._areas}\n          .assets=${this._assets}\n          .contextAreaId=${this._contextAreaId}''',
+          )
+          replace_one(
+              "frontend/src/bindhome-panel.js",
+              '''          }}\n        ></bindhome-add-view>''',
+              '''          }}\n          @assets-refreshed=${this._assetsRefreshed}\n          @go-home=${() => this._navigate("home")}\n        ></bindhome-add-view>''',
+          )
+
+          replace_one(
+              "frontend/src/onboarding/onboarding-view.js",
+              '@click=${() => this._complete(true)}',
+              '@click=${() => this._complete(false)}',
+          )
+          replace_one(
+              "frontend/src/onboarding/onboarding-view.js",
+              '${this.t("onboarding.start_inventory")}',
+              '${this.t("nav.home")}',
+          )
+
+          replace_one(
+              "frontend/src/home/element-detail.js",
+              'import "./human-asset-editor.js";',
+              'import "./human-asset-editor.js";\nimport "./asset-delete-control.js";',
+          )
+          replace_one(
+              "frontend/src/home/element-detail.js",
+              '''        </section>\n      </article>`;''',
+              '''        </section>\n        <section class="section">\n          <bindhome-asset-delete-control\n            .hass=${this.hass}\n            .t=${this.t}\n            .asset=${this.asset}\n            .refreshBindingData=${this.refreshBindingData}\n            .refreshTopologyData=${this.refreshTopologyData}\n            .refreshAssets=${this.refreshAssets}\n            @asset-deleted=${(event) =>\n              this.dispatchEvent(\n                new CustomEvent("asset-deleted", {\n                  detail: event.detail,\n                  bubbles: true,\n                  composed: true,\n                }),\n              )}\n          ></bindhome-asset-delete-control>\n        </section>\n      </article>`;''',
+          )
+
+          additions = {
+              "en": {
+                  "panel_add_mode_label": "Add mode",
+                  "panel_add_single_mode": "One element",
+                  "panel_add_bulk_mode": "Several in a room",
+                  "panel_delete_title": "Delete element",
+                  "panel_delete_prepare_body": "Before deleting, BindHome will calculate the relations, bindings and representation that will be affected.",
+                  "panel_delete_prepare": "Review deletion",
+                  "panel_delete_loading": "Reviewing…",
+                  "panel_delete_impact": "This will remove {relations} relations, {bindings} bindings owned by this element and {dependent} bindings from other BindHome elements.",
+                  "panel_delete_hardware_safe": "Home Assistant devices and physical entities associated with this element will not be deleted.",
+                  "panel_delete_logical_warning": "The logical Home Assistant entity {entity_id} will also disappear. Dashboards, automations or scripts outside BindHome that reference it may need to be updated.",
+                  "panel_delete_deleting": "Deleting…",
+                  "panel_delete_confirm": "Delete permanently",
+                  "panel_delete_error": "The element could not be deleted. Nothing was partially removed."
+              },
+              "es": {
+                  "panel_add_mode_label": "Modo de alta",
+                  "panel_add_single_mode": "Un elemento",
+                  "panel_add_bulk_mode": "Varios en una habitación",
+                  "panel_delete_title": "Eliminar elemento",
+                  "panel_delete_prepare_body": "Antes de borrar, BindHome calculará las relaciones, vínculos y representación que se verán afectados.",
+                  "panel_delete_prepare": "Revisar eliminación",
+                  "panel_delete_loading": "Revisando…",
+                  "panel_delete_impact": "Se eliminarán {relations} relaciones, {bindings} vínculos propios y {dependent} vínculos de otros elementos de BindHome.",
+                  "panel_delete_hardware_safe": "Los dispositivos y entidades físicas de Home Assistant asociados a este elemento no se eliminarán.",
+                  "panel_delete_logical_warning": "También desaparecerá la entidad lógica de Home Assistant {entity_id}. Los paneles, automatizaciones o scripts externos a BindHome que la usen pueden necesitar ajustes.",
+                  "panel_delete_deleting": "Eliminando…",
+                  "panel_delete_confirm": "Eliminar definitivamente",
+                  "panel_delete_error": "No se pudo eliminar el elemento. No se eliminó nada parcialmente."
+              },
+          }
+          for language, values in additions.items():
+              path = Path(f"custom_components/bindhome/translations/{language}.json")
+              data = json.loads(path.read_text())
+              data["common"].update(values)
+              path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n")
+          PY
+      - name: Build and test frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          npm run build
+      - name: Remove temporary workflow and commit
+        run: |
+          rm .github/workflows/apply-human-ux.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "ux: integrate post-1.0 human workflow improvements"
+          git push origin HEAD:ux/post-1.0-human-workflows
