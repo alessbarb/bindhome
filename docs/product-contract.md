@@ -288,6 +288,12 @@ Replacing hardware should not require changing automations that target the stabl
 
 Renaming the currently bound registered Home Assistant entity also must not require changing the BindHome logical entity or Binding. Logical runtime consumers follow the stable Binding target to its current `entity_id`.
 
+A logical `light` owns its stable BindHome identity, name/location metadata and the fact that it is exposed as a Light. It does not invent hardware light features. When its resolved backing target is another Home Assistant `light`, BindHome mirrors the backing light's currently advertised color modes, brightness/color state and supported Light features such as transition/effect, and forwards supported `turn_on`/`turn_off` service parameters through Home Assistant. Rebinding recalculates those advertised capabilities without changing the logical entity identity.
+
+When the resolved target is not a Home Assistant `light`, the logical Representation exposes only safe ON/OFF semantics and delegates generic turn services to Home Assistant. BindHome does not maintain a parallel cross-domain compatibility catalogue or emulate brightness/color capabilities that the backing entity does not provide.
+
+Logical operations must fail visibly when the Binding cannot resolve to an available runtime target. An unresolved, stale, unavailable or unknown backing entity must not turn a requested operation into a silent successful no-op.
+
 Logical operations resolve the current Binding and delegate execution to Home Assistant services. Home Assistant remains responsible for actual platform and hardware behaviour.
 
 ## Compatibility contract
