@@ -113,7 +113,7 @@ def test_subscription_emits_one_revision_event_and_stores_cleanup() -> None:
 
 
 @pytest.mark.asyncio
-async def test_mutation_forwards_client_revision_and_returns_committed_revision() -> None:
+async def test_mutation_forwards_client_revision_and_returns_revision() -> None:
     manager = FakeManager()
     asset = Asset.create(name="Socket", asset_type="socket")
     manager.registry.get_asset.return_value = asset
