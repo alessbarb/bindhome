@@ -88,7 +88,7 @@ A Representation explicitly exposes an Asset back into Home Assistant as a stabl
 
 Capability and Representation are different concepts. Having `on_off` does not automatically create a Home Assistant Light.
 
-BindHome 1.0 supports zero or one Representation per Asset. The implemented logical platform is `light`, which requires the BindHome `on_off` Capability.
+The current BindHome 1.x contract supports zero or one Representation per Asset. The implemented logical platform is currently `light`, which requires the BindHome `on_off` Capability; supported Representation platforms may expand across 1.x releases without changing the stable Asset identity rules.
 
 Removing a Representation removes the logical entity while preserving the Asset. Re-adding the same Representation preserves the stable logical identity derived from the Asset.
 
@@ -279,11 +279,11 @@ A BindHome release declares a minimum supported Home Assistant version in `hacs.
 
 The minimum must be demonstrated by the complete compatibility suite, not inferred from development history.
 
-BindHome 1.0.0 supports Home Assistant `2026.8.0` and newer compatible releases. CI covers both the minimum supported release and the current stable release used for the release baseline.
+The BindHome 1.x compatibility baseline starts at Home Assistant `2026.8.0`. A later 1.x release may raise the declared minimum only through an explicit release metadata change backed by compatibility validation. CI covers both the declared minimum supported release and the current stable release used for the release baseline.
 
-## Explicit non-goals for 1.0
+## Explicit non-goals for 1.x
 
-BindHome 1.0 does not promise:
+BindHome 1.x does not promise:
 
 - automatic topology discovery;
 - automatic Representation creation from Capabilities;
