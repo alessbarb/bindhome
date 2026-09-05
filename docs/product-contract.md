@@ -101,6 +101,29 @@ The current BindHome 1.x contract supports zero or one Representation per Asset.
 
 Removing a Representation removes the logical entity while preserving the Asset. Re-adding the same Representation preserves the stable logical identity derived from the Asset.
 
+#### Logical entity metadata ownership
+
+A logical Representation spans two ownership domains: BindHome supplies the integration-owned defaults that describe the physical Asset, while Home Assistant retains the normal Entity Registry customization surface for the user.
+
+BindHome owns and reconciles:
+
+- the Representation's stable `unique_id` and platform identity;
+- Entity Registry `original_name`, derived from the current Asset name;
+- Entity Registry `area_id`, derived from the current Asset Area because BindHome's physical inventory is authoritative for the Asset's location;
+- runtime state, availability and integration-provided capabilities according to the Representation platform contract.
+
+Home Assistant user customization owns and BindHome must preserve:
+
+- the Entity Registry custom `name`;
+- the user-selected `entity_id`;
+- the custom icon;
+- aliases and labels;
+- user disabled/hidden choices and other user-owned Entity Registry settings that BindHome does not explicitly own.
+
+A Home Assistant custom name therefore remains in force even when the Asset is renamed; BindHome updates only `original_name`. A user-selected `entity_id` or icon also survives reconciliation and restart because stable Representation identity does not depend on either field.
+
+Area is intentionally different. The Asset's `area_id` is the physical location source of truth, so a direct Area reassignment of the logical entity in Home Assistant is not durable: the next BindHome reconciliation restores the Representation to the Asset Area. To move the logical Representation permanently, move the Asset in BindHome; that Area change propagates to the Representation without changing its identity.
+
 ## Normal user workflow
 
 The intended lifecycle is progressive:
@@ -177,6 +200,8 @@ Human editing may change:
 - supported human-editable metadata.
 
 It must preserve the Asset ID.
+
+If the Asset has a logical Representation, changing its name updates the Representation's integration-provided original name and changing its Area moves the Representation to that Area. Home Assistant custom entity name, `entity_id` and icon remain user-owned and are not reset by those Asset edits.
 
 A failed save keeps the draft available for correction. A successful write remains committed even if a subsequent refresh fails; the UI should report synchronization uncertainty rather than repeat the mutation.
 
@@ -296,7 +321,7 @@ Replacing hardware should not require changing automations that target the stabl
 
 Renaming the currently bound registered Home Assistant entity also must not require changing the BindHome logical entity or Binding. Logical runtime consumers follow the stable Binding target to its current `entity_id`.
 
-A logical `light` owns its stable BindHome identity, name/location metadata and the fact that it is exposed as a Light. It does not invent hardware light features. When its resolved backing target is another Home Assistant `light`, BindHome mirrors the backing light's currently advertised color modes, brightness/color state and supported Light features such as transition/effect, and forwards supported `turn_on`/`turn_off` service parameters through Home Assistant. Rebinding recalculates those advertised capabilities without changing the logical entity identity.
+A logical `light` owns its stable BindHome identity, integration-provided original name/location metadata and the fact that it is exposed as a Light, while preserving Home Assistant user overrides according to the metadata ownership contract above. It does not invent hardware light features. When its resolved backing target is another Home Assistant `light`, BindHome mirrors the backing light's currently advertised color modes, brightness/color state and supported Light features such as transition/effect, and forwards supported `turn_on`/`turn_off` service parameters through Home Assistant. Rebinding recalculates those advertised capabilities without changing the logical entity identity.
 
 When the resolved target is not a Home Assistant `light`, the logical Representation exposes only safe ON/OFF semantics and delegates generic turn services to Home Assistant. BindHome does not maintain a parallel cross-domain compatibility catalogue or emulate brightness/color capabilities that the backing entity does not provide.
 
