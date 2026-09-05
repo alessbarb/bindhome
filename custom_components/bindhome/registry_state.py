@@ -17,9 +17,7 @@ def _persisted_collection_names(registry: BindHomeRegistry) -> tuple[str, ...]:
     """
     names = sorted(set(registry.to_dict()) - _SCHEMA_KEYS)
     invalid = [
-        name
-        for name in names
-        if not isinstance(getattr(registry, name, None), dict)
+        name for name in names if not isinstance(getattr(registry, name, None), dict)
     ]
     if invalid:
         raise RegistryValidationError(
