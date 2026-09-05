@@ -1,6 +1,9 @@
 // Typed contracts live in types.d.ts; shell race behavior is covered by regression tests.
 import { LitElement, css, html } from "lit";
-import { createBindHomeApi } from "./api/bindhome-api.js";
+import {
+  createBindHomeApi,
+  subscribeBindHomeConflicts,
+} from "./api/bindhome-api.js";
 import { createHomeAssistantApi } from "./api/home-assistant-api.js";
 import { createLocalizer, loadPanelTranslations } from "./i18n/localize.js";
 import { NO_AREA, STALE_AREA } from "./state/home-selectors.js";
@@ -35,6 +38,7 @@ export class BindHomePanel extends LitElement {
     _addSessionId: { state: true },
     _advancedPinned: { state: true },
     _onboardingVisible: { state: true },
+    _registryConflict: { state: true },
   };
   constructor() {
     super();
@@ -69,6 +73,13 @@ export class BindHomePanel extends LitElement {
     this._onboardingVisible = false;
     this._onboardingDismissed = false;
     this._onboardingPreferenceIdentity = null;
+    this._registryConflict = false;
+    this._registryUnsubscribe = null;
+    this._registrySubscriptionConnection = null;
+    this._registrySubscriptionGeneration = 0;
+    this._registryRefreshPromise = null;
+    this._conflictUnsubscribe = null;
+    this._reloadAfterConflictHandler = () => this._reloadAfterConflict();
     this._hassByView = { home: null, add: null, advanced: null };
     this._refreshBindingDataHandler = () => this._refreshBindingData();
     this._refreshTopologyDataHandler = () => this._refreshTopologyData();
@@ -78,6 +89,97 @@ export class BindHomePanel extends LitElement {
       const asset = created ?? assets?.at(-1);
       if (asset) this._openAsset(asset.id);
     };
+  }
+  connectedCallback() {
+    super.connectedCallback();
+    if (this.hass && this._initialized) this._ensureRegistrySubscription();
+  }
+  disconnectedCallback() {
+    this._dropRegistrySubscription();
+    this._dropConflictSubscription();
+    super.disconnectedCallback();
+  }
+  _dropRegistrySubscription() {
+    this._registrySubscriptionGeneration += 1;
+    const unsubscribe = this._registryUnsubscribe;
+    this._registryUnsubscribe = null;
+    this._registrySubscriptionConnection = null;
+    if (typeof unsubscribe === "function") unsubscribe();
+  }
+  _dropConflictSubscription() {
+    const unsubscribe = this._conflictUnsubscribe;
+    this._conflictUnsubscribe = null;
+    if (typeof unsubscribe === "function") unsubscribe();
+  }
+  async _ensureRegistrySubscription() {
+    const connection = this.hass?.connection;
+    if (!connection || connection === this._registrySubscriptionConnection) return;
+
+    this._dropRegistrySubscription();
+    this._dropConflictSubscription();
+    const generation = ++this._registrySubscriptionGeneration;
+    this._registrySubscriptionConnection = connection;
+    this._conflictUnsubscribe = subscribeBindHomeConflicts(this.hass, () => {
+      this._registryConflict = true;
+    });
+
+    try {
+      const unsubscribe = await createBindHomeApi(
+        this.hass,
+      ).subscribeRegistryChanges((event) => this._registryChanged(event));
+      if (
+        generation !== this._registrySubscriptionGeneration ||
+        connection !== this._registrySubscriptionConnection
+      ) {
+        unsubscribe();
+        return;
+      }
+      this._registryUnsubscribe = unsubscribe;
+    } catch (error) {
+      if (
+        generation === this._registrySubscriptionGeneration &&
+        connection === this._registrySubscriptionConnection
+      ) {
+        this._registrySubscriptionConnection = null;
+        this._dropConflictSubscription();
+        this._refreshError = error?.message || this._t("shell.refresh_error");
+      }
+    }
+  }
+  _registryChanged(event) {
+    if (!Number.isInteger(event?.revision) || event.revision < 0) return;
+    const current = this._registry?.revision;
+    if (Number.isInteger(current) && event.revision <= current) return;
+    this._refreshRegistryFromEvent();
+  }
+  async _refreshRegistryFromEvent() {
+    if (!this.hass) return;
+    if (this._registryRefreshPromise) return this._registryRefreshPromise;
+
+    const generation = ++this._dataGeneration;
+    const api = createBindHomeApi(this.hass);
+    this._registryRefreshPromise = Promise.all([
+      api.getRegistry(),
+      api.listBindingStatuses(),
+    ]);
+    try {
+      const [registry, bindingStatuses] = await this._registryRefreshPromise;
+      if (generation !== this._dataGeneration) return;
+      this._registry = registry;
+      this._assets = registry.assets ?? this._assets;
+      this._bindingStatuses = bindingStatuses;
+      this._refreshError = null;
+      this._syncOnboardingVisibility();
+    } catch (error) {
+      if (generation === this._dataGeneration) {
+        this._refreshError = error?.message || this._t("shell.refresh_error");
+      }
+    } finally {
+      this._registryRefreshPromise = null;
+    }
+  }
+  async _reloadAfterConflict() {
+    await this._load(false);
   }
   static styles = css`
     :host {
@@ -231,6 +333,9 @@ export class BindHomePanel extends LitElement {
       (this.hass.language || "en") !== this._translationLanguage
     )
       this._loadTranslations(this.hass.language || "en");
+    if (changed.has("hass") && this.hass && this._initialized) {
+      this._ensureRegistrySubscription();
+    }
   }
   async _loadTranslations(language = this.hass?.language || "en") {
     const requestedLanguage = language || "en",
@@ -284,6 +389,8 @@ export class BindHomePanel extends LitElement {
       this._deviceRegistry = deviceRegistry;
       this._t = translator;
       this._translationLanguage = language;
+      this._registryConflict = false;
+      this._ensureRegistrySubscription();
     } catch (error) {
       const message = error?.message || this._t("shell.load_error_detail");
       if (initial || !this._initialized) this._error = message;
@@ -556,6 +663,14 @@ export class BindHomePanel extends LitElement {
           ?disabled=${this._loading || Boolean(this._loadPromise)}
         ><ha-icon icon="mdi:refresh"></ha-icon></button>
       </header>
+      ${this._registryConflict
+        ? html`<div class="refresh-error registry-conflict" role="alert">
+            <span>${this._t("shell.registry_conflict")}</span>
+            <button class="retry" @click=${this._reloadAfterConflictHandler}>
+              ${this._t("shell.registry_conflict_reload")}
+            </button>
+          </div>`
+        : null}
       ${this._refreshError
         ? html`<div class="refresh-error" role="alert">${this._t("shell.refresh_error")} ${this._refreshError}</div>`
         : null}

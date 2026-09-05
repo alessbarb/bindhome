@@ -140,7 +140,11 @@ async def ws_backup_restore(
             registry = await async_restore_registry_backup(
                 manager,
                 msg["backup"],
-                expected_revision=msg.get("based_on_revision"),
+                **(
+                    {"expected_revision": msg["based_on_revision"]}
+                    if "based_on_revision" in msg
+                    else {}
+                ),
             )
         else:
             registry, recovery_reload = await _async_restore_recovery_registry(
@@ -164,7 +168,7 @@ async def ws_backup_restore(
         "restored": True,
         "registry": registry.to_dict(),
     }
-    if manager is not None:
+    if manager is not None and "based_on_revision" in msg:
         result["revision"] = manager.revision
     if recovery_reload is not None:
         result["reloaded"] = recovery_reload

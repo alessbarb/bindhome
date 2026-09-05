@@ -167,6 +167,8 @@
     "panel_shell_refresh_label": "Refresh BindHome data",
     "panel_shell_sections_label": "BindHome sections",
     "panel_shell_refresh_error": "Refresh failed. Your current work was preserved.",
+    "panel_shell_registry_conflict": "BindHome changed in another session. Reload the latest data before trying again.",
+    "panel_shell_registry_conflict_reload": "Reload latest",
     "panel_groups_electrical": "Electrical",
     "panel_groups_network": "Network / communications",
     "panel_groups_climate": "Climate",

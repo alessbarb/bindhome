@@ -167,6 +167,8 @@
     "panel_shell_refresh_label": "Actualizar datos de BindHome",
     "panel_shell_sections_label": "Secciones de BindHome",
     "panel_shell_refresh_error": "Falló la actualización. Tu trabajo actual se ha conservado.",
+    "panel_shell_registry_conflict": "BindHome ha cambiado en otra sesión. Recarga los datos más recientes antes de volver a intentarlo.",
+    "panel_shell_registry_conflict_reload": "Recargar datos",
     "panel_groups_electrical": "Electricidad",
     "panel_groups_network": "Red y comunicaciones",
     "panel_groups_climate": "Climatización",

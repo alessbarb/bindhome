@@ -56,14 +56,20 @@ def hass_for(manager: FakeManager) -> SimpleNamespace:
     )
 
 
+def _unwrap(handler):
+    while hasattr(handler, "__wrapped__"):
+        handler = handler.__wrapped__
+    return handler
+
+
 def call_async(handler, hass, connection, msg):
-    """Call through async response and admin/command wrappers."""
-    return handler.__wrapped__.__wrapped__(hass, connection, msg)
+    """Call the raw async WebSocket implementation."""
+    return _unwrap(handler)(hass, connection, msg)
 
 
 def call_sync(handler, hass, connection, msg):
-    """Call through admin/command wrappers."""
-    return handler.__wrapped__.__wrapped__(hass, connection, msg)
+    """Call the raw synchronous WebSocket implementation."""
+    return _unwrap(handler)(hass, connection, msg)
 
 
 @pytest.mark.asyncio

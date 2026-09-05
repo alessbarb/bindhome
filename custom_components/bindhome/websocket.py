@@ -67,6 +67,21 @@ _REVISION_FIELD = {
     vol.Optional("based_on_revision"): vol.All(int, vol.Range(min=0)),
 }
 
+
+def _revision_kwargs(msg: dict[str, Any]) -> dict[str, int]:
+    """Return manager kwargs only for revision-aware clients."""
+    if "based_on_revision" not in msg:
+        return {}
+    return {"expected_revision": msg["based_on_revision"]}
+
+
+def _revision_result(msg: dict[str, Any], manager: BindHomeManager) -> dict[str, int]:
+    """Extend mutation results only for revision-aware clients."""
+    if "based_on_revision" not in msg:
+        return {}
+    return {"revision": manager.revision}
+
+
 _ASSET_CREATE_ITEM_SCHEMA = vol.Schema(
     {
         vol.Required("name"): cv.string,
@@ -138,8 +153,7 @@ async def ws_registry_get(
     """Return the complete serialized Registry with its current runtime revision."""
     try:
         manager = _get_manager(hass)
-        result = manager.registry.to_dict()
-        result["revision"] = manager.revision
+        result = {**manager.registry.to_dict(), "revision": manager.revision}
     except RegistryError as err:
         _send_error(connection, msg, err)
         return
@@ -194,14 +208,14 @@ async def ws_asset_create(
             code=msg.get("code"),
             area_id=msg.get("area_id"),
             capabilities=list(msg.get("capabilities", [])),
-            expected_revision=msg.get("based_on_revision"),
+            **_revision_kwargs(msg),
         )
     except (ModelValidationError, RegistryError, ServiceValidationError) as err:
         _send_error(connection, msg, err)
         return
     connection.send_result(
         msg["id"],
-        {"asset": asset.to_dict(), "revision": manager.revision},
+        {"asset": asset.to_dict(), **_revision_result(msg, manager)},
     )
 
 
@@ -250,7 +264,7 @@ async def ws_asset_create_bulk(
     try:
         assets = await manager.async_create_assets(
             specs,
-            expected_revision=msg.get("based_on_revision"),
+            **_revision_kwargs(msg),
         )
     except BulkAssetCreateError as err:
         _send_bulk_asset_error(connection, msg, err)
@@ -263,7 +277,7 @@ async def ws_asset_create_bulk(
         msg["id"],
         {
             "assets": [asset.to_dict() for asset in assets],
-            "revision": manager.revision,
+            **_revision_result(msg, manager),
         },
     )
 
@@ -302,7 +316,7 @@ async def ws_asset_update(
             code=msg.get("code", existing.code),
             area_id=area_id,
             capabilities=list(msg.get("capabilities", existing.capabilities)),
-            expected_revision=msg.get("based_on_revision"),
+            **_revision_kwargs(msg),
         )
     except (
         ModelValidationError,
@@ -314,7 +328,7 @@ async def ws_asset_update(
 
     connection.send_result(
         msg["id"],
-        {"asset": asset.to_dict(), "revision": manager.revision},
+        {"asset": asset.to_dict(), **_revision_result(msg, manager)},
     )
 
 
@@ -335,14 +349,14 @@ async def ws_asset_delete(
     try:
         await manager.async_delete_asset(
             msg["asset_id"],
-            expected_revision=msg.get("based_on_revision"),
+            **_revision_kwargs(msg),
         )
     except RegistryError as err:
         _send_error(connection, msg, err)
         return
     connection.send_result(
         msg["id"],
-        {"deleted": True, "revision": manager.revision},
+        {"deleted": True, **_revision_result(msg, manager)},
     )
 
 
@@ -367,14 +381,14 @@ async def ws_relation_create(
             source_asset_id=msg["source_asset_id"],
             relation_type=msg["relation_type"],
             target_asset_id=msg["target_asset_id"],
-            expected_revision=msg.get("based_on_revision"),
+            **_revision_kwargs(msg),
         )
     except (ModelValidationError, RegistryError) as err:
         _send_error(connection, msg, err)
         return
     connection.send_result(
         msg["id"],
-        {"relation": relation.to_dict(), "revision": manager.revision},
+        {"relation": relation.to_dict(), **_revision_result(msg, manager)},
     )
 
 
@@ -395,14 +409,14 @@ async def ws_relation_delete(
     try:
         await manager.async_remove_relation(
             msg["relation_id"],
-            expected_revision=msg.get("based_on_revision"),
+            **_revision_kwargs(msg),
         )
     except RegistryError as err:
         _send_error(connection, msg, err)
         return
     connection.send_result(
         msg["id"],
-        {"deleted": True, "revision": manager.revision},
+        {"deleted": True, **_revision_result(msg, manager)},
     )
 
 
@@ -429,14 +443,14 @@ async def ws_binding_set(
             capability=msg["capability"],
             entity_id=msg["entity_id"],
             role=msg.get("role", "primary"),
-            expected_revision=msg.get("based_on_revision"),
+            **_revision_kwargs(msg),
         )
     except (ModelValidationError, RegistryError, ServiceValidationError) as err:
         _send_error(connection, msg, err)
         return
     connection.send_result(
         msg["id"],
-        {"binding": binding.to_dict(), "revision": manager.revision},
+        {"binding": binding.to_dict(), **_revision_result(msg, manager)},
     )
 
 
@@ -457,14 +471,14 @@ async def ws_binding_delete(
     try:
         await manager.async_remove_binding(
             msg["binding_id"],
-            expected_revision=msg.get("based_on_revision"),
+            **_revision_kwargs(msg),
         )
     except RegistryError as err:
         _send_error(connection, msg, err)
         return
     connection.send_result(
         msg["id"],
-        {"deleted": True, "revision": manager.revision},
+        {"deleted": True, **_revision_result(msg, manager)},
     )
 
 
@@ -489,7 +503,7 @@ async def ws_representation_set(
         representation = await manager.async_set_representation(
             asset_id=msg["asset_id"],
             platform=msg["platform"],
-            expected_revision=msg.get("based_on_revision"),
+            **_revision_kwargs(msg),
         )
     except (ModelValidationError, RegistryError) as err:
         _send_error(connection, msg, err)
@@ -499,7 +513,7 @@ async def ws_representation_set(
         msg["id"],
         {
             "representation": representation.to_dict(),
-            "revision": manager.revision,
+            **_revision_result(msg, manager),
         },
     )
 
@@ -523,7 +537,7 @@ async def ws_representation_delete(
     try:
         await manager.async_remove_representation(
             msg["asset_id"],
-            expected_revision=msg.get("based_on_revision"),
+            **_revision_kwargs(msg),
         )
     except RegistryError as err:
         _send_error(connection, msg, err)
@@ -531,7 +545,7 @@ async def ws_representation_delete(
 
     connection.send_result(
         msg["id"],
-        {"deleted": True, "revision": manager.revision},
+        {"deleted": True, **_revision_result(msg, manager)},
     )
 
 

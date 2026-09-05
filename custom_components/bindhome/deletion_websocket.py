@@ -56,9 +56,7 @@ def ws_asset_delete_impact(
     except RegistryNotFoundError as err:
         connection.send_error(msg["id"], ERR_NOT_FOUND, str(err))
         return
-    result = impact.to_dict()
-    result["revision"] = manager.revision
-    connection.send_result(msg["id"], result)
+    connection.send_result(msg["id"], impact.to_dict())
 
 
 @require_admin
@@ -81,7 +79,11 @@ async def ws_asset_delete_with_dependencies(
         impact = await async_delete_asset_with_dependencies(
             manager,
             msg["asset_id"],
-            expected_revision=msg.get("based_on_revision"),
+            **(
+                {"expected_revision": msg["based_on_revision"]}
+                if "based_on_revision" in msg
+                else {}
+            ),
         )
     except RegistryNotFoundError as err:
         connection.send_error(msg["id"], ERR_NOT_FOUND, str(err))
@@ -95,7 +97,7 @@ async def ws_asset_delete_with_dependencies(
         {
             "deleted": True,
             "impact": impact.to_dict(),
-            "revision": manager.revision,
+            **({"revision": manager.revision} if "based_on_revision" in msg else {}),
         },
     )
 
