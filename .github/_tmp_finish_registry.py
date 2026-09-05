@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 
 def replace_once(text: str, old: str, new: str, label: str) -> str:
@@ -6,6 +7,155 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
         raise SystemExit(f"missing marker: {label}")
     return text.replace(old, new, 1)
 
+
+# Keep the revision-aware WebSocket contract additive for existing clients.
+ws_path = Path("custom_components/bindhome/websocket.py")
+ws = ws_path.read_text()
+ws = replace_once(
+    ws,
+    '''_REVISION_FIELD = {
+    vol.Optional("based_on_revision"): vol.All(int, vol.Range(min=0)),
+}
+''',
+    '''_REVISION_FIELD = {
+    vol.Optional("based_on_revision"): vol.All(int, vol.Range(min=0)),
+}
+
+
+def _revision_kwargs(msg: dict[str, Any]) -> dict[str, int]:
+    """Return manager kwargs only for revision-aware clients."""
+    if "based_on_revision" not in msg:
+        return {}
+    return {"expected_revision": msg["based_on_revision"]}
+
+
+def _revision_result(
+    msg: dict[str, Any], manager: BindHomeManager
+) -> dict[str, int]:
+    """Extend mutation results only for revision-aware clients."""
+    if "based_on_revision" not in msg:
+        return {}
+    return {"revision": manager.revision}
+''',
+    "websocket revision helpers",
+)
+ws = replace_once(
+    ws,
+    '''        result = manager.registry.to_dict()
+        result["revision"] = manager.revision''',
+    '''        result = {**manager.registry.to_dict(), "revision": manager.revision}''',
+    "registry get copy",
+)
+expected_line = '            expected_revision=msg.get("based_on_revision"),\n'
+count = ws.count(expected_line)
+if count == 0:
+    raise SystemExit("no websocket mutation revision kwargs found")
+ws = ws.replace(expected_line, '            **_revision_kwargs(msg),\n')
+ws = re.sub(
+    r'\{("(?:asset|relation|binding)": [^\n{}]+), "revision": manager\.revision\}',
+    r'{\1, **_revision_result(msg, manager)}',
+    ws,
+)
+ws = ws.replace(
+    '{"deleted": True, "revision": manager.revision}',
+    '{"deleted": True, **_revision_result(msg, manager)}',
+)
+ws = ws.replace(
+    '            "revision": manager.revision,\n',
+    '            **_revision_result(msg, manager),\n',
+)
+if 'expected_revision=msg.get("based_on_revision")' in ws:
+    raise SystemExit("unconditional expected_revision remains in websocket.py")
+ws_path.write_text(ws)
+
+# Safe dependency deletion follows the same additive contract.
+delete_ws_path = Path("custom_components/bindhome/deletion_websocket.py")
+delete_ws = delete_ws_path.read_text()
+delete_ws = replace_once(
+    delete_ws,
+    '''    result = impact.to_dict()
+    result["revision"] = manager.revision
+    connection.send_result(msg["id"], result)''',
+    '''    connection.send_result(msg["id"], impact.to_dict())''',
+    "delete impact legacy response",
+)
+delete_ws = replace_once(
+    delete_ws,
+    '''            expected_revision=msg.get("based_on_revision"),''',
+    '''            **(
+                {"expected_revision": msg["based_on_revision"]}
+                if "based_on_revision" in msg
+                else {}
+            ),''',
+    "safe delete revision kwargs",
+)
+delete_ws = replace_once(
+    delete_ws,
+    '''            "revision": manager.revision,
+''',
+    '''            **(
+                {"revision": manager.revision}
+                if "based_on_revision" in msg
+                else {}
+            ),
+''',
+    "safe delete revision result",
+)
+delete_ws_path.write_text(delete_ws)
+
+# Live backup restore also remains byte-for-byte compatible for old callers.
+backup_ws_path = Path("custom_components/bindhome/backup_websocket.py")
+backup_ws = backup_ws_path.read_text()
+backup_ws = replace_once(
+    backup_ws,
+    '''                expected_revision=msg.get("based_on_revision"),''',
+    '''                **(
+                    {"expected_revision": msg["based_on_revision"]}
+                    if "based_on_revision" in msg
+                    else {}
+                ),''',
+    "backup restore revision kwargs",
+)
+backup_ws = replace_once(
+    backup_ws,
+    '''    if manager is not None:
+        result["revision"] = manager.revision''',
+    '''    if manager is not None and "based_on_revision" in msg:
+        result["revision"] = manager.revision''',
+    "backup restore revision response",
+)
+backup_ws_path.write_text(backup_ws)
+
+# Exercise the raw functions regardless of decorator depth.
+live_test_path = Path("tests/test_registry_live_websocket.py")
+live_test = live_test_path.read_text()
+live_test = replace_once(
+    live_test,
+    '''def call_async(handler, hass, connection, msg):
+    """Call through async response and admin/command wrappers."""
+    return handler.__wrapped__.__wrapped__(hass, connection, msg)
+
+
+def call_sync(handler, hass, connection, msg):
+    """Call through admin/command wrappers."""
+    return handler.__wrapped__.__wrapped__(hass, connection, msg)''',
+    '''def _unwrap(handler):
+    while hasattr(handler, "__wrapped__"):
+        handler = handler.__wrapped__
+    return handler
+
+
+def call_async(handler, hass, connection, msg):
+    """Call the raw async WebSocket implementation."""
+    return _unwrap(handler)(hass, connection, msg)
+
+
+def call_sync(handler, hass, connection, msg):
+    """Call the raw synchronous WebSocket implementation."""
+    return _unwrap(handler)(hass, connection, msg)''',
+    "websocket test decorator unwrapping",
+)
+live_test_path.write_text(live_test)
 
 panel_path = Path("frontend/src/bindhome-panel.js")
 text = panel_path.read_text()
@@ -229,6 +379,15 @@ source = replace_once(
         ("1", {**manager.registry.to_dict.return_value, "revision": 0})
     ]''',
     "registry get assertion",
+)
+source = replace_once(
+    source,
+    '''        websocket.WS_REGISTRY_GET,
+        websocket.WS_ASSET_CREATE,''',
+    '''        websocket.WS_REGISTRY_GET,
+        websocket.WS_REGISTRY_SUBSCRIBE,
+        websocket.WS_ASSET_CREATE,''',
+    "registered websocket command set",
 )
 ws_test.write_text(source)
 
