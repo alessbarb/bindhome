@@ -25,6 +25,7 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ### Reliability
 
+- The BindHome panel now keeps Home Assistant's high-frequency `hass` updates local to the active top-level view. Inactive Home, Add and Advanced views retain their mounted UI state without receiving routine state-machine churn, reducing unnecessary frontend work while preserving drafts and navigation state.
 - Bound Entity Registry targets now follow Home Assistant entity renames and removals at runtime without rewriting BindHome storage. Renames move logical Representation subscriptions to the current `entity_id`, removals become stale immediately, unrelated Registry events are ignored, and config-entry unload removes every listener cleanly. ([#52](https://github.com/alessbarb/bindhome/issues/52))
 - Binding resolution now treats persisted Home Assistant Entity Registry entry identity as authoritative, resolving the current `entity_id` at read time so normal HA renames stay transparent. Removed Registry entries fail stale without falling back to a potentially reused entity name; state-machine-only targets retain the explicit `entity_id` fallback. ([#51](https://github.com/alessbarb/bindhome/issues/51))
 - Logical `light` Representations now follow backing-entity state changes through Home Assistant events instead of periodic polling. Rebinding moves the listener to the new target, unavailable/removed states update promptly, and entity removal cleans listeners without duplication. ([#29](https://github.com/alessbarb/bindhome/issues/29))
