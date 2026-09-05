@@ -74,7 +74,7 @@ class BindHomeStore:
             ) from err
         except NotImplementedError as err:
             raise BindHomeStoreVersionError(
-                "BindHome storage envelope uses an unsupported older version"
+                "BindHome storage envelope uses an unsupported older storage version"
             ) from err
         except (HomeAssistantError, KeyError, TypeError) as err:
             raise BindHomeStoreLoadError(
