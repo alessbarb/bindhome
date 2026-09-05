@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from typing import Any
 
 from homeassistant.components.light import ColorMode, LightEntity
-from homeassistant.core import HomeAssistant
+from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.event import async_track_state_change_event
 
 from .const import DOMAIN, SIGNAL_REGISTRY_CHANGED
 from .manager import BindHomeManager
@@ -67,17 +69,7 @@ async def async_setup_entry(
                 entity = entities.pop(asset_id)
 
                 if entity.hass is not None:
-                    platform = entity.platform
                     await entity.async_remove(force_remove=True)
-
-                    # Direct force-removal bypasses
-                    # EntityPlatform.async_remove_entity(), so mirror its polling
-                    # cleanup when no polling entities remain.
-                    if not any(
-                        candidate.should_poll
-                        for candidate in platform.entities.values()
-                    ):
-                        platform.async_unsub_polling()
 
                 entity_id = entity_registry.async_get_entity_id(
                     *_entity_registry_id(asset_id)
@@ -85,12 +77,13 @@ async def async_setup_entry(
                 if entity_id is not None:
                     entity_registry.async_remove(entity_id)
 
-            # Refresh metadata for entities which continue to exist.
+            # Refresh metadata and Binding subscriptions for surviving entities.
             for asset_id in sorted(current_ids & eligible_ids):
                 asset = eligible_assets[asset_id]
                 entity = entities[asset_id]
 
                 entity.update_asset(asset)
+                entity.refresh_binding_subscription()
 
                 entity_id = entity_registry.async_get_entity_id(
                     *_entity_registry_id(asset_id)
@@ -132,7 +125,7 @@ async def async_setup_entry(
 class BindHomeLight(LightEntity):
     """A stable logical light backed by the asset's current binding."""
 
-    _attr_should_poll = True
+    _attr_should_poll = False
     _attr_color_mode = ColorMode.ONOFF
     _attr_supported_color_modes = {ColorMode.ONOFF}
 
@@ -143,6 +136,8 @@ class BindHomeLight(LightEntity):
         self._asset = asset
         self._resolver = resolver
         self._resolution: Resolution | None = None
+        self._subscribed_entity_id: str | None = None
+        self._unsub_backing_state: Callable[[], None] | None = None
         self._attr_name = asset.name
         self._attr_unique_id = _entity_registry_id(asset.id)[2]
         self._attr_available = False
@@ -153,6 +148,16 @@ class BindHomeLight(LightEntity):
         """Return the stable BindHome asset identity."""
         return self._asset.id
 
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to the currently resolved backing entity."""
+        await super().async_added_to_hass()
+        self.refresh_binding_subscription()
+
+    async def async_will_remove_from_hass(self) -> None:
+        """Release the backing-entity listener before removal."""
+        self._unsubscribe_backing_state()
+        await super().async_will_remove_from_hass()
+
     def update_asset(self, asset: Asset) -> None:
         """Refresh mutable asset metadata while preserving entity identity."""
         if asset.id != self._asset.id:
@@ -161,7 +166,7 @@ class BindHomeLight(LightEntity):
         self._asset = asset
         self._attr_name = asset.name
 
-        if self.hass is not None:
+        if self.hass is not None and self.entity_id is not None:
             self.async_write_ha_state()
 
     @staticmethod
@@ -177,16 +182,56 @@ class BindHomeLight(LightEntity):
             and contract.required_capabilities <= set(asset.capabilities)
         )
 
-    async def async_update(self) -> None:
-        """Refresh state from the binding resolved at operation time."""
-        self._resolution = self._resolver.resolve(self._asset.id, _CAPABILITY)
-        self._attr_available = self._resolution.runtime_available
-        state = self._resolution.state
+    def refresh_binding_subscription(self) -> None:
+        """Re-resolve the Binding and follow its backing entity without polling."""
+        resolution = self._resolver.resolve(self._asset.id, _CAPABILITY)
+        self._apply_resolution(resolution)
+        entity_id = resolution.entity_id
+
+        if entity_id != self._subscribed_entity_id:
+            self._unsubscribe_backing_state()
+            if entity_id is not None:
+                self._unsub_backing_state = async_track_state_change_event(
+                    self.hass,
+                    [entity_id],
+                    self._handle_backing_state_change,
+                )
+                self._subscribed_entity_id = entity_id
+
+        if self.entity_id is not None:
+            self.async_write_ha_state()
+
+    @callback
+    def _handle_backing_state_change(self, event: Event) -> None:
+        """Refresh logical state immediately after a backing entity state event."""
+        if event.data.get("entity_id") != self._subscribed_entity_id:
+            return
+
+        self._apply_resolution(self._resolver.resolve(self._asset.id, _CAPABILITY))
+        if self.entity_id is not None:
+            self.async_write_ha_state()
+
+    def _apply_resolution(self, resolution: Resolution) -> None:
+        """Project one resolver result onto Home Assistant light attributes."""
+        self._resolution = resolution
+        self._attr_available = resolution.runtime_available
+        state = resolution.state
         self._attr_is_on = (
             state == "on"
-            if self._resolution.runtime_available and state in {"on", "off"}
+            if resolution.runtime_available and state in {"on", "off"}
             else None
         )
+
+    def _unsubscribe_backing_state(self) -> None:
+        """Remove the current backing state listener exactly once."""
+        if self._unsub_backing_state is not None:
+            self._unsub_backing_state()
+            self._unsub_backing_state = None
+        self._subscribed_entity_id = None
+
+    async def async_update(self) -> None:
+        """Support an explicit refresh without enabling periodic polling."""
+        self._apply_resolution(self._resolver.resolve(self._asset.id, _CAPABILITY))
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Forward turn-on to the currently bound switch or light."""
