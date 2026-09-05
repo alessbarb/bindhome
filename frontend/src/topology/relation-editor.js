@@ -1,3 +1,4 @@
+import { defineBindHomeElement } from "../custom-elements.js";
 import { LitElement, css, html, nothing } from "lit";
 import { createBindHomeApi } from "../api/bindhome-api.js";
 import { normalizeWsError } from "../api/normalize-ws-error.js";
@@ -431,7 +432,7 @@ export class BindHomeRelationEditor extends LitElement {
   `;
 }
 
-customElements.define(
+defineBindHomeElement(
   "bindhome-relation-editor",
   BindHomeRelationEditor,
 );

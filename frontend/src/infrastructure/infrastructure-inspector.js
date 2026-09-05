@@ -1,3 +1,4 @@
+import { defineBindHomeElement } from "../custom-elements.js";
 import { LitElement, css, html } from "lit";
 
 export class BindHomeInfrastructureInspector extends LitElement {
@@ -21,4 +22,4 @@ export class BindHomeInfrastructureInspector extends LitElement {
   _renderBindings() { const bindings = this.registry.bindings ?? []; return bindings.length ? html`<div class="table-wrap"><table><thead><tr><th>${this.t("fields.asset")}</th><th>${this.t("fields.capability")}</th><th>${this.t("fields.role")}</th><th>${this.t("fields.ha_entity")}</th><th>Entity Registry ID</th></tr></thead><tbody>${bindings.map((binding) => html`<tr><td>${this._assetName(binding.asset_id)}</td><td>${binding.capability}</td><td>${binding.role}</td><td class="technical">${binding.entity_id}</td><td class="technical">${binding.entity_registry_id || "—"}</td></tr>`)}</tbody></table></div>` : html`<div class="empty">${this.t("infrastructure.no_bindings")}</div>`; }
   render() { return html`<div class="content"><h1>${this.t("nav.infrastructure")}</h1><p class="muted">${this.t("infrastructure.intro")}</p><nav class="tabs" aria-label=${this.t("infrastructure.views_label")}>${["assets", "relations", "bindings"].map((tab) => html`<button class=${this._tab === tab ? "active" : ""} @click=${() => { this._tab = tab; this._selectedAssetId = null; }}>${this.t(`infrastructure.tabs.${tab}`)}</button>`)}</nav>${this._tab === "assets" ? this._renderAssets() : this._tab === "relations" ? this._renderRelations() : this._renderBindings()}</div>`; }
 }
-customElements.define("bindhome-infrastructure-inspector", BindHomeInfrastructureInspector);
+defineBindHomeElement("bindhome-infrastructure-inspector", BindHomeInfrastructureInspector);

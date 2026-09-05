@@ -1,3 +1,4 @@
+import { defineBindHomeElement } from "../custom-elements.js";
 // @ts-check
 import { LitElement, css, html, nothing } from "lit";
 import { createBindHomeApi } from "../api/bindhome-api.js";
@@ -113,4 +114,4 @@ export class BindHomeHumanAssetEditor extends LitElement {
     </form>`;
   }
 }
-customElements.define("bindhome-human-asset-editor", BindHomeHumanAssetEditor);
+defineBindHomeElement("bindhome-human-asset-editor", BindHomeHumanAssetEditor);

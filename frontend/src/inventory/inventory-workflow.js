@@ -1,3 +1,4 @@
+import { defineBindHomeElement } from "../custom-elements.js";
 import { LitElement, css, html, nothing } from "lit";
 import { createBindHomeApi } from "../api/bindhome-api.js";
 import { NO_FLOOR_ID, areasForFloor } from "../api/home-assistant-api.js";
@@ -360,4 +361,4 @@ export class BindHomeInventoryWorkflow extends LitElement {
   }
 }
 
-customElements.define("bindhome-inventory-workflow", BindHomeInventoryWorkflow);
+defineBindHomeElement("bindhome-inventory-workflow", BindHomeInventoryWorkflow);

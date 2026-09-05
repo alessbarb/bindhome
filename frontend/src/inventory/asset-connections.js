@@ -1,3 +1,4 @@
+import { defineBindHomeElement } from "../custom-elements.js";
 import { LitElement, css, html, nothing } from "lit";
 
 import { indexBindingStatuses } from "../bindings/binding-state.js";
@@ -186,4 +187,4 @@ export class BindHomeAssetConnections extends LitElement {
   }
 }
 
-customElements.define("bindhome-asset-connections", BindHomeAssetConnections);
+defineBindHomeElement("bindhome-asset-connections", BindHomeAssetConnections);

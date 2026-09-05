@@ -1,3 +1,4 @@
+import { defineBindHomeElement } from "../custom-elements.js";
 // @ts-check
 import { LitElement, css, html } from "lit";
 import { tokens } from "../styles/shared-styles.js";
@@ -207,7 +208,7 @@ export class BindHomeContextualRelationEditor extends LitElement {
       </div>`;
   }
 }
-customElements.define(
+defineBindHomeElement(
   "bindhome-contextual-relation-editor",
   BindHomeContextualRelationEditor,
 );

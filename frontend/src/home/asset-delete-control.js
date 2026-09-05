@@ -1,3 +1,4 @@
+import { defineBindHomeElement } from "../custom-elements.js";
 // @ts-check
 import { LitElement, css, html, nothing } from "lit";
 import { createBindHomeApi } from "../api/bindhome-api.js";
@@ -135,4 +136,4 @@ export class BindHomeAssetDeleteControl extends LitElement {
   }
 }
 
-customElements.define("bindhome-asset-delete-control", BindHomeAssetDeleteControl);
+defineBindHomeElement("bindhome-asset-delete-control", BindHomeAssetDeleteControl);

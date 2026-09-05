@@ -1,3 +1,4 @@
+import { defineBindHomeElement } from "../custom-elements.js";
 import { LitElement, css, html } from "lit";
 
 import "./inventory-browser.js";
@@ -243,7 +244,7 @@ export class BindHomeInventorySection extends LitElement {
   }
 }
 
-customElements.define(
+defineBindHomeElement(
   "bindhome-inventory-section",
   BindHomeInventorySection,
 );

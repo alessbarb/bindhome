@@ -1,3 +1,4 @@
+import { defineBindHomeElement } from "../custom-elements.js";
 import { LitElement, css, html, nothing } from "lit";
 
 import { pluralKey, presetDisplayName } from "../i18n/localize.js";
@@ -873,7 +874,7 @@ export class BindHomeInventoryBrowser extends LitElement {
   }
 }
 
-customElements.define(
+defineBindHomeElement(
   "bindhome-inventory-browser",
   BindHomeInventoryBrowser,
 );

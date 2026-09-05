@@ -1,3 +1,4 @@
+import { defineBindHomeElement } from "../custom-elements.js";
 import { LitElement, css, html, nothing } from "lit";
 
 import { createBindHomeApi } from "../api/bindhome-api.js";
@@ -283,4 +284,4 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
   }
 }
 
-customElements.define("bindhome-primary-connection-editor", BindHomePrimaryConnectionEditor);
+defineBindHomeElement("bindhome-primary-connection-editor", BindHomePrimaryConnectionEditor);
