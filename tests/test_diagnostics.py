@@ -10,6 +10,7 @@ import pytest
 from homeassistant.config_entries import ConfigEntryState
 
 from custom_components.bindhome import diagnostics
+from custom_components.bindhome.const import REGISTRY_SCHEMA_VERSION
 from custom_components.bindhome.models import Asset, Binding
 from custom_components.bindhome.registry import BindHomeRegistry
 from custom_components.bindhome.resolver import StaticEntityProbe
@@ -122,7 +123,7 @@ async def test_loaded_config_entry_diagnostics_snapshot(monkeypatch) -> None:
         "integration": {
             "version": "1.1.1",
             "storage_version": 1,
-            "registry_schema_version": 1,
+            "registry_schema_version": REGISTRY_SCHEMA_VERSION,
         },
         "config_entry": {
             "state": ConfigEntryState.LOADED.value,

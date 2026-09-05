@@ -1,0 +1,21 @@
+{
+  "schema_version": 2,
+  "assets": [
+    {
+      "id": "canonical-light",
+      "name": "Canonical light",
+      "asset_type": "light_point",
+      "code": "LGT-01",
+      "area_id": "living_room",
+      "capabilities": ["on_off"]
+    }
+  ],
+  "relations": [],
+  "bindings": [],
+  "representations": [
+    {
+      "asset_id": "canonical-light",
+      "platform": "light"
+    }
+  ]
+}

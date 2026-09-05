@@ -306,12 +306,18 @@ class Relation:
 
 @dataclass(frozen=True, slots=True)
 class Binding:
-    """Map an asset capability to the current Home Assistant entity."""
+    """Map an Asset capability to a Home Assistant entity target.
+
+    ``entity_registry_id`` is the stable Home Assistant Entity Registry entry
+    identity when the target is registered. ``entity_id`` remains the last-known
+    entity id and the compatibility fallback for state-machine-only entities.
+    """
 
     id: str
     asset_id: str
     capability: str
     entity_id: str
+    entity_registry_id: str | None = None
     role: str = "primary"
 
     @classmethod
@@ -321,6 +327,7 @@ class Binding:
         asset_id: str,
         capability: str,
         entity_id: str,
+        entity_registry_id: str | None = None,
         role: str = "primary",
     ) -> Binding:
         """Create a validated binding."""
@@ -329,20 +336,39 @@ class Binding:
             asset_id=normalize_non_empty(asset_id, "asset_id"),
             capability=normalize_identifier(capability, "capability"),
             entity_id=normalize_non_empty(entity_id, "entity_id"),
+            entity_registry_id=(
+                normalize_non_empty(entity_registry_id, "entity_registry_id")
+                if entity_registry_id is not None
+                else None
+            ),
             role=normalize_identifier(role, "role"),
         )
 
-    def with_entity_id(self, entity_id: str) -> Binding:
-        """Replace the current implementation while preserving binding identity."""
-        return replace(self, entity_id=normalize_non_empty(entity_id, "entity_id"))
+    def with_entity_id(
+        self,
+        entity_id: str,
+        *,
+        entity_registry_id: str | None = None,
+    ) -> Binding:
+        """Replace the current implementation while preserving Binding identity."""
+        return replace(
+            self,
+            entity_id=normalize_non_empty(entity_id, "entity_id"),
+            entity_registry_id=(
+                normalize_non_empty(entity_registry_id, "entity_registry_id")
+                if entity_registry_id is not None
+                else None
+            ),
+        )
 
-    def to_dict(self) -> dict[str, str]:
+    def to_dict(self) -> dict[str, str | None]:
         """Serialize the binding."""
         return {
             "id": self.id,
             "asset_id": self.asset_id,
             "capability": self.capability,
             "entity_id": self.entity_id,
+            "entity_registry_id": self.entity_registry_id,
             "role": self.role,
         }
 
@@ -352,11 +378,20 @@ class Binding:
         if not isinstance(data, dict):
             raise ModelValidationError("Binding data must be a dictionary")
         try:
+            entity_registry_id = data.get("entity_registry_id")
             return cls(
                 id=normalize_non_empty(str(data["id"]), "id"),
                 asset_id=normalize_non_empty(str(data["asset_id"]), "asset_id"),
                 capability=normalize_identifier(str(data["capability"]), "capability"),
                 entity_id=normalize_non_empty(str(data["entity_id"]), "entity_id"),
+                entity_registry_id=(
+                    normalize_non_empty(
+                        str(entity_registry_id),
+                        "entity_registry_id",
+                    )
+                    if entity_registry_id is not None
+                    else None
+                ),
                 role=normalize_identifier(str(data.get("role", "primary")), "role"),
             )
         except KeyError as err:

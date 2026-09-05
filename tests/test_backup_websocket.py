@@ -185,6 +185,11 @@ async def test_recovery_restore_works_without_loaded_manager(monkeypatch) -> Non
         Asset.create(name="Recovered socket", asset_type="socket", code="REC-01")
     )
     connection = FakeConnection()
+    monkeypatch.setattr(
+        backup_websocket,
+        "parse_registry_backup",
+        lambda data, *, hass=None: restored,
+    )
 
     await call(
         backup_websocket.ws_backup_restore,

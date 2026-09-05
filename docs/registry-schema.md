@@ -5,7 +5,7 @@ BindHome persists two independent version layers and they must not be treated as
 | Layer | Current value | Owner | Purpose |
 | --- | ---: | --- | --- |
 | Home Assistant storage envelope | `STORAGE_VERSION = 1` | Home Assistant `Store` | Version of the outer `.storage` envelope |
-| BindHome Registry schema | `REGISTRY_SCHEMA_VERSION = 1` | BindHome | Shape and semantics of Assets, Relations, Bindings and Representations |
+| BindHome Registry schema | `REGISTRY_SCHEMA_VERSION = 2` | BindHome | Shape and semantics of Assets, Relations, Bindings and Representations |
 
 A storage-envelope incompatibility and a Registry-schema incompatibility are different failure conditions. Code, diagnostics and recovery flows should preserve that distinction.
 
@@ -19,7 +19,9 @@ Registry payloads are classified before model parsing:
 - **Unsupported future schema**: fails closed and is never rewritten by the older BindHome release.
 - **Corrupt or invalid payload**: fails validation; migration code must not guess missing domain data or silently replace it with an empty Registry.
 
-The real pre-version BindHome payload is treated as historical schema `v0`. Its migration to `v1` preserves the old implicit behavior where an Asset with `on_off` was exposed as a logical `light` by writing an explicit Representation. Early `v1` payloads that already declared `schema_version: 1` but predate the `representations` collection are canonicalized with the same deterministic rule.
+The real pre-version BindHome payload is treated as historical schema `v0`. Its migration to `v1` preserves the old implicit behavior where an Asset with `on_off` was exposed as a logical `light` by writing an explicit Representation. Early `v1` payloads that already declared `schema_version: 1` but predate the `representations` collection use the same deterministic rule while migrating onward.
+
+Schema `v2` adds `entity_registry_id` to each Binding. `entity_id` remains the last-known Home Assistant entity id and is the documented compatibility fallback for state-machine-only entities. During startup and backup restore, BindHome upgrades a fallback to `entity_registry_id` only when the current Home Assistant Entity Registry has an exact entry for that persisted `entity_id`. Missing or stale targets remain explicit fallbacks; migration never searches for or guesses a replacement entity. The Binding functional key `(asset_id, capability, role)` and BindHome Binding `id` do not change.
 
 `BindHomeRegistry.from_dict()` parses only the current canonical schema. Historical transformation belongs in `custom_components/bindhome/migrations.py` so ordinary model parsing cannot silently mutate persisted semantics.
 

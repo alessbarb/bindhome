@@ -7,7 +7,7 @@ NAME: Final = "BindHome"
 
 STORAGE_KEY: Final = "bindhome.registry"
 STORAGE_VERSION: Final = 1
-REGISTRY_SCHEMA_VERSION: Final = 1
+REGISTRY_SCHEMA_VERSION: Final = 2
 
 SIGNAL_REGISTRY_CHANGED: Final = f"{DOMAIN}_registry_changed"
 

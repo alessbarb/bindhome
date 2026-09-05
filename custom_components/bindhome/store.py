@@ -11,6 +11,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import json as json_util
 from homeassistant.util.file import WriteError
 
+from .binding_identity import enrich_binding_target_identities
 from .const import STORAGE_KEY, STORAGE_VERSION
 from .migrations import RegistrySchemaFutureError, migrate_registry_payload
 from .registry import BindHomeRegistry, RegistryValidationError
@@ -105,11 +106,12 @@ class BindHomeStore:
             ) from err
 
         registry = migration.registry
+        identity_changed = enrich_binding_target_identities(self._hass, registry)
 
         # Startup migration/canonicalization uses the manager-independent
         # validate-before-write primitive established by the transaction contract.
         # Failed migration never reaches this write, and failed writes abort setup.
-        if migration.changed:
+        if migration.changed or identity_changed:
             await self.async_save(registry)
 
         return registry

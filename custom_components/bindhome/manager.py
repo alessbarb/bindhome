@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
+from .binding_identity import entity_registry_id_for_entity
 from .const import SIGNAL_REGISTRY_CHANGED
 from .models import (
     Asset,
@@ -271,6 +272,7 @@ class BindHomeManager:
                 asset_id=asset_id,
                 capability=capability,
                 entity_id=entity_id,
+                entity_registry_id=entity_registry_id_for_entity(self.hass, entity_id),
                 role=role,
             )
             self._validate_binding_target(binding, registry=staged)

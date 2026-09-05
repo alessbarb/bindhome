@@ -4,7 +4,10 @@ import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
-from custom_components.bindhome.const import SIGNAL_REGISTRY_CHANGED
+from custom_components.bindhome.const import (
+    REGISTRY_SCHEMA_VERSION,
+    SIGNAL_REGISTRY_CHANGED,
+)
 from custom_components.bindhome.manager import BindHomeManager
 from custom_components.bindhome.migrations import migrate_registry_payload
 from custom_components.bindhome.models import Asset, Representation
@@ -195,7 +198,7 @@ def test_legacy_registry_migrates_implicit_on_off_lights() -> None:
 def test_explicit_empty_representation_list_disables_legacy_inference() -> None:
     registry = BindHomeRegistry.from_dict(
         {
-            "schema_version": 1,
+            "schema_version": REGISTRY_SCHEMA_VERSION,
             "assets": [
                 {
                     "id": "new-light-point",

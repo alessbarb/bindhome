@@ -12,6 +12,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.bindhome import async_setup
 from custom_components.bindhome.const import (
     DOMAIN,
+    REGISTRY_SCHEMA_VERSION,
     SERVICE_ADD_RELATION,
     SERVICE_CREATE_ASSET,
     SERVICE_DELETE_ASSET,
@@ -343,6 +344,6 @@ async def test_get_registry_service(
         blocking=True,
         return_response=True,
     )
-    assert registry_data["schema_version"] == 1
+    assert registry_data["schema_version"] == REGISTRY_SCHEMA_VERSION
     assert len(registry_data["assets"]) == 1
     assert registry_data["assets"][0]["name"] == "Socket"
