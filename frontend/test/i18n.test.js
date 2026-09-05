@@ -56,6 +56,22 @@ test("English and Spanish expose the same BindHome panel translation keys", () =
   assert.deepEqual(panelKeys("es"), panelKeys("en"));
 });
 
+
+test("localizer preserves unresolved optional placeholders", () => {
+  const t = createLocalizer(
+    {
+      "component.bindhome.common.panel_example_optional":
+        "Connected {name}; optional {detail}",
+    },
+    {},
+  );
+
+  assert.equal(
+    t("example.optional", { name: "Socket" }),
+    "Connected Socket; optional {detail}",
+  );
+});
+
 test("Spanish preset names do not translate machine identifiers in payloads", () => {
   const t = createLocalizer(es, en);
   const preset = {

@@ -20,6 +20,7 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ### Changed
 
+- Home Assistant-facing English and Spanish translations now have enforced key and placeholder parity across config flow, services, system health, Repairs and panel resources; system health also covers Representations, and frontend localization preserves unresolved optional placeholders. ([#66](https://github.com/alessbarb/bindhome/pull/66))
 - Registry multi-step mutations now have a supported public `BindHomeManager.transaction()` boundary. Backup restore and dependency-aware Asset deletion use that API instead of reaching into private manager locking/staging/commit internals. ([#62](https://github.com/alessbarb/bindhome/pull/62))
 - Registry schema evolution now uses an explicit stepwise migration layer separate from current-schema model parsing. The real pre-version Registry payload and early schema-v1 payloads that predate explicit Representations are migrated/canonicalized to the current v1 schema without introducing a fake schema bump. ([#63](https://github.com/alessbarb/bindhome/pull/63))
 - Frontend CI now typechecks the production JavaScript source with TypeScript `checkJs`, including the runtime `(key, variables?)` localizer contract and a regression test proving invalid JSDoc assignments fail the gate. ([#64](https://github.com/alessbarb/bindhome/pull/64))
