@@ -34,6 +34,7 @@ export class BindHomeRelationEditor extends LitElement {
     super();
 
     this.hass = null;
+    /** @type {import('../types.js').Localizer} */
     this.t = (key) => key;
     this.asset = null;
     this.assets = [];

@@ -34,7 +34,9 @@ export class BindHomeInventoryWorkflow extends LitElement {
 
   constructor() {
     super();
+    this.hass = null;
     this.presets = [];
+    /** @type {import('../types.js').Localizer} */
     this.t = (key) => key;
     this.floors = [];
     this.areas = [];
@@ -237,7 +239,7 @@ export class BindHomeInventoryWorkflow extends LitElement {
           const field = this.renderRoot.querySelector(`#${CSS.escape(this._fieldId(draft, result.error.field))}`) ?? this.renderRoot.querySelector(".alert");
           if (field?.classList.contains("alert")) field.setAttribute("tabindex", "-1");
           field?.scrollIntoView({ behavior: "smooth", block: "center" });
-          field?.focus({ preventScroll: true });
+          if (field instanceof HTMLElement) field.focus({ preventScroll: true });
         }
       }
       return;

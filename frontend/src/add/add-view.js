@@ -34,6 +34,7 @@ export class BindHomeAddView extends LitElement {
   constructor() {
     super();
     this.hass = null;
+    /** @type {import('../types.js').Localizer} */
     this.t = (key) => key;
     this.presets = [];
     this.floors = [];

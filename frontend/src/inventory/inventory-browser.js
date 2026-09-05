@@ -42,6 +42,7 @@ export class BindHomeInventoryBrowser extends LitElement {
     this.refreshBindingData = null;
     this.refreshTopologyData = null;
     this.selectedAssetId = null;
+    /** @type {import('../types.js').Localizer} */
     this.t = (key) => key;
     this._selectedKey = "";
     this._selectedAssetId = null;
