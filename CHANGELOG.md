@@ -51,6 +51,7 @@ First feature update after the public 1.0 release, focused on making the normal 
 - Dependabot upgraded the frontend typechecker **TypeScript** from `5.9.2` to `7.0.2`. ([#22](https://github.com/alessbarb/bindhome/pull/22))
 
 ---
+
 ## [1.0.0] - 2026-09-04
 
 First public BindHome release.
