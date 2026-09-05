@@ -11,6 +11,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .backup_websocket import async_register_backup_websocket_commands
 from .const import DOMAIN
+from .deletion_websocket import async_register_deletion_websocket_commands
 from .manager import BindHomeManager
 from .panel import async_register_panel, async_unregister_panel
 from .representation import implemented_platforms
@@ -29,6 +30,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async_register_services(hass)
     async_register_websocket_commands(hass)
     async_register_backup_websocket_commands(hass)
+    async_register_deletion_websocket_commands(hass)
     return True
 
 
