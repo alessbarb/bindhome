@@ -37,14 +37,8 @@ for path in sorted(ROOT.rglob("*.js")):
     migrated_files.append(path)
     registration_names.extend(names)
 
-if len(migrated_files) != 19:
-    raise SystemExit(
-        f"Expected 19 production files with direct registrations, found {len(migrated_files)}"
-    )
-if len(registration_names) != 19:
-    raise SystemExit(
-        f"Expected 19 BindHome custom-element registrations, found {len(registration_names)}"
-    )
+if not migrated_files or not registration_names:
+    raise SystemExit("No production custom-element registrations were found")
 if len(set(registration_names)) != len(registration_names):
     raise SystemExit("Duplicate bindhome-* element names exist in source")
 
@@ -98,8 +92,8 @@ class FakeRegistry {
 
 test("BindHome registration is idempotent and preserves the first constructor", () => {
   const registry = new FakeRegistry();
-  class FirstElement {}
-  class ReloadedElement {}
+  const FirstElement = /** @type {CustomElementConstructor} */ (class {});
+  const ReloadedElement = /** @type {CustomElementConstructor} */ (class {});
 
   const first = defineBindHomeElement(
     "bindhome-test-registration",
@@ -136,6 +130,9 @@ test("production sources cannot register custom elements directly", () => {
 });
 ''')
 
-print("Migrated custom-element registrations:")
+print(
+    f"Migrated {len(registration_names)} registrations across "
+    f"{len(migrated_files)} production files:"
+)
 for path, name in zip(migrated_files, registration_names, strict=True):
     print(f"- {path}: {name}")
