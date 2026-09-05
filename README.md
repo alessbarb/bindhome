@@ -370,6 +370,16 @@ Key guarantee:
 
 ---
 
+## Diagnostics and support
+
+When reporting a BindHome problem, use Home Assistant's **Download diagnostics** action for the BindHome config entry and attach that diagnostics file to the issue when it is relevant.
+
+BindHome diagnostics are intentionally aggregated. They include the integration/storage/schema versions, config-entry state, Registry object counts and Binding resolver status counts. They do **not** export Asset names or codes, BindHome UUIDs, Home Assistant entity IDs, config-entry IDs or the Registry itself.
+
+If Registry loading has failed closed, diagnostics remain useful where Home Assistant can invoke them: the recovery category is reported, while the stored error message and unsafe Registry contents are omitted. Registry backup/export remains a separate administrator operation and is never embedded in diagnostics.
+
+---
+
 ## Safety model
 
 BindHome separates physical infrastructure from Home Assistant runtime state. That distinction is intentional:
