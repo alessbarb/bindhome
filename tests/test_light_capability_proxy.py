@@ -8,7 +8,10 @@ from homeassistant.exceptions import HomeAssistantError
 from custom_components.bindhome.light import BindHomeLight
 from custom_components.bindhome.models import Asset, Binding
 from custom_components.bindhome.registry import BindHomeRegistry
-from custom_components.bindhome.resolver import BindingResolver, HomeAssistantEntityProbe
+from custom_components.bindhome.resolver import (
+    BindingResolver,
+    HomeAssistantEntityProbe,
+)
 
 
 def _setup(
