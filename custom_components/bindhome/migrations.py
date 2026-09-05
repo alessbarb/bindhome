@@ -45,9 +45,7 @@ def _read_schema_version(data: dict[str, Any]) -> int:
     if isinstance(raw, bool) or not isinstance(raw, int):
         raise RegistryMigrationError("Registry schema_version must be an integer")
     if raw < LEGACY_REGISTRY_SCHEMA_VERSION:
-        raise RegistryMigrationError(
-            f"Unsupported Registry schema version: {raw}"
-        )
+        raise RegistryMigrationError(f"Unsupported Registry schema version: {raw}")
     return raw
 
 
