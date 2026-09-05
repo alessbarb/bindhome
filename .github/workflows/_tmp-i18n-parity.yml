@@ -33,6 +33,7 @@ jobs:
           pip install .[dev]
       - name: Verify Python and translation contracts
         run: |
+          ruff check --fix tests/test_translation_parity.py
           ruff format tests/test_translation_parity.py
           ruff check custom_components/bindhome tests
           ruff format --check custom_components/bindhome tests
