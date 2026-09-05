@@ -1,0 +1,240 @@
+name: Temporary passive panel rendering patch
+
+on:
+  push:
+    branches:
+      - perf/passive-panel-rendering
+
+permissions:
+  contents: write
+
+jobs:
+  patch-build-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: perf/passive-panel-rendering
+          fetch-depth: 0
+
+      - name: Patch panel to keep only the active view live
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("frontend/src/bindhome-panel.js")
+          source = path.read_text()
+
+          import_line = 'import { LitElement, css, html } from "lit";\n'
+          cache_import = 'import { cache } from "lit/directives/cache.js";\n'
+          if cache_import not in source:
+              if import_line not in source:
+                  raise SystemExit("Lit import anchor not found")
+              source = source.replace(import_line, import_line + cache_import, 1)
+
+          start = source.index("  _renderViews() {")
+          end = source.index("  render() {", start)
+
+          replacement = r'''  _renderViews() {
+            const common = {
+              hass: this.hass,
+              t: this._t,
+              floors: this._floors,
+              areas: this._areas,
+              assets: this._assets,
+              registry: this._registry ?? {},
+              bindingStatuses: this._bindingStatuses,
+              entityRegistry: this._entityRegistry,
+              deviceRegistry: this._deviceRegistry,
+              refreshBindingData: () => this._refreshBindingData(),
+              refreshTopologyData: () => this._refreshTopologyData(),
+            };
+
+            let view;
+            if (this._view === "home") {
+              view = html`<section class="view" data-view="home">
+                <bindhome-home-view
+                  .hass=${common.hass}
+                  .t=${common.t}
+                  .floors=${common.floors}
+                  .areas=${common.areas}
+                  .assets=${common.assets}
+                  .registry=${common.registry}
+                  .bindingStatuses=${common.bindingStatuses}
+                  .entityRegistry=${common.entityRegistry}
+                  .deviceRegistry=${common.deviceRegistry}
+                  .advancedEnabled=${this._advancedPinned}
+                  .refreshBindingData=${common.refreshBindingData}
+                  .refreshTopologyData=${common.refreshTopologyData}
+                  .refreshAssets=${() => this._refreshAssets()}
+                  .selectedAssetId=${this._selectedAssetId}
+                  .selectedAreaId=${this._selectedAreaId}
+                  @home-navigate=${this._homeNavigate}
+                  @add-in-area=${(e) => this._openAdd(e.detail)}
+                  @open-advanced=${(event) => this._editAsset(event.detail)}
+                  @asset-committed=${(event) => this._humanAssetCommitted(event.detail)}
+                ></bindhome-home-view>
+              </section>`;
+            } else if (this._view === "add") {
+              view = html`<section class="view" data-view="add">
+                <bindhome-add-view
+                  .hass=${this.hass}
+                  .t=${this._t}
+                  .presets=${this._presets}
+                  .floors=${this._floors}
+                  .areas=${this._areas}
+                  .assets=${this._assets}
+                  .contextAreaId=${this._contextAreaId}
+                  .sessionId=${this._addSessionId}
+                  .onCreated=${async (created) => {
+                    const assets = await this._refreshAssets();
+                    const asset = created ?? assets?.at(-1);
+                    if (asset) this._openAsset(asset.id);
+                  }}
+                  @assets-refreshed=${this._assetsRefreshed}
+                  @go-home=${() => this._navigate("home")}
+                ></bindhome-add-view>
+              </section>`;
+            } else if (this._view === "search") {
+              view = html`<section class="view" data-view="search">
+                <bindhome-search-view
+                  .t=${this._t}
+                  .assets=${this._assets}
+                  .areas=${this._areas}
+                  .floors=${this._floors}
+                  @open-asset=${(e) => this._openAsset(e.detail)}
+                ></bindhome-search-view>
+              </section>`;
+            } else {
+              view = html`<section class="view" data-view="advanced">
+                <bindhome-advanced-view
+                  .hass=${common.hass}
+                  .t=${common.t}
+                  .presets=${this._presets}
+                  .floors=${common.floors}
+                  .areas=${common.areas}
+                  .assets=${common.assets}
+                  .registry=${common.registry}
+                  .bindingStatuses=${common.bindingStatuses}
+                  .entityRegistry=${common.entityRegistry}
+                  .deviceRegistry=${common.deviceRegistry}
+                  .refreshBindingData=${common.refreshBindingData}
+                  .refreshTopologyData=${common.refreshTopologyData}
+                  .selectedAssetId=${this._advancedAssetId}
+                  @assets-refreshed=${this._assetsRefreshed}
+                ></bindhome-advanced-view>
+              </section>`;
+            }
+
+            return cache(view);
+          }
+          '''
+
+          source = source[:start] + replacement + source[end:]
+          path.write_text(source)
+          PY
+
+      - name: Add regression coverage for passive view mounting
+        run: |
+          cat > frontend/test/passive-panel.test.js <<'EOF'
+          import assert from "node:assert/strict";
+          import test from "node:test";
+          import { Window } from "happy-dom";
+
+          const window = new Window({ url: "http://localhost/bindhome" });
+          Object.assign(globalThis, {
+            window,
+            document: window.document,
+            customElements: window.customElements,
+            HTMLElement: window.HTMLElement,
+            ShadowRoot: window.ShadowRoot,
+            Document: window.Document,
+            CSSStyleSheet: window.CSSStyleSheet,
+            Event: window.Event,
+            CustomEvent: window.CustomEvent,
+            CSS: window.CSS,
+          });
+
+          if (!customElements.get("ha-icon")) {
+            customElements.define("ha-icon", class extends HTMLElement {});
+          }
+          if (!customElements.get("ha-switch")) {
+            customElements.define("ha-switch", class extends HTMLElement {});
+          }
+
+          await import("../src/bindhome-panel.js");
+
+          async function settle(element) {
+            await element.updateComplete;
+            await window.happyDOM.waitUntilComplete();
+            await element.updateComplete;
+          }
+
+          function fixture() {
+            const panel = document.createElement("bindhome-panel");
+            panel._loading = false;
+            panel._initialized = true;
+            panel._translationLanguage = "en";
+            panel._t = (key) => key;
+            panel._floors = [];
+            panel._areas = [];
+            panel._assets = [];
+            panel._registry = { assets: [], relations: [], bindings: [], representations: [] };
+            document.body.append(panel);
+            return panel;
+          }
+
+          test("only the active top-level BindHome view stays in the live DOM", async () => {
+            const panel = fixture();
+            await settle(panel);
+
+            const home = panel.shadowRoot.querySelector("bindhome-home-view");
+            assert.ok(home);
+            assert.equal(panel.shadowRoot.querySelector("bindhome-add-view"), null);
+            assert.equal(panel.shadowRoot.querySelector("bindhome-search-view"), null);
+            assert.equal(panel.shadowRoot.querySelector("bindhome-advanced-view"), null);
+
+            panel._navigate("search");
+            await settle(panel);
+            assert.equal(panel.shadowRoot.querySelector("bindhome-home-view"), null);
+            assert.ok(panel.shadowRoot.querySelector("bindhome-search-view"));
+            assert.equal(panel.shadowRoot.querySelector("bindhome-add-view"), null);
+            assert.equal(panel.shadowRoot.querySelector("bindhome-advanced-view"), null);
+
+            panel._navigate("home");
+            await settle(panel);
+            assert.equal(panel.shadowRoot.querySelector("bindhome-home-view"), home);
+          });
+          EOF
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: Test
+        working-directory: frontend
+        run: npm test
+
+      - name: Build production bundle
+        working-directory: frontend
+        run: npm run build
+
+      - name: Commit source, regression test and generated bundle
+        run: |
+          git rm .github/workflows/_tmp-passive-panel.yml
+          git add frontend/src/bindhome-panel.js frontend/test/passive-panel.test.js custom_components/bindhome/panel/static/bindhome-panel.js
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "perf: keep inactive panel views out of live DOM"
+          git push origin HEAD:perf/passive-panel-rendering
