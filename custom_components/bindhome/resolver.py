@@ -8,11 +8,17 @@ Central operation::
 
     (asset_id, capability, role) -> current Home Assistant entity_id
 
+For schema-v2 Bindings the current entity id is first resolved through the
+stable Home Assistant Entity Registry entry id. ``Binding.entity_id`` is used
+only when no stable registry identity exists (for example state-machine-only
+entities). A missing stable registry entry never falls back to a possibly reused
+last-known entity id.
+
 Two independent axes are reported:
 
-* configuration validity -- the binding exists and its entity reference still
-  points at something Home Assistant knows about (Entity Registry or state
-  machine). A device that is merely offline is still a valid configuration.
+* configuration validity -- the binding exists and its target still points at
+  something Home Assistant knows about. A device that is merely offline is
+  still a valid configuration.
 * runtime availability -- the entity currently has a usable state, i.e. not
   ``unavailable``, ``unknown`` or missing from the state machine.
 
@@ -106,7 +112,11 @@ class Resolution:
 
 
 class EntityProbe(Protocol):
-    """Read-only view of Home Assistant entity existence and state."""
+    """Read-only view of Home Assistant entity existence, identity and state."""
+
+    def entity_id_for_registry_id(self, entity_registry_id: str) -> str | None:
+        """Return the current entity id for a stable Entity Registry entry id."""
+        ...
 
     def is_known(self, entity_id: str) -> bool:
         """Return True if the entity exists in the registry or state machine."""
@@ -114,24 +124,31 @@ class EntityProbe(Protocol):
 
     def get_state(self, entity_id: str) -> str | None:
         """Return the current state string, or None if the entity has no state."""
+        ...
 
 
 class StaticEntityProbe:
     """In-memory :class:`EntityProbe` for tests and offline evaluation.
 
-    ``registered`` is the set of entity ids present in the Entity Registry.
-    ``states`` maps entity ids present in the state machine to their state
-    string. The union models Home Assistant's "entity exists" definition.
+    ``registry_entries`` maps stable Entity Registry entry ids to their current
+    entity ids. ``registered`` preserves the simpler entity-id-only fixture form
+    used by older tests. ``states`` maps state-machine entity ids to state.
     """
 
     def __init__(
         self,
         *,
+        registry_entries: dict[str, str] | None = None,
         registered: set[str] | None = None,
         states: dict[str, str] | None = None,
     ) -> None:
+        self.registry_entries: dict[str, str] = dict(registry_entries or {})
         self.registered: set[str] = set(registered or set())
+        self.registered.update(self.registry_entries.values())
         self.states: dict[str, str] = dict(states or {})
+
+    def entity_id_for_registry_id(self, entity_registry_id: str) -> str | None:
+        return self.registry_entries.get(entity_registry_id)
 
     def is_known(self, entity_id: str) -> bool:
         return entity_id in self.registered or entity_id in self.states
@@ -141,14 +158,17 @@ class StaticEntityProbe:
 
 
 class HomeAssistantEntityProbe:
-    """:class:`EntityProbe` backed by a live Home Assistant instance.
-
-    "Entity exists" matches the existing definition in ``services.py``: present
-    in the Entity Registry or in the state machine.
-    """
+    """:class:`EntityProbe` backed by a live Home Assistant instance."""
 
     def __init__(self, hass: HomeAssistant) -> None:
         self._hass = hass
+
+    def entity_id_for_registry_id(self, entity_registry_id: str) -> str | None:
+        """Resolve a stable Entity Registry entry id to its current entity id."""
+        from homeassistant.helpers import entity_registry as er
+
+        entry = er.async_get(self._hass).async_get(entity_registry_id)
+        return entry.entity_id if entry is not None else None
 
     def is_known(self, entity_id: str) -> bool:
         from homeassistant.helpers import entity_registry as er
@@ -205,7 +225,19 @@ class BindingResolver:
                 asset_id, capability, role, ResolutionStatus.BINDING_NOT_FOUND
             )
 
-        entity_id = binding.entity_id
+        entity_id = self._current_entity_id(binding)
+        if entity_id is None:
+            # Keep the last-known entity id in the diagnostic result without
+            # using it as a fallback for a missing stable Registry identity.
+            return Resolution(
+                asset_id=asset_id,
+                capability=capability,
+                role=role,
+                status=ResolutionStatus.ENTITY_NOT_FOUND,
+                binding=binding,
+                entity_id=binding.entity_id,
+            )
+
         if not self._probe.is_known(entity_id):
             return Resolution(
                 asset_id=asset_id,
@@ -227,6 +259,12 @@ class BindingResolver:
             entity_id=entity_id,
             state=state,
         )
+
+    def _current_entity_id(self, binding: Binding) -> str | None:
+        """Resolve stable registry identity first, else use explicit fallback."""
+        if binding.entity_registry_id is not None:
+            return self._probe.entity_id_for_registry_id(binding.entity_registry_id)
+        return binding.entity_id
 
     def resolve_entity_id(
         self, asset_id: str, capability: str, role: str = "primary"
@@ -253,7 +291,9 @@ class BindingResolver:
                 f"No binding for ({asset_id}, {capability}, {role})"
             )
         if result.status is ResolutionStatus.ENTITY_NOT_FOUND:
-            raise StaleBindingError(f"Bound entity {result.entity_id} no longer exists")
+            raise StaleBindingError(
+                f"Bound entity {result.entity_id} no longer exists"
+            )
         assert result.entity_id is not None
         return result.entity_id
 
