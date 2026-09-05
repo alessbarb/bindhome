@@ -1,10 +1,10 @@
 """Tests for BindHome manifest metadata."""
 
 import json
-from pathlib import Path
+import pathlib
 
 
-MANIFEST_PATH = Path("custom_components/bindhome/manifest.json")
+MANIFEST_PATH = pathlib.Path("custom_components/bindhome/manifest.json")
 
 
 def test_bindhome_is_registered_as_hub() -> None:
