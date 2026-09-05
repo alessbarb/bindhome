@@ -1,0 +1,155 @@
+name: Finalize BindHome 1.1.0
+
+on:
+  push:
+    branches:
+      - ux/post-1.0-human-workflows
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ux/post-1.0-human-workflows
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Finalize source and release metadata
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          version = "1.1.0"
+
+          pyproject = Path("pyproject.toml")
+          text = pyproject.read_text()
+          old = 'version = "1.0.0"'
+          if text.count(old) != 1:
+              raise SystemExit("Unexpected pyproject version state")
+          pyproject.write_text(text.replace(old, f'version = "{version}"', 1))
+
+          manifest_path = Path("custom_components/bindhome/manifest.json")
+          manifest = json.loads(manifest_path.read_text())
+          if manifest.get("version") != "1.0.0":
+              raise SystemExit("Unexpected manifest version state")
+          manifest["version"] = version
+          manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+
+          test_path = Path("frontend/test/inventory-interaction.test.js")
+          test_text = test_path.read_text()
+          old_assertion = '  assert.match(panel.shadowRoot.textContent, /Casa\\s+Añadir\\s+Buscar/);'
+          new_assertion = '''  assert.deepEqual(
+            [...panel.shadowRoot.querySelectorAll(".tabs button:not(.advanced)")]
+              .slice(0, 3)
+              .map((button) => button.textContent.trim()),
+            ["Casa", "Añadir", "Buscar"],
+          );'''
+          if test_text.count(old_assertion) != 1:
+              raise SystemExit("Unexpected language-navigation assertion state")
+          test_path.write_text(test_text.replace(old_assertion, new_assertion, 1))
+
+          changelog_path = Path("CHANGELOG.md")
+          changelog = changelog_path.read_text()
+          start = changelog.index("## [Unreleased]")
+          end = changelog.index("## [1.0.0]")
+          release_section = '''## [Unreleased]
+
+No changes yet beyond `1.1.0`.
+
+---
+
+## [1.1.0] - 2026-09-05
+
+First feature update after the public 1.0 release, focused on making the normal human workflow faster and safer.
+
+**Minimum Home Assistant:** `2026.8.0`
+
+### Added
+
+- `Añadir` now offers both single-element creation and **bulk room inventory** in the normal human flow, reusing the existing atomic room workflow rather than introducing a second bulk-save path. ([#24](https://github.com/alessbarb/bindhome/pull/24))
+- Added administrator-only **safe Asset deletion** with an authoritative impact preview before confirmation. The operation removes BindHome-owned Relations, owned Bindings, dependent BindHome-to-BindHome Bindings and the optional logical Representation in one transaction before the strict final Asset deletion. ([#24](https://github.com/alessbarb/bindhome/pull/24))
+- Floor groups in **Casa** can now be collapsed and expanded to reduce vertical space when browsing larger homes. ([#24](https://github.com/alessbarb/bindhome/pull/24))
+
+### Changed
+
+- The Home Assistant config flow is now one-click after selecting BindHome: the single config entry is created immediately instead of displaying an empty confirmation form. HACS still installs the integration separately from Home Assistant config-entry creation. ([#24](https://github.com/alessbarb/bindhome/pull/24))
+- Completing first-run onboarding now lands in **Casa** instead of automatically opening `Añadir`. ([#24](https://github.com/alessbarb/bindhome/pull/24))
+
+### Reliability
+
+- Human deletion fails closed: persistence occurs before live Registry adoption, storage failure leaves live state unchanged, and the existing strict Asset-delete invariant remains the final guard against future unhandled reference types. ([#24](https://github.com/alessbarb/bindhome/pull/24))
+- Deleting a BindHome Asset never deletes the physical Home Assistant Device or external Entity used as hardware. When a BindHome-owned logical Representation is removed, the UI explicitly warns that external dashboards, scripts or automations referencing that logical entity may require adjustment. ([#24](https://github.com/alessbarb/bindhome/pull/24))
+
+### Distribution
+
+- Version promoted to `1.1.0` across Python, Home Assistant and frontend package metadata. ([#24](https://github.com/alessbarb/bindhome/pull/24))
+- Dependabot upgraded the frontend bundler **esbuild** from `0.25.12` to `0.28.2`. ([#21](https://github.com/alessbarb/bindhome/pull/21))
+- Dependabot upgraded the frontend typechecker **TypeScript** from `5.9.2` to `7.0.2`. ([#22](https://github.com/alessbarb/bindhome/pull/22))
+
+---
+
+'''
+          changelog = changelog[:start] + release_section + changelog[end:]
+
+          publication_line = "- Stable GitHub Releases are published automatically from the exact green `main` commit after all protected release gates pass. ([#23](https://github.com/alessbarb/bindhome/pull/23))\n"
+          distribution_marker = "### Distribution\n\n- Version promoted to `1.0.0`"
+          if publication_line not in changelog:
+              if changelog.count(distribution_marker) != 1:
+                  raise SystemExit("Unexpected 1.0.0 Distribution section")
+              changelog = changelog.replace(
+                  distribution_marker,
+                  "### Distribution\n\n" + publication_line + "- Version promoted to `1.0.0`",
+                  1,
+              )
+
+          old_links = '''[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/alessbarb/bindhome/releases/tag/v1.0.0'''
+          new_links = '''[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/alessbarb/bindhome/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/alessbarb/bindhome/releases/tag/v1.0.0'''
+          if changelog.count(old_links) != 1:
+              raise SystemExit("Unexpected changelog comparison links")
+          changelog_path.write_text(changelog.replace(old_links, new_links, 1))
+          PY
+
+      - name: Update frontend package version
+        working-directory: frontend
+        run: npm version 1.1.0 --no-git-tag-version
+
+      - name: Validate Python formatting
+        run: |
+          python -m pip install ruff
+          ruff check .
+          ruff format --check .
+
+      - name: Validate and build frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          npm run build
+
+      - name: Commit finalized 1.1.0 state
+        run: |
+          rm .github/workflows/finalize-1-1-0.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "release: prepare BindHome 1.1.0"
+          git push origin HEAD:ux/post-1.0-human-workflows
