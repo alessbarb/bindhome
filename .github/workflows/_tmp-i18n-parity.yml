@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: read
 
 jobs:
   apply:
@@ -26,136 +25,8 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Complete Home Assistant translation parity
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          en_path = Path('custom_components/bindhome/translations/en.json')
-          es_path = Path('custom_components/bindhome/translations/es.json')
-
-          en = en_path.read_text()
-          old_health = '  "system_health": { "info": { "loaded": "Loaded", "assets": "Assets", "relations": "Relations", "bindings": "Bindings" } },'
-          new_health = '  "system_health": { "info": { "loaded": "Loaded", "assets": "Assets", "relations": "Relations", "bindings": "Bindings", "representations": "Representations" } },'
-          if old_health in en:
-              en = en.replace(old_health, new_health, 1)
-          elif new_health not in en:
-              raise SystemExit('Unexpected English system_health structure')
-          en_path.write_text(en)
-
-          es = es_path.read_text()
-          if '"config": {' not in es:
-              anchor = '  "issues": {'
-              if anchor not in es:
-                  raise SystemExit('Unexpected Spanish translation structure')
-              prefix = '''  "title": "BindHome",
-  "config": {
-    "step": {
-      "user": {
-        "title": "Configurar BindHome",
-        "description": "Crea el Registry de infraestructura de BindHome para esta instalación de Home Assistant."
-      }
-    },
-    "abort": {
-      "single_instance_allowed": "BindHome ya está configurado."
-    }
-  },
-  "services": {
-    "create_asset": {
-      "name": "Crear Asset",
-      "description": "Crea un Asset de infraestructura estable.",
-      "fields": {
-        "name": { "name": "Nombre", "description": "Nombre legible del Asset." },
-        "asset_type": { "name": "Tipo de Asset", "description": "Tipo genérico de infraestructura en lower_snake_case." },
-        "code": { "name": "Código", "description": "Código opcional del Asset visible para las personas." },
-        "area_id": { "name": "Área", "description": "Área opcional de Home Assistant que contiene el Asset." },
-        "capabilities": { "name": "Capabilities", "description": "Lista de Capabilities lógicas en lower_snake_case." }
-      }
-    },
-    "delete_asset": {
-      "name": "Eliminar Asset",
-      "description": "Elimina un Asset que no tenga relaciones ni Bindings activos.",
-      "fields": { "asset_id": { "name": "ID del Asset", "description": "ID inmutable del Asset de BindHome." } }
-    },
-    "add_relation": {
-      "name": "Añadir relación",
-      "description": "Crea una relación de topología dirigida entre dos Assets.",
-      "fields": {
-        "source_asset_id": { "name": "ID del Asset de origen", "description": "Asset de origen de BindHome." },
-        "relation_type": { "name": "Tipo de relación", "description": "Tipo genérico de relación en lower_snake_case." },
-        "target_asset_id": { "name": "ID del Asset de destino", "description": "Asset de destino de BindHome." }
-      }
-    },
-    "remove_relation": {
-      "name": "Eliminar relación",
-      "description": "Elimina una relación de topología.",
-      "fields": { "relation_id": { "name": "ID de la relación", "description": "ID de la relación de BindHome." } }
-    },
-    "set_binding": {
-      "name": "Establecer Binding",
-      "description": "Vincula una Capability y un rol de un Asset con la entidad de Home Assistant que la implementa actualmente.",
-      "fields": {
-        "asset_id": { "name": "ID del Asset", "description": "ID del Asset de BindHome." },
-        "capability": { "name": "Capability", "description": "Capability proporcionada por el Asset." },
-        "entity_id": { "name": "Entidad", "description": "Implementación actual en Home Assistant." },
-        "role": { "name": "Rol", "description": "Rol del Binding; por defecto, primary." }
-      }
-    },
-    "remove_binding": {
-      "name": "Eliminar Binding",
-      "description": "Elimina un Binding de una Capability sin borrar el Asset de infraestructura.",
-      "fields": { "binding_id": { "name": "ID del Binding", "description": "ID del Binding de BindHome." } }
-    },
-    "get_registry": { "name": "Obtener Registry", "description": "Devuelve el Registry completo de BindHome sin modificarlo." }
-  },
-  "system_health": { "info": { "loaded": "Cargado", "assets": "Assets", "relations": "Relaciones", "bindings": "Bindings", "representations": "Representations" } },
-'''
-              es = es.replace(anchor, prefix + anchor, 1)
-          es_path.write_text(es)
-
-          parity_test = Path('tests/test_translation_parity.py')
-          parity_test.write_text('''"""Translation parity tests for Home Assistant-facing BindHome strings."""\n\nfrom __future__ import annotations\n\nimport json\nfrom pathlib import Path\nimport re\n\nTRANSLATIONS = Path("custom_components/bindhome/translations")\n\n\ndef _load(language: str) -> dict[str, object]:\n    return json.loads((TRANSLATIONS / f"{language}.json").read_text())\n\n\ndef _leaf_paths(value: object, prefix: str = "") -> set[str]:\n    if isinstance(value, dict):\n        paths: set[str] = set()\n        for key, child in value.items():\n            child_prefix = f"{prefix}.{key}" if prefix else key\n            paths.update(_leaf_paths(child, child_prefix))\n        return paths\n    return {prefix}\n\n\ndef _strings(value: object, prefix: str = "") -> dict[str, str]:\n    if isinstance(value, dict):\n        result: dict[str, str] = {}\n        for key, child in value.items():\n            child_prefix = f"{prefix}.{key}" if prefix else key\n            result.update(_strings(child, child_prefix))\n        return result\n    if not isinstance(value, str):\n        raise AssertionError(f"Translation leaf {prefix} is not a string")\n    return {prefix: value}\n\n\ndef _placeholders(value: str) -> set[str]:\n    return set(re.findall(r"\\{(\\w+)\\}", value))\n\n\ndef test_english_and_spanish_translation_key_parity() -> None:\n    en = _load("en")\n    es = _load("es")\n    assert _leaf_paths(es) == _leaf_paths(en)\n\n\ndef test_translation_placeholders_have_parity() -> None:\n    en = _strings(_load("en"))\n    es = _strings(_load("es"))\n    assert en.keys() == es.keys()\n    for key in en:\n        assert _placeholders(es[key]) == _placeholders(en[key]), key\n\n\ndef test_home_assistant_surfaces_have_complete_translation_coverage() -> None:\n    expected_system_health = {\n        "loaded",\n        "assets",\n        "relations",\n        "bindings",\n        "representations",\n    }\n    for language in ("en", "es"):\n        data = _load(language)\n        assert data["title"] == "BindHome"\n        assert "user" in data["config"]["step"]\n        assert "single_instance_allowed" in data["config"]["abort"]\n        assert set(data["services"]) == {\n            "create_asset",\n            "delete_asset",\n            "add_relation",\n            "remove_relation",\n            "set_binding",\n            "remove_binding",\n            "get_registry",\n        }\n        assert set(data["system_health"]["info"]) == expected_system_health\n        assert "registry_recovery" in data["issues"]\n\n\ndef test_spanish_uses_established_core_model_terms() -> None:\n    es = _load("es")\n    assert es["services"]["create_asset"]["name"] == "Crear Asset"\n    assert es["services"]["set_binding"]["name"] == "Establecer Binding"\n    assert es["services"]["set_binding"]["fields"]["capability"]["name"] == "Capability"\n    assert es["system_health"]["info"]["representations"] == "Representations"\n\n\ndef test_duplicate_strings_source_is_not_reintroduced() -> None:\n    assert not Path("custom_components/bindhome/strings.json").exists()\n''')
-
-          frontend_test = Path('frontend/test/i18n.test.js')
-          text = frontend_test.read_text()
-          marker = 'test("localizer preserves unresolved optional placeholders"'
-          if marker not in text:
-              insert = '''\n\ntest("localizer preserves unresolved optional placeholders", () => {\n  const t = createLocalizer(\n    {\n      "component.bindhome.common.panel_example_optional":\n        "Connected {name}; optional {detail}",\n    },\n    {},\n  );\n\n  assert.equal(\n    t("example.optional", { name: "Socket" }),\n    "Connected Socket; optional {detail}",\n  );\n});\n'''
-              anchor = '\ntest("Spanish preset names do not translate machine identifiers in payloads"'
-              if anchor not in text:
-                  raise SystemExit('Unexpected frontend i18n test structure')
-              text = text.replace(anchor, insert + anchor, 1)
-              frontend_test.write_text(text)
-          PY
-      - name: Add changelog entry for the open pull request
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          pr=""
-          for _ in {1..12}; do
-            pr="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$GITHUB_REF_NAME" --state open --json number --jq '.[0].number // empty')"
-            if [ -n "$pr" ]; then break; fi
-            sleep 5
-          done
-          if [ -z "$pr" ]; then
-            echo "Could not resolve the pull request for $GITHUB_REF_NAME" >&2
-            exit 1
-          fi
-          python - "$pr" <<'PY'
-          from pathlib import Path
-          import sys
-
-          pr = sys.argv[1]
-          path = Path('CHANGELOG.md')
-          text = path.read_text()
-          entry = f'- Home Assistant-facing English and Spanish translations now have enforced key and placeholder parity across config flow, services, system health, Repairs and panel resources; system health also covers Representations, and frontend localization preserves unresolved optional placeholders. ([#{pr}](https://github.com/alessbarb/bindhome/pull/{pr}))\n'
-          if entry not in text:
-              anchor = '### Changed\n\n'
-              if anchor not in text:
-                  raise SystemExit('Unreleased Changed section not found')
-              text = text.replace(anchor, anchor + entry, 1)
-              path.write_text(text)
-          PY
+      - name: Apply translation parity changes
+        run: python .github/scripts/_tmp_complete_i18n.py
       - name: Install Python test dependencies
         run: |
           python -m pip install --upgrade pip
@@ -174,12 +45,12 @@ jobs:
           npm test
           npm run build
           git diff --exit-code -- ../custom_components/bindhome/panel/static/bindhome-panel.js
-      - name: Remove temporary workflow and commit verified i18n parity
+      - name: Commit verified i18n parity
         run: |
-          rm -f .github/workflows/_tmp-i18n-parity.yml
+          rm -f .github/workflows/_tmp-i18n-parity.yml .github/scripts/_tmp_complete_i18n.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add custom_components/bindhome/translations frontend/test/i18n.test.js tests/test_translation_parity.py CHANGELOG.md .github/workflows
+          git add -A
           git diff --cached --check
           git commit -m 'i18n: enforce Home Assistant translation parity'
           git push origin HEAD:i18n/ha-translation-parity
