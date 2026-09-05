@@ -102,8 +102,7 @@ async def async_delete_asset_with_dependencies(
     asset_id: str,
 ) -> AssetDeleteImpact:
     """Delete an Asset and its BindHome-owned dependencies as one transaction."""
-    async with manager._mutation_lock:
-        staged = manager._stage_registry()
+    async with manager.transaction() as staged:
         impact = build_asset_delete_impact(manager, asset_id, registry=staged)
 
         for relation in impact.relations:
@@ -123,5 +122,5 @@ async def async_delete_asset_with_dependencies(
         # BindHome reference type is added later and is not cleaned above, the
         # transaction fails closed rather than leaving an orphan.
         staged.delete_asset(asset_id)
-        await manager._async_commit_staged_registry(staged)
-        return impact
+
+    return impact
