@@ -52,12 +52,14 @@ jobs:
           test_path = Path("frontend/test/inventory-interaction.test.js")
           test_text = test_path.read_text()
           old_assertion = '  assert.match(panel.shadowRoot.textContent, /Casa\\s+Añadir\\s+Buscar/);'
-          new_assertion = '''  assert.deepEqual(
-            [...panel.shadowRoot.querySelectorAll(".tabs button:not(.advanced)")]
-              .slice(0, 3)
-              .map((button) => button.textContent.trim()),
-            ["Casa", "Añadir", "Buscar"],
-          );'''
+          new_assertion = "\n".join([
+              "  assert.deepEqual(",
+              '    [...panel.shadowRoot.querySelectorAll(".tabs button:not(.advanced)")]',
+              "      .slice(0, 3)",
+              "      .map((button) => button.textContent.trim()),",
+              '    ["Casa", "Añadir", "Buscar"],',
+              "  );",
+          ])
           if test_text.count(old_assertion) != 1:
               raise SystemExit("Unexpected language-navigation assertion state")
           test_path.write_text(test_text.replace(old_assertion, new_assertion, 1))
@@ -66,43 +68,45 @@ jobs:
           changelog = changelog_path.read_text()
           start = changelog.index("## [Unreleased]")
           end = changelog.index("## [1.0.0]")
-          release_section = '''## [Unreleased]
-
-No changes yet beyond `1.1.0`.
-
----
-
-## [1.1.0] - 2026-09-05
-
-First feature update after the public 1.0 release, focused on making the normal human workflow faster and safer.
-
-**Minimum Home Assistant:** `2026.8.0`
-
-### Added
-
-- `Añadir` now offers both single-element creation and **bulk room inventory** in the normal human flow, reusing the existing atomic room workflow rather than introducing a second bulk-save path. ([#24](https://github.com/alessbarb/bindhome/pull/24))
-- Added administrator-only **safe Asset deletion** with an authoritative impact preview before confirmation. The operation removes BindHome-owned Relations, owned Bindings, dependent BindHome-to-BindHome Bindings and the optional logical Representation in one transaction before the strict final Asset deletion. ([#24](https://github.com/alessbarb/bindhome/pull/24))
-- Floor groups in **Casa** can now be collapsed and expanded to reduce vertical space when browsing larger homes. ([#24](https://github.com/alessbarb/bindhome/pull/24))
-
-### Changed
-
-- The Home Assistant config flow is now one-click after selecting BindHome: the single config entry is created immediately instead of displaying an empty confirmation form. HACS still installs the integration separately from Home Assistant config-entry creation. ([#24](https://github.com/alessbarb/bindhome/pull/24))
-- Completing first-run onboarding now lands in **Casa** instead of automatically opening `Añadir`. ([#24](https://github.com/alessbarb/bindhome/pull/24))
-
-### Reliability
-
-- Human deletion fails closed: persistence occurs before live Registry adoption, storage failure leaves live state unchanged, and the existing strict Asset-delete invariant remains the final guard against future unhandled reference types. ([#24](https://github.com/alessbarb/bindhome/pull/24))
-- Deleting a BindHome Asset never deletes the physical Home Assistant Device or external Entity used as hardware. When a BindHome-owned logical Representation is removed, the UI explicitly warns that external dashboards, scripts or automations referencing that logical entity may require adjustment. ([#24](https://github.com/alessbarb/bindhome/pull/24))
-
-### Distribution
-
-- Version promoted to `1.1.0` across Python, Home Assistant and frontend package metadata. ([#24](https://github.com/alessbarb/bindhome/pull/24))
-- Dependabot upgraded the frontend bundler **esbuild** from `0.25.12` to `0.28.2`. ([#21](https://github.com/alessbarb/bindhome/pull/21))
-- Dependabot upgraded the frontend typechecker **TypeScript** from `5.9.2` to `7.0.2`. ([#22](https://github.com/alessbarb/bindhome/pull/22))
-
----
-
-'''
+          release_lines = [
+              "## [Unreleased]",
+              "",
+              "No changes yet beyond `1.1.0`.",
+              "",
+              "---",
+              "",
+              "## [1.1.0] - 2026-09-05",
+              "",
+              "First feature update after the public 1.0 release, focused on making the normal human workflow faster and safer.",
+              "",
+              "**Minimum Home Assistant:** `2026.8.0`",
+              "",
+              "### Added",
+              "",
+              "- `Añadir` now offers both single-element creation and **bulk room inventory** in the normal human flow, reusing the existing atomic room workflow rather than introducing a second bulk-save path. ([#24](https://github.com/alessbarb/bindhome/pull/24))",
+              "- Added administrator-only **safe Asset deletion** with an authoritative impact preview before confirmation. The operation removes BindHome-owned Relations, owned Bindings, dependent BindHome-to-BindHome Bindings and the optional logical Representation in one transaction before the strict final Asset deletion. ([#24](https://github.com/alessbarb/bindhome/pull/24))",
+              "- Floor groups in **Casa** can now be collapsed and expanded to reduce vertical space when browsing larger homes. ([#24](https://github.com/alessbarb/bindhome/pull/24))",
+              "",
+              "### Changed",
+              "",
+              "- The Home Assistant config flow is now one-click after selecting BindHome: the single config entry is created immediately instead of displaying an empty confirmation form. HACS still installs the integration separately from Home Assistant config-entry creation. ([#24](https://github.com/alessbarb/bindhome/pull/24))",
+              "- Completing first-run onboarding now lands in **Casa** instead of automatically opening `Añadir`. ([#24](https://github.com/alessbarb/bindhome/pull/24))",
+              "",
+              "### Reliability",
+              "",
+              "- Human deletion fails closed: persistence occurs before live Registry adoption, storage failure leaves live state unchanged, and the existing strict Asset-delete invariant remains the final guard against future unhandled reference types. ([#24](https://github.com/alessbarb/bindhome/pull/24))",
+              "- Deleting a BindHome Asset never deletes the physical Home Assistant Device or external Entity used as hardware. When a BindHome-owned logical Representation is removed, the UI explicitly warns that external dashboards, scripts or automations referencing that logical entity may require adjustment. ([#24](https://github.com/alessbarb/bindhome/pull/24))",
+              "",
+              "### Distribution",
+              "",
+              "- Version promoted to `1.1.0` across Python, Home Assistant and frontend package metadata. ([#24](https://github.com/alessbarb/bindhome/pull/24))",
+              "- Dependabot upgraded the frontend bundler **esbuild** from `0.25.12` to `0.28.2`. ([#21](https://github.com/alessbarb/bindhome/pull/21))",
+              "- Dependabot upgraded the frontend typechecker **TypeScript** from `5.9.2` to `7.0.2`. ([#22](https://github.com/alessbarb/bindhome/pull/22))",
+              "",
+              "---",
+              "",
+          ]
+          release_section = "\n".join(release_lines)
           changelog = changelog[:start] + release_section + changelog[end:]
 
           publication_line = "- Stable GitHub Releases are published automatically from the exact green `main` commit after all protected release gates pass. ([#23](https://github.com/alessbarb/bindhome/pull/23))\n"
@@ -116,11 +120,8 @@ First feature update after the public 1.0 release, focused on making the normal 
                   1,
               )
 
-          old_links = '''[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/alessbarb/bindhome/releases/tag/v1.0.0'''
-          new_links = '''[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.1.0...HEAD
-[1.1.0]: https://github.com/alessbarb/bindhome/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/alessbarb/bindhome/releases/tag/v1.0.0'''
+          old_links = "[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.0.0...HEAD\n[1.0.0]: https://github.com/alessbarb/bindhome/releases/tag/v1.0.0"
+          new_links = "[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.1.0...HEAD\n[1.1.0]: https://github.com/alessbarb/bindhome/compare/v1.0.0...v1.1.0\n[1.0.0]: https://github.com/alessbarb/bindhome/releases/tag/v1.0.0"
           if changelog.count(old_links) != 1:
               raise SystemExit("Unexpected changelog comparison links")
           changelog_path.write_text(changelog.replace(old_links, new_links, 1))
