@@ -31,12 +31,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install .[dev]
 
-      - name: Format and verify Python suite
+      - name: Format and verify committed Python sources
         run: |
-          ruff format .
-          ruff check . --fix
-          ruff format --check .
-          ruff check .
+          ruff format custom_components tests
+          ruff check custom_components tests --fix
+          ruff format --check custom_components tests
+          ruff check custom_components tests
           pytest
 
       - name: Remove temporary helpers and commit verified tree
