@@ -118,6 +118,46 @@ jobs:
           '''
           text = text[:start] + replacement + text[end:]
           browser_path.write_text(text)
+
+          test_path = Path("frontend/test/asset-editor.test.js")
+          text = test_path.read_text()
+          test_start = text.index(
+              '    const text =\n      editor.shadowRoot.textContent +',
+              text.index('"Connections show Relations, friendly HA entity and Representation"'),
+          )
+          test_end = text.index(
+              "    assert.doesNotMatch(text, /Other bindings/);",
+              test_start,
+          )
+          replacement = '''    const connections = editor.shadowRoot.querySelector(
+              "bindhome-asset-connections",
+            );
+            assert.ok(connections);
+            await settle(connections);
+
+            const text =
+              editor.shadowRoot.textContent +
+              connections.shadowRoot.textContent +
+              [...connections.shadowRoot.querySelectorAll(
+                "bindhome-primary-connection-editor",
+              )]
+                .map((child) => child.shadowRoot?.textContent ?? "")
+                .join("\\n");
+
+            const topology = connections.shadowRoot.querySelector(
+              "bindhome-asset-topology",
+            );
+            const topologyText = topology?.shadowRoot?.textContent ?? "";
+
+            assert.equal(
+              connections.shadowRoot.querySelectorAll(
+                "bindhome-primary-connection-editor",
+              ).length,
+              2,
+            );
+          '''
+          text = text[:test_start] + replacement + text[test_end:]
+          test_path.write_text(text)
           PY
 
       - name: Verify frontend
@@ -135,6 +175,7 @@ jobs:
           git add \
             frontend/src/inventory/asset-detail-editor.js \
             frontend/src/inventory/inventory-browser.js \
+            frontend/test/asset-editor.test.js \
             custom_components/bindhome/panel/static/bindhome-panel.js
           if git diff --cached --quiet; then
             echo "No wiring changes"
