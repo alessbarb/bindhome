@@ -1,6 +1,7 @@
 """Tests for the BindHome binding resolver and compatibility layer."""
 
 import pytest
+from homeassistant.helpers import entity_registry as er
 
 from custom_components.bindhome.models import Asset, Binding
 from custom_components.bindhome.registry import BindHomeRegistry
@@ -34,9 +35,17 @@ def _bind(
     cap: str,
     entity: str,
     role: str = "primary",
+    *,
+    entity_registry_id: str | None = None,
 ) -> Binding:
     return registry.set_binding(
-        Binding.create(asset_id=asset.id, capability=cap, entity_id=entity, role=role)
+        Binding.create(
+            asset_id=asset.id,
+            capability=cap,
+            entity_id=entity,
+            entity_registry_id=entity_registry_id,
+            role=role,
+        )
     )
 
 
@@ -79,8 +88,10 @@ def test_registry_only_target_is_valid_config_but_not_runtime_available() -> Non
 def test_both_probe_implementations_satisfy_the_entity_probe_protocol() -> None:
     static_probe: EntityProbe = StaticEntityProbe(states={"switch.relay": "on"})
     ha_probe: EntityProbe = HomeAssistantEntityProbe.__new__(HomeAssistantEntityProbe)
+    assert static_probe.resolve_registry_entity_id("missing") is None
     assert static_probe.is_known("switch.relay") is True
     assert static_probe.get_state("switch.relay") == "on"
+    assert callable(ha_probe.resolve_registry_entity_id)
     assert callable(ha_probe.is_known)
     assert callable(ha_probe.get_state)
 
@@ -190,6 +201,112 @@ def test_malformed_request_is_reported_not_masked_as_missing_capability() -> Non
     assert result.status is ResolutionStatus.INVALID_REQUEST
     with pytest.raises(InvalidResolveRequestError):
         resolver.resolve_entity_id(asset.id, "on off")
+
+
+# --- stable Entity Registry target identity -------------------------------
+
+
+def test_stable_registry_target_resolves_current_entity_id_after_rename() -> None:
+    registry = BindHomeRegistry()
+    asset = _asset(registry, ["on_off"])
+    binding = _bind(
+        registry,
+        asset,
+        "on_off",
+        "switch.before_rename",
+        entity_registry_id="entry-123",
+    )
+    probe = StaticEntityProbe(
+        registry_entries={"entry-123": "switch.after_rename"},
+        states={"switch.after_rename": "on"},
+    )
+    resolver = BindingResolver(registry, probe)
+
+    result = resolver.resolve(asset.id, "on_off")
+
+    assert result.status is ResolutionStatus.RESOLVED
+    assert result.entity_id == "switch.after_rename"
+    assert result.state == "on"
+    assert result.binding is binding
+    assert result.binding.entity_registry_id == "entry-123"
+    # Persisted entity_id is deliberately only the last-known value.
+    assert result.binding.entity_id == "switch.before_rename"
+    assert resolver.resolve_entity_id(asset.id, "on_off") == "switch.after_rename"
+
+
+def test_missing_stable_registry_entry_never_falls_back_to_reused_entity_id() -> None:
+    registry = BindHomeRegistry()
+    asset = _asset(registry, ["on_off"])
+    _bind(
+        registry,
+        asset,
+        "on_off",
+        "switch.reused_name",
+        entity_registry_id="removed-entry",
+    )
+    probe = StaticEntityProbe(
+        # Another Registry entry now owns the old mutable entity_id.
+        registry_entries={"different-entry": "switch.reused_name"},
+        states={"switch.reused_name": "on"},
+    )
+    resolver = BindingResolver(registry, probe)
+
+    result = resolver.resolve(asset.id, "on_off")
+
+    assert result.status is ResolutionStatus.ENTITY_NOT_FOUND
+    assert result.entity_id is None
+    assert result.binding is not None
+    assert result.binding.entity_id == "switch.reused_name"
+    assert result.config_valid is False
+    with pytest.raises(StaleBindingError, match="removed-entry"):
+        resolver.resolve_entity_id(asset.id, "on_off")
+
+
+def test_stable_registry_target_is_valid_even_without_runtime_state() -> None:
+    registry = BindHomeRegistry()
+    asset = _asset(registry, ["on_off"])
+    _bind(
+        registry,
+        asset,
+        "on_off",
+        "switch.old_name",
+        entity_registry_id="entry-offline",
+    )
+    resolver = BindingResolver(
+        registry,
+        StaticEntityProbe(registry_entries={"entry-offline": "switch.current_name"}),
+    )
+
+    result = resolver.resolve(asset.id, "on_off")
+
+    assert result.status is ResolutionStatus.RUNTIME_UNAVAILABLE
+    assert result.entity_id == "switch.current_name"
+    assert result.config_valid is True
+    assert resolver.resolve_entity_id(asset.id, "on_off") == "switch.current_name"
+
+
+async def test_home_assistant_probe_resolves_registry_uuid_after_entity_rename(
+    hass,
+) -> None:
+    entity_registry = er.async_get(hass)
+    entry = entity_registry.async_get_or_create(
+        "switch",
+        "demo",
+        "stable-target",
+        suggested_object_id="before_rename",
+    )
+    registry_entry_id = entry.id
+    old_entity_id = entry.entity_id
+    renamed = entity_registry.async_update_entity(
+        old_entity_id,
+        new_entity_id="switch.after_rename",
+    )
+
+    probe = HomeAssistantEntityProbe(hass)
+
+    assert renamed.id == registry_entry_id
+    assert probe.resolve_registry_entity_id(registry_entry_id) == "switch.after_rename"
+    assert probe.resolve_registry_entity_id("missing-entry") is None
 
 
 # --- replacement / identity semantics ------------------------------------
