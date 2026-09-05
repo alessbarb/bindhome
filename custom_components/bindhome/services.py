@@ -23,11 +23,16 @@ from .const import (
     SERVICE_GET_REGISTRY,
     SERVICE_REMOVE_BINDING,
     SERVICE_REMOVE_RELATION,
+    SERVICE_RESOLVE,
     SERVICE_SET_BINDING,
     SERVICE_UPDATE_ASSET,
 )
 from .manager import BindHomeManager
-from .models import ModelValidationError
+from .models import (
+    ModelValidationError,
+    normalize_identifier,
+    normalize_non_empty,
+)
 from .registry import RegistryError
 from .validation import validate_area
 
@@ -68,6 +73,13 @@ _SET_BINDING_SCHEMA = vol.Schema(
     }
 )
 _REMOVE_BINDING_SCHEMA = vol.Schema({vol.Required("binding_id"): cv.string})
+_RESOLVE_SCHEMA = vol.Schema(
+    {
+        vol.Required("asset_id"): cv.string,
+        vol.Required("capability"): cv.string,
+        vol.Optional("role", default="primary"): cv.string,
+    }
+)
 
 
 def _get_manager(hass: HomeAssistant) -> BindHomeManager:
@@ -201,6 +213,30 @@ def async_register_services(hass: HomeAssistant) -> None:
         manager = _get_manager(hass)
         return manager.registry.to_dict()
 
+    async def resolve(call: ServiceCall) -> ServiceResponse:
+        manager = _get_manager(hass)
+        try:
+            asset_id = normalize_non_empty(call.data["asset_id"], "asset_id")
+            capability = normalize_identifier(call.data["capability"], "capability")
+            role = normalize_identifier(call.data["role"], "role")
+        except ModelValidationError as err:
+            raise ServiceValidationError(str(err)) from err
+
+        resolution = manager.resolver.resolve(asset_id, capability, role)
+        return cast(
+            ServiceResponse,
+            {
+                "asset_id": resolution.asset_id,
+                "capability": resolution.capability,
+                "role": resolution.role,
+                "status": resolution.status.value,
+                "entity_id": resolution.entity_id,
+                "config_valid": resolution.config_valid,
+                "runtime_available": resolution.runtime_available,
+                "state": resolution.state,
+            },
+        )
+
     hass.services.async_register(
         DOMAIN,
         SERVICE_CREATE_ASSET,
@@ -254,5 +290,12 @@ def async_register_services(hass: HomeAssistant) -> None:
         DOMAIN,
         SERVICE_GET_REGISTRY,
         get_registry,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_RESOLVE,
+        resolve,
+        schema=_RESOLVE_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )

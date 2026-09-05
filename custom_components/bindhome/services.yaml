@@ -95,3 +95,17 @@ remove_binding:
         text:
 
 get_registry:
+
+resolve:
+  fields:
+    asset_id:
+      required: true
+      selector:
+        text:
+    capability:
+      required: true
+      selector:
+        text:
+    role:
+      selector:
+        text:
