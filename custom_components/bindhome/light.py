@@ -46,7 +46,7 @@ def _color_mode(value: Any) -> ColorMode | None:
     """Coerce one Home Assistant state attribute to a known color mode."""
     try:
         mode = ColorMode(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     return None if mode is ColorMode.UNKNOWN else mode
 
@@ -57,11 +57,7 @@ def _supported_color_modes(attributes: dict[str, Any]) -> set[ColorMode]:
     if not isinstance(raw_modes, (list, tuple, set, frozenset)):
         return {ColorMode.ONOFF}
 
-    modes = {
-        mode
-        for value in raw_modes
-        if (mode := _color_mode(value)) is not None
-    }
+    modes = {mode for value in raw_modes if (mode := _color_mode(value)) is not None}
     if not modes:
         return {ColorMode.ONOFF}
 
@@ -81,7 +77,7 @@ def _tuple_value(
         return None
     try:
         return tuple(caster(item) for item in value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
@@ -334,7 +330,7 @@ class BindHomeLight(LightEntity):
         raw_features = attributes.get(ATTR_SUPPORTED_FEATURES, 0)
         try:
             features = LightEntityFeature(int(raw_features))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             features = LightEntityFeature(0)
         self._attr_supported_features = features & _KNOWN_LIGHT_FEATURES
 
