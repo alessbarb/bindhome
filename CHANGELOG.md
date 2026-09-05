@@ -18,6 +18,14 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ## [Unreleased]
 
+---
+
+## [1.2.0] - 2026-09-05
+
+Second feature release focused on Registry durability, explicit migration and recovery paths, privacy-preserving diagnostics, localization parity and stronger frontend/backend development safety.
+
+**Minimum Home Assistant:** `2026.8.0`
+
 ### Added
 
 - Added privacy-preserving Home Assistant config-entry diagnostics with integration/storage/schema versions, aggregate Registry counts, aggregate Binding resolver statuses and fail-closed recovery context without exporting Registry contents or stable/hardware identifiers. ([#67](https://github.com/alessbarb/bindhome/pull/67))
@@ -36,6 +44,10 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 - Staged Registry state is revalidated before persistence, and the manager-independent store write path now validates canonical state before touching Home Assistant storage, giving future startup migrations a documented validate-before-write persistence primitive. ([#62](https://github.com/alessbarb/bindhome/pull/62))
 - Live Registry adoption derives its persisted collection set from the Registry serialization contract instead of maintaining a separate hand-written list, so future persisted collections cannot be silently omitted; new persisted fields without collection semantics fail closed until explicitly handled. ([#62](https://github.com/alessbarb/bindhome/pull/62))
 - Unsupported future Registry schemas fail closed without rewrite, while supported historical Registry schemas—including schemas contained in compatible backup envelopes—are migrated only through explicit validated steps. Golden fixtures and CI require a complete migration path whenever `REGISTRY_SCHEMA_VERSION` is raised. ([#63](https://github.com/alessbarb/bindhome/pull/63))
+
+### Distribution
+
+- Version promoted to `1.2.0` across Python, Home Assistant and frontend package metadata.
 
 ---
 
