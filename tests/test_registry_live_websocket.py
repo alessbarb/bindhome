@@ -133,9 +133,7 @@ async def test_mutation_forwards_client_revision_and_returns_revision() -> None:
     )
 
     assert manager.async_update_asset.await_args.kwargs["expected_revision"] == 7
-    assert connection.results == [
-        ("2", {"asset": asset.to_dict(), "revision": 7})
-    ]
+    assert connection.results == [("2", {"asset": asset.to_dict(), "revision": 7})]
 
 
 @pytest.mark.asyncio
