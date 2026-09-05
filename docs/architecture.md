@@ -108,6 +108,10 @@ Representation requirements describe BindHome's own implementation contract; the
 
 Removing a Representation removes the logical entity while preserving the physical Asset. Re-adding it restores the same stable logical identity derived from the Asset.
 
+Representation reconciliation deliberately separates integration-owned metadata from Home Assistant user customization. BindHome synchronizes the Entity Registry `original_name` from the Asset name and `area_id` from the Asset location. The custom Entity Registry `name`, user-selected `entity_id`, icon, aliases, labels and user disabled/hidden choices remain Home Assistant-owned and are not reset by BindHome reconciliation. A direct Area override on the logical entity is not durable because the Asset remains the physical location source of truth; moving the Asset is the supported way to move its Representation.
+
+The current `light` platform applies that ownership policy both when the entity first enters Home Assistant and on later Registry reconciliation. Future Representation platforms must reuse the same policy rather than inventing platform-specific metadata ownership.
+
 ### Creation preset
 
 Creation presets are read-only UX metadata used to generate editable Asset drafts during inventory.
@@ -290,7 +294,7 @@ The panel reads Home Assistant Floors, Areas, Entity Registry and Device Registr
 
 Room inventory uses Home Assistant Areas as location references and BindHome presets to generate editable local drafts. Accepted batches are persisted with one transactional `bindhome/assets/create_bulk` request.
 
-Human editing preserves stable Asset identity. Hardware connection uses replacement-safe Binding operations rather than delete-before-set sequences. Normal connection UI displays the resolver's current Home Assistant `entity_id`; the stable Registry target identity remains an implementation detail available to technical/Advanced inspection.
+Human editing preserves stable Asset identity. When an Asset has a logical Representation, Asset name/Area edits update only the integration-owned original name and area of that logical entity; Home Assistant user custom name, `entity_id` and icon are preserved. Hardware connection uses replacement-safe Binding operations rather than delete-before-set sequences. Normal connection UI displays the resolver's current Home Assistant `entity_id`; the stable Registry target identity remains an implementation detail available to technical/Advanced inspection.
 
 Topology uses the same directed Relation objects as the backend and supports bounded search/navigation.
 

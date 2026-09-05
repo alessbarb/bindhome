@@ -42,6 +42,19 @@ def _entity_registry_id(asset_id: str) -> tuple[str, str, str]:
     return contract.domain, DOMAIN, contract.unique_id
 
 
+def _sync_owned_entity_registry_metadata(
+    entity_registry: er.EntityRegistry,
+    entity_id: str,
+    asset: Asset,
+) -> None:
+    """Synchronize only logical-entity metadata owned by BindHome."""
+    entity_registry.async_update_entity(
+        entity_id,
+        area_id=asset.area_id,
+        original_name=asset.name,
+    )
+
+
 def _color_mode(value: Any) -> ColorMode | None:
     """Coerce one Home Assistant state attribute to a known color mode."""
     try:
@@ -134,10 +147,10 @@ async def async_setup_entry(
                     *_entity_registry_id(asset_id)
                 )
                 if entity_id is not None:
-                    entity_registry.async_update_entity(
+                    _sync_owned_entity_registry_metadata(
+                        entity_registry,
                         entity_id,
-                        area_id=asset.area_id,
-                        original_name=asset.name,
+                        asset,
                     )
 
             # Add newly eligible assets.
@@ -196,6 +209,12 @@ class BindHomeLight(LightEntity):
     async def async_added_to_hass(self) -> None:
         """Subscribe to the currently resolved backing entity."""
         await super().async_added_to_hass()
+        if self.entity_id is not None:
+            _sync_owned_entity_registry_metadata(
+                er.async_get(self.hass),
+                self.entity_id,
+                self._asset,
+            )
         self.refresh_binding_subscription()
         self._unsub_binding_target = async_dispatcher_connect(
             self.hass,

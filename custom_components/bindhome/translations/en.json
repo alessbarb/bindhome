@@ -318,7 +318,7 @@
     "panel_editor_edit": "Edit",
     "panel_editor_details": "Asset details",
     "panel_editor_edit_title": "Edit Asset",
-    "panel_editor_identity_note": "Saving changes preserves this Asset's stable identity.",
+    "panel_editor_identity_note": "Saving preserves this Asset's stable identity. If it has a logical Representation, its original name and Home Assistant Area follow the Asset; Home Assistant custom name, entity ID and icon remain user-controlled.",
     "panel_editor_unknown_area_option": "Unknown Area — {area_id}",
     "panel_editor_cancel": "Cancel",
     "panel_editor_save": "Save changes",

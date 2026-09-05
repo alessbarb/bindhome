@@ -318,7 +318,7 @@
     "panel_editor_edit": "Editar",
     "panel_editor_details": "Detalles del elemento",
     "panel_editor_edit_title": "Editar elemento",
-    "panel_editor_identity_note": "Guardar los cambios conserva la identidad estable de este elemento.",
+    "panel_editor_identity_note": "Guardar conserva la identidad estable de este elemento. Si tiene una representación lógica, su nombre original y su Área de Home Assistant se actualizan desde el elemento; el nombre personalizado, el ID de entidad y el icono configurados en Home Assistant siguen bajo control del usuario.",
     "panel_editor_unknown_area_option": "Área desconocida — {area_id}",
     "panel_editor_cancel": "Cancelar",
     "panel_editor_save": "Guardar cambios",

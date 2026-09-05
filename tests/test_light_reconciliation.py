@@ -2,6 +2,7 @@
 
 import pytest
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -81,6 +82,40 @@ async def test_setting_light_representation_adds_logical_light_dynamically(
 
     assert entity_id is not None
     assert hass.states.get(entity_id) is not None
+
+
+async def test_new_logical_light_receives_bindhome_owned_metadata_immediately(
+    hass: HomeAssistant,
+    bindhome_entry,
+) -> None:
+    manager = bindhome_entry.runtime_data
+    area = ar.async_get(hass).async_create("Living room")
+
+    asset = await manager.async_create_asset(
+        name="Living room ceiling light",
+        asset_type="light_point",
+        code=None,
+        area_id=area.id,
+        capabilities=["on_off"],
+    )
+    await manager.async_set_representation(
+        asset_id=asset.id,
+        platform="light",
+    )
+    await hass.async_block_till_done()
+
+    registry = er.async_get(hass)
+    entity_id = registry.async_get_entity_id(
+        "light",
+        DOMAIN,
+        f"{DOMAIN}_{asset.id}",
+    )
+    assert entity_id is not None
+
+    registry_entry = registry.async_get(entity_id)
+    assert registry_entry is not None
+    assert registry_entry.original_name == asset.name
+    assert registry_entry.area_id == area.id
 
 
 async def test_adding_on_off_capability_alone_does_not_infer_light(
@@ -176,6 +211,130 @@ async def test_logical_light_metadata_updates_without_identity_change(
     registry_entry = registry.async_get(entity_id)
     assert registry_entry is not None
     assert registry_entry.original_name == "New name"
+
+
+async def test_logical_light_preserves_home_assistant_user_overrides(
+    hass: HomeAssistant,
+    bindhome_entry,
+) -> None:
+    manager = bindhome_entry.runtime_data
+    area = ar.async_get(hass).async_create("Living room")
+
+    asset = await manager.async_create_asset(
+        name="Ceiling light",
+        asset_type="light_point",
+        code=None,
+        area_id=area.id,
+        capabilities=["on_off"],
+    )
+    await manager.async_set_representation(
+        asset_id=asset.id,
+        platform="light",
+    )
+    await hass.async_block_till_done()
+
+    registry = er.async_get(hass)
+    unique_id = f"{DOMAIN}_{asset.id}"
+    entity_id = registry.async_get_entity_id("light", DOMAIN, unique_id)
+    assert entity_id is not None
+
+    custom_entity_id = "light.my_ceiling_light"
+    registry.async_update_entity(
+        entity_id,
+        name="My ceiling light",
+        icon="mdi:star",
+        new_entity_id=custom_entity_id,
+    )
+    await hass.async_block_till_done()
+
+    await manager.async_update_asset(
+        asset_id=asset.id,
+        name="Renamed physical light",
+        asset_type=asset.asset_type,
+        code="LGT-01",
+        area_id=asset.area_id,
+        capabilities=list(asset.capabilities),
+    )
+    await hass.async_block_till_done()
+
+    assert registry.async_get_entity_id("light", DOMAIN, unique_id) == custom_entity_id
+    registry_entry = registry.async_get(custom_entity_id)
+    assert registry_entry is not None
+    assert registry_entry.name == "My ceiling light"
+    assert registry_entry.icon == "mdi:star"
+    assert registry_entry.original_name == "Renamed physical light"
+    assert registry_entry.area_id == area.id
+
+    assert await hass.config_entries.async_unload(bindhome_entry.entry_id)
+    await hass.async_block_till_done()
+    assert await hass.config_entries.async_setup(bindhome_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert registry.async_get_entity_id("light", DOMAIN, unique_id) == custom_entity_id
+    registry_entry = registry.async_get(custom_entity_id)
+    assert registry_entry is not None
+    assert registry_entry.name == "My ceiling light"
+    assert registry_entry.icon == "mdi:star"
+    assert registry_entry.original_name == "Renamed physical light"
+    assert registry_entry.area_id == area.id
+
+
+async def test_logical_light_area_follows_asset_not_entity_override(
+    hass: HomeAssistant,
+    bindhome_entry,
+) -> None:
+    manager = bindhome_entry.runtime_data
+    asset_area = ar.async_get(hass).async_create("Living room")
+    override_area = ar.async_get(hass).async_create("Kitchen")
+    moved_area = ar.async_get(hass).async_create("Dining room")
+
+    asset = await manager.async_create_asset(
+        name="Ceiling light",
+        asset_type="light_point",
+        code=None,
+        area_id=asset_area.id,
+        capabilities=["on_off"],
+    )
+    await manager.async_set_representation(
+        asset_id=asset.id,
+        platform="light",
+    )
+    await hass.async_block_till_done()
+
+    registry = er.async_get(hass)
+    entity_id = registry.async_get_entity_id(
+        "light",
+        DOMAIN,
+        f"{DOMAIN}_{asset.id}",
+    )
+    assert entity_id is not None
+
+    registry.async_update_entity(entity_id, area_id=override_area.id)
+    assert registry.async_get(entity_id).area_id == override_area.id
+
+    await manager.async_update_asset(
+        asset_id=asset.id,
+        name=asset.name,
+        asset_type=asset.asset_type,
+        code="LGT-AREA",
+        area_id=asset.area_id,
+        capabilities=list(asset.capabilities),
+    )
+    await hass.async_block_till_done()
+
+    assert registry.async_get(entity_id).area_id == asset_area.id
+
+    await manager.async_update_asset(
+        asset_id=asset.id,
+        name=asset.name,
+        asset_type=asset.asset_type,
+        code="LGT-MOVED",
+        area_id=moved_area.id,
+        capabilities=list(asset.capabilities),
+    )
+    await hass.async_block_till_done()
+
+    assert registry.async_get(entity_id).area_id == moved_area.id
 
 
 async def test_removing_representation_removes_logical_light_but_keeps_asset(

@@ -18,6 +18,10 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ## [Unreleased]
 
+### Changed
+
+- Logical Representation metadata ownership is now explicit: BindHome keeps the integration-provided original name and physical Area aligned with the Asset while preserving Home Assistant user overrides such as the custom entity name, `entity_id` and icon across reconciliation and restart. ([#44](https://github.com/alessbarb/bindhome/issues/44))
+
 ---
 
 ## [1.3.0] - 2026-09-06
