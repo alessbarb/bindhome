@@ -84,14 +84,8 @@ export class BindHomePanel extends LitElement {
         sans-serif
       );
     }
-    * {
-      box-sizing: border-box;
-    }
-    .shell {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+    * { box-sizing: border-box; }
+    .shell { min-height: 100vh; display: flex; flex-direction: column; }
     .top {
       display: flex;
       align-items: center;
@@ -100,30 +94,11 @@ export class BindHomePanel extends LitElement {
       border-bottom: 1px solid var(--divider-color, #e0e0e0);
       background: var(--card-background-color, #fff);
     }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      margin-right: 30px;
-    }
-    .brand ha-icon {
-      color: var(--primary-color);
-      --mdc-icon-size: 28px;
-    }
-    .brand h1 {
-      margin: 0;
-      font-size: 20px;
-      font-weight: 500;
-    }
-    .tabs {
-      align-self: stretch;
-      display: flex;
-      overflow-x: auto;
-      scrollbar-width: none;
-    }
-    .tabs::-webkit-scrollbar {
-      display: none;
-    }
+    .brand { display: flex; align-items: center; gap: 9px; margin-right: 30px; }
+    .brand ha-icon { color: var(--primary-color); --mdc-icon-size: 28px; }
+    .brand h1 { margin: 0; font-size: 20px; font-weight: 500; }
+    .tabs { align-self: stretch; display: flex; overflow-x: auto; scrollbar-width: none; }
+    .tabs::-webkit-scrollbar { display: none; }
     .tabs button {
       flex: none;
       min-width: 86px;
@@ -137,25 +112,15 @@ export class BindHomePanel extends LitElement {
       font-size: 14px;
       font-weight: 500;
     }
-    .tabs button.active {
-      color: var(--primary-text-color);
-      border-bottom-color: var(--primary-color);
-    }
+    .tabs button.active { color: var(--primary-text-color); border-bottom-color: var(--primary-color); }
     .tabs button.advanced[disabled] {
       color: var(--disabled-text-color, var(--secondary-text-color));
       opacity: 0.48;
       cursor: default;
       border-bottom-color: transparent;
     }
-    .tabs .advanced-switch {
-      flex: none;
-      align-self: center;
-      margin: 0 14px 0 4px;
-    }
-    button:focus-visible {
-      outline: 2px solid var(--primary-color);
-      outline-offset: -3px;
-    }
+    .tabs .advanced-switch { flex: none; align-self: center; margin: 0 14px 0 4px; }
+    button:focus-visible { outline: 2px solid var(--primary-color); outline-offset: -3px; }
     .refresh {
       width: 44px;
       height: 44px;
@@ -165,10 +130,7 @@ export class BindHomePanel extends LitElement {
       background: transparent;
       color: var(--primary-color);
     }
-    main {
-      flex: 1;
-      min-width: 0;
-    }
+    main { flex: 1; min-width: 0; }
     .onboarding-overlay {
       position: fixed;
       inset: 60px 0 0;
@@ -176,34 +138,17 @@ export class BindHomePanel extends LitElement {
       overflow: auto;
       background: var(--primary-background-color, #fafafa);
     }
-    .view[hidden] {
-      display: none;
-    }
+    .view[hidden] { display: none; }
     .refresh-error {
       margin: 12px 24px 0;
       padding: 12px;
       border: 1px solid var(--error-color, #db4437);
       border-radius: 8px;
     }
-    .state {
-      min-height: 60vh;
-      display: grid;
-      place-items: center;
-      padding: 24px;
-      text-align: center;
-    }
-    .state-content {
-      max-width: 520px;
-    }
-    .state h2 {
-      margin: 0;
-      font-size: 22px;
-      font-weight: 500;
-    }
-    .state p {
-      color: var(--secondary-text-color);
-      line-height: 22px;
-    }
+    .state { min-height: 60vh; display: grid; place-items: center; padding: 24px; text-align: center; }
+    .state-content { max-width: 520px; }
+    .state h2 { margin: 0; font-size: 22px; font-weight: 500; }
+    .state p { color: var(--secondary-text-color); line-height: 22px; }
     .retry {
       min-height: 44px;
       padding: 0 18px;
@@ -223,11 +168,7 @@ export class BindHomePanel extends LitElement {
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     @media (max-width: 650px) {
       .top {
         padding: 0 8px;
@@ -235,10 +176,7 @@ export class BindHomePanel extends LitElement {
         grid-template-columns: minmax(0, 1fr) 44px;
         grid-template-rows: 54px 50px;
       }
-      .brand {
-        margin: 0;
-        padding-left: 6px;
-      }
+      .brand { margin: 0; padding-left: 6px; }
       .tabs {
         grid-column: 1/-1;
         grid-row: 2;
@@ -259,22 +197,11 @@ export class BindHomePanel extends LitElement {
         transform: scale(0.88);
         transform-origin: center;
       }
-      .refresh {
-        grid-column: 2;
-        grid-row: 1;
-      }
-      .refresh-error {
-        margin-inline: 12px;
-      }
-      .onboarding-overlay {
-        inset: 104px 0 0;
-      }
+      .refresh { grid-column: 2; grid-row: 1; }
+      .refresh-error { margin-inline: 12px; }
+      .onboarding-overlay { inset: 104px 0 0; }
     }
-    @media (prefers-reduced-motion: reduce) {
-      .spinner {
-        animation: none;
-      }
-    }
+    @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
   `;
   updated(changed) {
     if (changed.has("hass")) {
@@ -398,18 +325,12 @@ export class BindHomePanel extends LitElement {
   }
   _navigate(view) {
     if (this._onboardingVisible) this._dismissOnboarding();
-    if (view === "advanced" && !this._advancedPinned) {
-      return;
-    }
+    if (view === "advanced" && !this._advancedPinned) return;
     if (view === "add") {
       this._openAdd(null);
       return;
     }
-    // Casa intentionally retains its last Area/Asset context while another
-    // mounted top-level view is active. Only Casa navigation events own it.
-    if (this._view === "advanced" && view !== "advanced") {
-      this._advancedAssetId = null;
-    }
+    if (this._view === "advanced" && view !== "advanced") this._advancedAssetId = null;
     this._view = view;
     if (view !== "add") this._contextAreaId = null;
   }
@@ -463,11 +384,10 @@ export class BindHomePanel extends LitElement {
       /* Browser storage may be unavailable. */
     }
   }
-  _completeOnboarding(event) {
-    const startInventory = Boolean(event?.detail?.startInventory);
+  _completeOnboarding() {
     this._dismissOnboarding();
-    if (startInventory) this._openAdd(null);
-    else this._view = "home";
+    this._contextAreaId = null;
+    this._view = "home";
   }
   _homeNavigate(event) {
     this._selectedAreaId = event.detail.areaId;
@@ -537,7 +457,9 @@ export class BindHomePanel extends LitElement {
           .hass=${this.hass}
           .t=${this._t}
           .presets=${this._presets}
+          .floors=${this._floors}
           .areas=${this._areas}
+          .assets=${this._assets}
           .contextAreaId=${this._contextAreaId}
           .sessionId=${this._addSessionId}
           .onCreated=${async (created) => {
@@ -545,6 +467,8 @@ export class BindHomePanel extends LitElement {
             const asset = created ?? assets?.at(-1);
             if (asset) this._openAsset(asset.id);
           }}
+          @assets-refreshed=${this._assetsRefreshed}
+          @go-home=${() => this._navigate("home")}
         ></bindhome-add-view>
       </section>
       <section class="view" ?hidden=${this._view !== "search"}>
@@ -579,66 +503,40 @@ export class BindHomePanel extends LitElement {
     let content;
     if (this._loading)
       content = html`<div class="state" aria-busy="true">
-        <div>
-          <div class="spinner"></div>
-          <p>${this._t("shell.loading")}</p>
-        </div>
+        <div><div class="spinner"></div><p>${this._t("shell.loading")}</p></div>
       </div>`;
     else if (this._error)
       content = html`<div class="state">
         <div class="state-content">
           <h2>${this._t("shell.load_error")}</h2>
           <p>${this._error}</p>
-          <button class="retry" @click=${() => this._load(true)}>
-            ${this._t("common.retry")}
-          </button>
+          <button class="retry" @click=${() => this._load(true)}>${this._t("common.retry")}</button>
         </div>
       </div>`;
     else content = this._renderViews();
     return html`<div class="shell">
       <header class="top">
-        <div class="brand">
-          <ha-icon icon="mdi:home-switch"></ha-icon>
-          <h1>BindHome</h1>
-        </div>
+        <div class="brand"><ha-icon icon="mdi:home-switch"></ha-icon><h1>BindHome</h1></div>
         <nav class="tabs" aria-label=${this._t("shell.sections_label")}>
           ${["home", "add", "search"].map(
-            (view) =>
-              html`<button
-                class=${this._view === view ? "active" : ""}
-                aria-current=${this._view === view ? "page" : "false"}
-                @click=${() => this._navigate(view)}
-              >
-                ${this._t(`nav.${view}`)}
-              </button>`,
+            (view) => html`<button
+              class=${this._view === view ? "active" : ""}
+              aria-current=${this._view === view ? "page" : "false"}
+              @click=${() => this._navigate(view)}
+            >${this._t(`nav.${view}`)}</button>`,
           )}
           <button
-            class=${this._view === "advanced"
-              ? "advanced active"
-              : "advanced"}
+            class=${this._view === "advanced" ? "advanced active" : "advanced"}
             aria-current=${this._view === "advanced" ? "page" : "false"}
             ?disabled=${!this._advancedPinned}
             @click=${() => this._navigate("advanced")}
-          >
-            ${this._t("nav.advanced")}
-          </button>
+          >${this._t("nav.advanced")}</button>
           <ha-switch
             class="advanced-switch"
             .checked=${this._advancedPinned}
-            aria-label=${this._t(
-              this._advancedPinned
-                ? "nav.unpin_advanced"
-                : "nav.pin_advanced",
-            )}
-            title=${this._t(
-              this._advancedPinned
-                ? "nav.unpin_advanced"
-                : "nav.pin_advanced",
-            )}
-            @change=${(event) =>
-              this._setAdvancedPinned(
-                Boolean(event.currentTarget.checked),
-              )}
+            aria-label=${this._t(this._advancedPinned ? "nav.unpin_advanced" : "nav.pin_advanced")}
+            title=${this._t(this._advancedPinned ? "nav.unpin_advanced" : "nav.pin_advanced")}
+            @change=${(event) => this._setAdvancedPinned(Boolean(event.currentTarget.checked))}
           ></ha-switch>
         </nav>
         <button
@@ -646,14 +544,10 @@ export class BindHomePanel extends LitElement {
           aria-label=${this._t("shell.refresh_label")}
           @click=${() => this._load(false)}
           ?disabled=${this._loading || Boolean(this._loadPromise)}
-        >
-          <ha-icon icon="mdi:refresh"></ha-icon>
-        </button>
+        ><ha-icon icon="mdi:refresh"></ha-icon></button>
       </header>
       ${this._refreshError
-        ? html`<div class="refresh-error" role="alert">
-            ${this._t("shell.refresh_error")} ${this._refreshError}
-          </div>`
+        ? html`<div class="refresh-error" role="alert">${this._t("shell.refresh_error")} ${this._refreshError}</div>`
         : null}
       <main>
         ${content}
