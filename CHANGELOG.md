@@ -18,7 +18,24 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ## [Unreleased]
 
-No changes yet beyond `1.1.0`.
+No changes yet beyond `1.1.1`.
+
+---
+
+## [1.1.1] - 2026-09-05
+
+Patch release correcting BindHome's Home Assistant integration classification.
+
+**Minimum Home Assistant:** `2026.8.0`
+
+### Fixed
+
+- BindHome is now declared as a `hub` integration instead of a `helper`. It therefore belongs under **Settings → Devices & services → Integrations**, rather than the Helpers screen. The previous helper classification caused Home Assistant to offer a helper-edit/options flow that BindHome does not implement, producing `Invalid handler specified` when the BindHome row was opened.
+- Existing BindHome config entries, Registry storage, Assets, Relations, Bindings and Representations are unchanged by this metadata correction.
+
+### Distribution
+
+- Version promoted to `1.1.1` across Python, Home Assistant and frontend package metadata.
 
 ---
 
@@ -133,6 +150,7 @@ First public BindHome release.
 
 ---
 
-[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/alessbarb/bindhome/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/alessbarb/bindhome/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/alessbarb/bindhome/releases/tag/v1.0.0
