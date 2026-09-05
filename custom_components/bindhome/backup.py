@@ -71,11 +71,13 @@ def parse_registry_backup(
 async def async_restore_registry_backup(
     manager: BindHomeManager,
     data: object,
+    *,
+    expected_revision: int | None = None,
 ) -> BindHomeRegistry:
     """Validate and atomically replace the live Registry from a backup."""
     replacement = parse_registry_backup(data, hass=manager.hass)
 
-    async with manager.transaction() as staged:
+    async with manager.transaction(expected_revision=expected_revision) as staged:
         replace_registry_contents(staged, replacement)
 
     return manager.registry

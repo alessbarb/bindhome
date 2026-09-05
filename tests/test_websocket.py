@@ -45,6 +45,7 @@ class FakeManager:
     """Minimal manager double used to exercise handler contracts."""
 
     def __init__(self) -> None:
+        self.revision = 0
         self.registry = Mock()
         self.registry.to_dict.return_value = {
             "schema_version": 1,
@@ -88,7 +89,9 @@ async def test_registry_get_returns_complete_registry() -> None:
 
     await call(websocket.ws_registry_get, hass_for(manager), connection, {"id": "1"})
 
-    assert connection.results == [("1", manager.registry.to_dict.return_value)]
+    assert connection.results == [
+        ("1", {**manager.registry.to_dict.return_value, "revision": 0})
+    ]
 
 
 @pytest.mark.asyncio
@@ -719,6 +722,7 @@ def test_registers_all_commands_under_bindhome_namespace() -> None:
 
     assert set(hass.data["websocket_api"]) == {
         websocket.WS_REGISTRY_GET,
+        websocket.WS_REGISTRY_SUBSCRIBE,
         websocket.WS_ASSET_CREATE,
         websocket.WS_ASSET_CREATE_BULK,
         websocket.WS_ASSET_UPDATE,

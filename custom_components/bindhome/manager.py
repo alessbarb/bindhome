@@ -20,6 +20,7 @@ from .models import (
 )
 from .registry import (
     BindHomeRegistry,
+    RegistryConflictError,
     RegistryError,
     RegistryValidationError,
 )
@@ -92,6 +93,17 @@ class BindingCycleError(RegistryError):
         super().__init__(f"Binding cycle detected: {formatted}")
 
 
+class RegistryRevisionConflictError(RegistryConflictError):
+    """Raised when a mutation is based on an obsolete Registry revision."""
+
+    def __init__(self, expected: int, current: int) -> None:
+        self.expected = expected
+        self.current = current
+        super().__init__(
+            f"Registry revision conflict: client has {expected}, current is {current}"
+        )
+
+
 class BindHomeManager:
     """Coordinate registry state and persistent writes."""
 
@@ -101,14 +113,24 @@ class BindHomeManager:
         self._store = BindHomeStore(hass)
         self._mutation_lock = BindHomeMutationLock()
         self._probe = HomeAssistantEntityProbe(hass)
+        self._revision = 0
 
     @property
     def resolver(self) -> BindingResolver:
         """Return a resolver bound to the current registry and Home Assistant."""
         return BindingResolver(self.registry, self._probe)
 
+    @property
+    def revision(self) -> int:
+        """Return the monotonic in-process Registry revision."""
+        return self._revision
+
     @asynccontextmanager
-    async def transaction(self) -> AsyncIterator[BindHomeRegistry]:
+    async def transaction(
+        self,
+        *,
+        expected_revision: int | None = None,
+    ) -> AsyncIterator[BindHomeRegistry]:
         """Yield an isolated Registry and commit it once on successful exit.
 
         Concurrent callers serialize through the mutation lock. Re-entering the
@@ -116,11 +138,21 @@ class BindHomeManager:
         than deadlocking on ``asyncio.Lock`` semantics. Transaction callers must
         therefore perform multi-step changes directly against the staged
         Registry yielded here.
+
+        When ``expected_revision`` is supplied it is checked after acquiring the
+        mutation lock, before any staged mutation or persistent write can occur.
         """
         async with self._mutation_lock:
+            self._assert_expected_revision(expected_revision)
             staged = self._stage_registry()
             yield staged
             await self._async_commit_staged_registry(staged)
+
+    def _assert_expected_revision(self, expected_revision: int | None) -> None:
+        """Fail before mutation when a client is based on stale Registry state."""
+        if expected_revision is None or expected_revision == self._revision:
+            return
+        raise RegistryRevisionConflictError(expected_revision, self._revision)
 
     def _stage_registry(self) -> BindHomeRegistry:
         """Return an isolated validated copy of the live registry."""
@@ -134,6 +166,7 @@ class BindHomeManager:
         canonical = BindHomeRegistry.from_dict(staged.to_dict())
         await self._store.async_save(canonical)
         self._adopt_staged_registry(canonical)
+        self._revision += 1
         async_dispatcher_send(self.hass, SIGNAL_REGISTRY_CHANGED)
 
     def _adopt_staged_registry(self, staged: BindHomeRegistry) -> None:
@@ -146,8 +179,9 @@ class BindHomeManager:
         replace_registry_contents(self.registry, staged)
 
     async def async_load(self) -> None:
-        """Load persisted registry state."""
+        """Load persisted registry state and establish a fresh runtime revision."""
         self.registry = await self._store.async_load()
+        self._revision = 0
 
     async def async_create_asset(
         self,
@@ -157,9 +191,11 @@ class BindHomeManager:
         code: str | None,
         area_id: str | None,
         capabilities: list[str],
+        expected_revision: int | None = None,
     ) -> Asset:
         """Create and persist an asset."""
         async with self._mutation_lock:
+            self._assert_expected_revision(expected_revision)
             staged = self._stage_registry()
             asset = staged.add_asset(
                 Asset.create(
@@ -176,12 +212,15 @@ class BindHomeManager:
     async def async_create_assets(
         self,
         specs: list[AssetCreateSpec],
+        *,
+        expected_revision: int | None = None,
     ) -> list[Asset]:
         """Create many Assets as one atomic persistent mutation."""
         if not specs:
             raise ValueError("assets must contain at least one item")
 
         async with self._mutation_lock:
+            self._assert_expected_revision(expected_revision)
             staged = self._stage_registry()
             created: list[Asset] = []
 
@@ -212,9 +251,11 @@ class BindHomeManager:
         code: str | None,
         area_id: str | None,
         capabilities: list[str],
+        expected_revision: int | None = None,
     ) -> Asset:
         """Update and persist an asset without changing its identity."""
         async with self._mutation_lock:
+            self._assert_expected_revision(expected_revision)
             staged = self._stage_registry()
             asset = staged.update_asset(
                 asset_id,
@@ -227,18 +268,30 @@ class BindHomeManager:
             await self._async_commit_staged_registry(staged)
             return asset
 
-    async def async_delete_asset(self, asset_id: str) -> None:
+    async def async_delete_asset(
+        self,
+        asset_id: str,
+        *,
+        expected_revision: int | None = None,
+    ) -> None:
         """Delete and persist an asset."""
         async with self._mutation_lock:
+            self._assert_expected_revision(expected_revision)
             staged = self._stage_registry()
             staged.delete_asset(asset_id)
             await self._async_commit_staged_registry(staged)
 
     async def async_add_relation(
-        self, *, source_asset_id: str, relation_type: str, target_asset_id: str
+        self,
+        *,
+        source_asset_id: str,
+        relation_type: str,
+        target_asset_id: str,
+        expected_revision: int | None = None,
     ) -> Relation:
         """Create and persist a topology relation."""
         async with self._mutation_lock:
+            self._assert_expected_revision(expected_revision)
             staged = self._stage_registry()
             relation = staged.add_relation(
                 Relation.create(
@@ -250,9 +303,15 @@ class BindHomeManager:
             await self._async_commit_staged_registry(staged)
             return relation
 
-    async def async_remove_relation(self, relation_id: str) -> None:
+    async def async_remove_relation(
+        self,
+        relation_id: str,
+        *,
+        expected_revision: int | None = None,
+    ) -> None:
         """Remove and persist a topology relation."""
         async with self._mutation_lock:
+            self._assert_expected_revision(expected_revision)
             staged = self._stage_registry()
             staged.remove_relation(relation_id)
             await self._async_commit_staged_registry(staged)
@@ -264,9 +323,11 @@ class BindHomeManager:
         capability: str,
         entity_id: str,
         role: str,
+        expected_revision: int | None = None,
     ) -> Binding:
         """Create or replace and persist a capability binding."""
         async with self._mutation_lock:
+            self._assert_expected_revision(expected_revision)
             staged = self._stage_registry()
             binding = Binding.create(
                 asset_id=asset_id,
@@ -351,9 +412,15 @@ class BindHomeManager:
                 stack.append((neighbor, [*path, neighbor]))
         return None
 
-    async def async_remove_binding(self, binding_id: str) -> None:
+    async def async_remove_binding(
+        self,
+        binding_id: str,
+        *,
+        expected_revision: int | None = None,
+    ) -> None:
         """Remove and persist a binding."""
         async with self._mutation_lock:
+            self._assert_expected_revision(expected_revision)
             staged = self._stage_registry()
             staged.remove_binding(binding_id)
             await self._async_commit_staged_registry(staged)
@@ -363,9 +430,11 @@ class BindHomeManager:
         *,
         asset_id: str,
         platform: str,
+        expected_revision: int | None = None,
     ) -> Representation:
         """Create and persist an Asset's logical representation."""
         async with self._mutation_lock:
+            self._assert_expected_revision(expected_revision)
             staged = self._stage_registry()
             representation = staged.set_representation(
                 Representation.create(
@@ -376,9 +445,15 @@ class BindHomeManager:
             await self._async_commit_staged_registry(staged)
             return representation
 
-    async def async_remove_representation(self, asset_id: str) -> None:
+    async def async_remove_representation(
+        self,
+        asset_id: str,
+        *,
+        expected_revision: int | None = None,
+    ) -> None:
         """Remove and persist an Asset's logical representation."""
         async with self._mutation_lock:
+            self._assert_expected_revision(expected_revision)
             staged = self._stage_registry()
             staged.remove_representation(asset_id)
             await self._async_commit_staged_registry(staged)
