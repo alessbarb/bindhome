@@ -1,0 +1,230 @@
+name: Temporary BindHome 1.2.0 Release
+
+on:
+  push:
+    branches:
+      - release/1.2.0
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: release/1.2.0
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Prepare exact 1.2.0 release commit
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          version = "1.2.0"
+
+          pyproject = Path("pyproject.toml")
+          text = pyproject.read_text()
+          text = text.replace('version = "1.1.1"', f'version = "{version}"', 1)
+          pyproject.write_text(text)
+
+          manifest_path = Path("custom_components/bindhome/manifest.json")
+          manifest = json.loads(manifest_path.read_text())
+          manifest["version"] = version
+          manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")
+
+          package_path = Path("frontend/package.json")
+          package = json.loads(package_path.read_text())
+          package["version"] = version
+          package_path.write_text(json.dumps(package, indent=2) + "\n")
+
+          lock_path = Path("frontend/package-lock.json")
+          lock = json.loads(lock_path.read_text())
+          lock["version"] = version
+          lock["packages"][""]["version"] = version
+          lock_path.write_text(json.dumps(lock, indent=2) + "\n")
+
+          diagnostics_test = Path("tests/test_diagnostics.py")
+          diagnostics_test.write_text(
+              diagnostics_test.read_text().replace('version="1.1.1"', 'version="1.2.0"')
+          )
+
+          changelog_path = Path("CHANGELOG.md")
+          changelog = changelog_path.read_text()
+          marker = "## [Unreleased]\n"
+          next_release = "\n---\n\n## [1.1.1]"
+          start = changelog.index(marker)
+          split = changelog.index(next_release, start)
+          unreleased = changelog[start + len(marker):split].strip()
+          before = changelog[:start]
+          after = changelog[split + len("\n---\n\n"):]
+          release_intro = (
+              "Second feature release focused on Registry durability, explicit migration "
+              "and recovery paths, privacy-preserving diagnostics, localization parity "
+              "and stronger frontend/backend development safety.\n\n"
+              "**Minimum Home Assistant:** `2026.8.0`\n\n"
+          )
+          distribution = (
+              "\n\n### Distribution\n\n"
+              "- Version promoted to `1.2.0` across Python, Home Assistant and frontend "
+              "package metadata.\n"
+          )
+          changelog_path.write_text(
+              before
+              + "## [Unreleased]\n\n---\n\n"
+              + "## [1.2.0] - 2026-09-05\n\n"
+              + release_intro
+              + unreleased
+              + distribution
+              + "\n---\n\n"
+              + after
+          )
+
+          readme_path = Path("README.md")
+          readme = readme_path.read_text()
+          stable_line = "**Current stable release: `1.2.0` · Home Assistant `2026.8.0+`**\n\n"
+          if stable_line not in readme:
+              readme = readme.replace("# BindHome\n\n", "# BindHome\n\n" + stable_line, 1)
+
+          section = """## BindHome 1.2.0\n\nBindHome 1.2.0 is a reliability-focused release. It keeps the public Registry schema at v1 while making future evolution and recovery safer: multi-step mutations now use a supported manager transaction boundary, historical Registry payloads migrate through explicit validated steps, failed loads expose a fail-closed Home Assistant Repair with backup recovery, and config-entry diagnostics provide aggregate support data without exporting home or hardware identifiers.\n\nThe release also enforces English/Spanish translation parity and real JavaScript typechecking for the production panel source. Existing Assets, Relations, Bindings and Representations remain compatible with the 1.1 release line.\n\n---\n\n"""
+          install_marker = "## Installation\n"
+          if "## BindHome 1.2.0\n" not in readme:
+              readme = readme.replace(install_marker, section + install_marker, 1)
+          readme_path.write_text(readme)
+          PY
+
+          rm .github/workflows/_tmp-release-1.2.0.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "release: prepare BindHome 1.2.0"
+          git push origin HEAD:release/1.2.0
+          echo "TARGET_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Verify release metadata
+        run: |
+          python - <<'PY'
+          import json
+          import pathlib
+          import re
+          import tomllib
+
+          root = pathlib.Path('.')
+          pyproject = tomllib.loads((root / 'pyproject.toml').read_text())
+          manifest = json.loads((root / 'custom_components/bindhome/manifest.json').read_text())
+          package = json.loads((root / 'frontend/package.json').read_text())
+          package_lock = json.loads((root / 'frontend/package-lock.json').read_text())
+          versions = {
+              pyproject['project']['version'],
+              manifest['version'],
+              package['version'],
+              package_lock['version'],
+              package_lock['packages']['']['version'],
+          }
+          if versions != {'1.2.0'}:
+              raise SystemExit(f'Version metadata mismatch: {versions}')
+          changelog = (root / 'CHANGELOG.md').read_text()
+          if not re.search(r'^## \[1\.2\.0\] - 2026-09-05$', changelog, re.MULTILINE):
+              raise SystemExit('CHANGELOG.md has no finalized 1.2.0 section')
+          if '#50' in changelog.split('## [1.2.0]', 1)[1].split('## [1.1.1]', 1)[0] or '#29' in changelog.split('## [1.2.0]', 1)[1].split('## [1.1.1]', 1)[0]:
+              raise SystemExit('1.3 work leaked into the 1.2.0 changelog section')
+          print('Release metadata coherent for BindHome 1.2.0')
+          PY
+
+      - name: Install development dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install '.[dev]'
+
+      - name: Pytest
+        run: pytest
+
+      - name: Ruff Lint & Format
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Frontend typecheck, test and bundle verification
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          npm run build
+          git diff --exit-code -- ../custom_components/bindhome/panel/static/bindhome-panel.js
+
+      - name: Hassfest
+        uses: home-assistant/actions/hassfest@master
+
+      - name: HACS Validation
+        uses: hacs/action@main
+        with:
+          category: integration
+
+      - name: HA 2026.8.0 compatibility
+        run: |
+          python -m venv /tmp/bindhome-ha-2026-8
+          source /tmp/bindhome-ha-2026-8/bin/activate
+          python -m pip install --upgrade pip
+          pip install .
+          pip install "pytest-homeassistant-custom-component==0.13.354"
+          python - <<'PY'
+          import homeassistant.const
+          assert homeassistant.const.__version__ == "2026.8.0", homeassistant.const.__version__
+          PY
+          pytest
+          deactivate
+
+      - name: HA 2026.9.0 compatibility
+        run: |
+          python -m venv /tmp/bindhome-ha-2026-9
+          source /tmp/bindhome-ha-2026-9/bin/activate
+          python -m pip install --upgrade pip
+          pip install .
+          pip install "pytest-homeassistant-custom-component==0.13.363"
+          python - <<'PY'
+          import homeassistant.const
+          assert homeassistant.const.__version__ == "2026.9.0", homeassistant.const.__version__
+          PY
+          pytest
+          deactivate
+
+      - name: Extract 1.2.0 release notes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          changelog = Path('CHANGELOG.md').read_text()
+          section = changelog.split('## [1.2.0] - 2026-09-05', 1)[1]
+          section = section.split('## [1.1.1]', 1)[0]
+          section = section.rsplit('\n---\n', 1)[0].strip() + '\n'
+          Path('/tmp/release-notes.md').write_text(section)
+          print(section)
+          PY
+
+      - name: Publish BindHome 1.2.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v1.2.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "v1.2.0 already exists"
+            exit 0
+          fi
+          gh release create v1.2.0 \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$TARGET_SHA" \
+            --title "BindHome 1.2.0" \
+            --notes-file /tmp/release-notes.md \
+            --latest
