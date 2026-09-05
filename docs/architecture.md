@@ -20,6 +20,8 @@ Stable physical Asset
 
 The core rule is simple: replacing smart hardware should normally change a Binding, not the identity of the physical thing being modelled.
 
+The product positioning behind this architecture is recorded in [ADR 0001: the infrastructure model is the product core](adr/0001-product-positioning.md).
+
 ## Ownership boundary
 
 Home Assistant remains authoritative for:
@@ -78,7 +80,7 @@ The Home Assistant entity is replaceable. Setting a new Binding for the same fun
 
 Binding targets may also be logical entities produced by BindHome Representations. BindHome-to-BindHome composition is allowed only when the resulting functional dependency graph remains acyclic. Cycle validation operates at `(asset_id, capability, role)` granularity.
 
-The Home Assistant Entity Registry remains authoritative for entity identity, including after entity-id renames.
+Home Assistant's Entity Registry is authoritative for registered entity identity, but BindHome 1.1.x currently persists the mutable `entity_id` string in hardware Bindings. Renaming a bound entity in Home Assistant can therefore make that Binding stale until it is rebound. Stable Entity Registry target identity is planned in issue #31.
 
 ### Relation
 
@@ -94,7 +96,7 @@ A Representation is BindHome's explicit decision to expose an Asset back into Ho
 
 Capability and Representation are separate concepts. An Asset may have `on_off` without being represented as a Home Assistant Light.
 
-BindHome 1.0 supports zero or one Representation per Asset. The implemented logical platform is currently `light`, which requires the BindHome `on_off` Capability.
+BindHome 1.x supports zero or one Representation per Asset. The implemented logical platform is currently `light`, which requires the BindHome `on_off` Capability.
 
 Representation requirements describe BindHome's own implementation contract; they are not a compatibility catalogue for Home Assistant domains.
 
@@ -272,7 +274,7 @@ Language changes update presentation without resetting mounted workflow state.
 
 ## Compatibility and release boundary
 
-BindHome 1.0.0 supports Home Assistant `2026.8.0` and newer compatible releases. CI tests the complete Python suite against the minimum supported Home Assistant version and the current stable release used for the release baseline.
+BindHome 1.x supports Home Assistant `2026.8.0` and newer compatible releases. CI tests the complete Python suite against the minimum supported Home Assistant version and the current stable release used for the release baseline.
 
 Release metadata is synchronized across Python, Home Assistant manifest and frontend package metadata. HACS, Hassfest, Python, frontend and compatibility validation form the release gate.
 
@@ -280,7 +282,7 @@ See [Release process](release.md).
 
 ## Architectural non-goals
 
-BindHome 1.0 does not attempt to:
+BindHome 1.x does not attempt to:
 
 - replace Home Assistant Devices, Entities, Areas or Floors;
 - infer physical topology automatically;
