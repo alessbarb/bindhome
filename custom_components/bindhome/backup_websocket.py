@@ -25,7 +25,7 @@ from .backup import (
 from .const import DOMAIN
 from .manager import BindHomeManager
 from .recovery import async_get_recovery_state
-from .registry import BindHomeRegistry, RegistryValidationError
+from .registry import BindHomeRegistry, RegistryConflictError, RegistryValidationError
 from .store import BindHomeStore, BindHomeStoreError
 
 WS_BACKUP_EXPORT = f"{DOMAIN}/backup/export"
@@ -121,6 +121,7 @@ def ws_backup_recovery_status(
     {
         vol.Required("type"): WS_BACKUP_RESTORE,
         vol.Required("backup"): dict,
+        vol.Optional("based_on_revision"): vol.All(int, vol.Range(min=0)),
     }
 )
 @async_response
@@ -131,12 +132,19 @@ async def ws_backup_restore(
 ) -> None:
     """Restore Registry through the live manager or the fail-closed recovery path."""
     recovery_reload: bool | None = None
+    manager: BindHomeManager | None = None
     try:
         entry = _get_entry(hass)
         if entry.state is config_entries.ConfigEntryState.LOADED:
+            manager = _get_manager(hass)
             registry = await async_restore_registry_backup(
-                _get_manager(hass),
+                manager,
                 msg["backup"],
+                **(
+                    {"expected_revision": msg["based_on_revision"]}
+                    if "based_on_revision" in msg
+                    else {}
+                ),
             )
         else:
             registry, recovery_reload = await _async_restore_recovery_registry(
@@ -149,6 +157,9 @@ async def ws_backup_restore(
     except BindHomeStoreError as err:
         connection.send_error(msg["id"], "storage_error", str(err))
         return
+    except RegistryConflictError as err:
+        connection.send_error(msg["id"], "conflict", str(err))
+        return
     except RegistryValidationError as err:
         connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
         return
@@ -157,6 +168,8 @@ async def ws_backup_restore(
         "restored": True,
         "registry": registry.to_dict(),
     }
+    if manager is not None and "based_on_revision" in msg:
+        result["revision"] = manager.revision
     if recovery_reload is not None:
         result["reloaded"] = recovery_reload
     connection.send_result(msg["id"], result)

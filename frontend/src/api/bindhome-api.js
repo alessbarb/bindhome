@@ -1,8 +1,69 @@
+const clients = new WeakMap();
+
+function stateFor(hass) {
+  const key = hass?.connection ?? hass;
+  if ((typeof key !== "object" && typeof key !== "function") || key === null) {
+    throw new TypeError("BindHome API requires a Home Assistant connection");
+  }
+
+  let state = clients.get(key);
+  if (!state) {
+    state = { revision: null, conflictListeners: new Set() };
+    clients.set(key, state);
+  }
+  return state;
+}
+
+function acceptRevision(state, revision) {
+  if (Number.isInteger(revision) && revision >= 0) state.revision = revision;
+}
+
+function errorCode(error) {
+  return (
+    error?.code ??
+    error?.body?.code ??
+    error?.data?.code ??
+    null
+  );
+}
+
+async function mutate(hass, state, message) {
+  const request = { ...message };
+  if (state.revision !== null) request.based_on_revision = state.revision;
+
+  try {
+    const response = await hass.callWS(request);
+    acceptRevision(state, response?.revision);
+    return response;
+  } catch (error) {
+    if (errorCode(error) === "conflict") {
+      for (const listener of state.conflictListeners) listener(error);
+    }
+    throw error;
+  }
+}
+
+export function subscribeBindHomeConflicts(hass, listener) {
+  const state = stateFor(hass);
+  state.conflictListeners.add(listener);
+  return () => state.conflictListeners.delete(listener);
+}
+
 export function createBindHomeApi(hass) {
+  const state = stateFor(hass);
+
   return {
     async getRegistry() {
-      return hass.callWS({
+      const response = await hass.callWS({
         type: "bindhome/registry/get",
+      });
+      acceptRevision(state, response?.revision);
+      return response;
+    },
+
+    async subscribeRegistryChanges(listener) {
+      return hass.connection.subscribeMessage(listener, {
+        type: "bindhome/registry/subscribe",
       });
     },
 
@@ -29,7 +90,7 @@ export function createBindHomeApi(hass) {
     },
 
     async setBinding({ assetId, capability, entityId, role = "primary" }) {
-      return hass.callWS({
+      return mutate(hass, state, {
         type: "bindhome/bindings/set",
         asset_id: assetId,
         capability,
@@ -39,14 +100,14 @@ export function createBindHomeApi(hass) {
     },
 
     async deleteBinding(bindingId) {
-      return hass.callWS({
+      return mutate(hass, state, {
         type: "bindhome/bindings/delete",
         binding_id: bindingId,
       });
     },
 
     async createRelation({ sourceAssetId, relationType, targetAssetId }) {
-      return hass.callWS({
+      return mutate(hass, state, {
         type: "bindhome/relations/create",
         source_asset_id: sourceAssetId,
         relation_type: relationType,
@@ -55,21 +116,21 @@ export function createBindHomeApi(hass) {
     },
 
     async deleteRelation(relationId) {
-      return hass.callWS({
+      return mutate(hass, state, {
         type: "bindhome/relations/delete",
         relation_id: relationId,
       });
     },
 
     async createAssetsBulk(assets) {
-      return hass.callWS({
+      return mutate(hass, state, {
         type: "bindhome/assets/create_bulk",
         assets,
       });
     },
 
     async updateAsset(assetId, changes) {
-      const response = await hass.callWS({
+      const response = await mutate(hass, state, {
         ...changes,
         type: "bindhome/assets/update",
         asset_id: assetId,
@@ -79,21 +140,23 @@ export function createBindHomeApi(hass) {
     },
 
     async deleteAsset(assetId) {
-      return hass.callWS({
+      return mutate(hass, state, {
         type: "bindhome/assets/delete",
         asset_id: assetId,
       });
     },
 
     async getDeleteImpact(assetId) {
-      return hass.callWS({
+      const response = await hass.callWS({
         type: "bindhome/assets/delete_impact",
         asset_id: assetId,
       });
+      acceptRevision(state, response?.revision);
+      return response;
     },
 
     async deleteAssetWithDependencies(assetId) {
-      return hass.callWS({
+      return mutate(hass, state, {
         type: "bindhome/assets/delete_with_dependencies",
         asset_id: assetId,
       });
