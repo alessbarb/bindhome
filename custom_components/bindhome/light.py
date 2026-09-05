@@ -13,7 +13,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 
-from .const import DOMAIN, SIGNAL_REGISTRY_CHANGED
+from .const import DOMAIN, SIGNAL_BINDING_TARGET_CHANGED, SIGNAL_REGISTRY_CHANGED
 from .manager import BindHomeManager
 from .models import Asset, Representation
 from .representation import runtime_contract
@@ -138,6 +138,7 @@ class BindHomeLight(LightEntity):
         self._resolution: Resolution | None = None
         self._subscribed_entity_id: str | None = None
         self._unsub_backing_state: Callable[[], None] | None = None
+        self._unsub_binding_target: Callable[[], None] | None = None
         self._attr_name = asset.name
         self._attr_unique_id = _entity_registry_id(asset.id)[2]
         self._attr_available = False
@@ -152,9 +153,17 @@ class BindHomeLight(LightEntity):
         """Subscribe to the currently resolved backing entity."""
         await super().async_added_to_hass()
         self.refresh_binding_subscription()
+        self._unsub_binding_target = async_dispatcher_connect(
+            self.hass,
+            SIGNAL_BINDING_TARGET_CHANGED,
+            self._handle_binding_target_change,
+        )
 
     async def async_will_remove_from_hass(self) -> None:
-        """Release the backing-entity listener before removal."""
+        """Release Binding-target and backing-state listeners before removal."""
+        if self._unsub_binding_target is not None:
+            self._unsub_binding_target()
+            self._unsub_binding_target = None
         self._unsubscribe_backing_state()
         await super().async_will_remove_from_hass()
 
@@ -200,6 +209,18 @@ class BindHomeLight(LightEntity):
 
         if self.entity_id is not None:
             self.async_write_ha_state()
+
+    @callback
+    def _handle_binding_target_change(self, change: dict[str, Any]) -> None:
+        """Re-resolve only when this light's stable Binding target changed."""
+        binding = self._resolution.binding if self._resolution is not None else None
+        if (
+            binding is None
+            or binding.entity_registry_id is None
+            or binding.entity_registry_id != change.get("entity_registry_id")
+        ):
+            return
+        self.refresh_binding_subscription()
 
     @callback
     def _handle_backing_state_change(self, event: Event) -> None:
