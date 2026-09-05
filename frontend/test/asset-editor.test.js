@@ -386,23 +386,32 @@ test(
 
     await settle(editor);
 
-    const text =
-      editor.shadowRoot.textContent +
-      [...editor.shadowRoot.querySelectorAll(
-        "bindhome-primary-connection-editor",
-      )]
-        .map((child) => child.shadowRoot?.textContent ?? "")
-        .join("\n");
+    const connections = editor.shadowRoot.querySelector(
+    "bindhome-asset-connections",
+  );
+  assert.ok(connections);
+  await settle(connections);
 
-    const topology = editor.shadowRoot.querySelector("bindhome-asset-topology");
-    const topologyText = topology?.shadowRoot?.textContent ?? "";
+  const text =
+    editor.shadowRoot.textContent +
+    connections.shadowRoot.textContent +
+    [...connections.shadowRoot.querySelectorAll(
+      "bindhome-primary-connection-editor",
+    )]
+      .map((child) => child.shadowRoot?.textContent ?? "")
+      .join("\n");
 
-    assert.equal(
-      editor.shadowRoot.querySelectorAll(
-        "bindhome-primary-connection-editor",
-      ).length,
-      2,
-    );
+  const topology = connections.shadowRoot.querySelector(
+    "bindhome-asset-topology",
+  );
+  const topologyText = topology?.shadowRoot?.textContent ?? "";
+
+  assert.equal(
+    connections.shadowRoot.querySelectorAll(
+      "bindhome-primary-connection-editor",
+    ).length,
+    2,
+  );
     assert.doesNotMatch(text, /Other bindings/);
 
     assert.match(

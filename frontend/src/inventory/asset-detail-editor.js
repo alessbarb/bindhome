@@ -8,9 +8,7 @@ import {
 import {
   createBindHomeApi,
 } from "../api/bindhome-api.js";
-import { indexBindingStatuses } from "../bindings/binding-state.js";
-import "../bindings/primary-connection-editor.js";
-import "../topology/asset-topology.js";
+import "./asset-connections.js";
 
 import {
   normalizeWsError,
@@ -685,82 +683,6 @@ export class BindHomeAssetDetailEditor
     );
   }
 
-  _assetName(assetId) {
-    return (
-      this.assets.find(
-        (asset) =>
-          asset.id === assetId,
-      )?.name ??
-      assetId
-    );
-  }
-
-  _entityName(entityId) {
-    return (
-      this.hass?.states?.[entityId]
-        ?.attributes?.friendly_name ??
-      entityId
-    );
-  }
-
-  _relations() {
-    return (
-      this.registry?.relations ?? []
-    ).filter(
-      (relation) =>
-        relation.source_asset_id ===
-          this.asset.id ||
-        relation.target_asset_id ===
-          this.asset.id,
-    );
-  }
-
-  _bindings() {
-    return (
-      this.registry?.bindings ?? []
-    ).filter(
-      (binding) =>
-        binding.asset_id ===
-        this.asset.id,
-    );
-  }
-
-  _primaryStatus(capability) {
-    const indexed = indexBindingStatuses(this.bindingStatuses).get(
-      `${this.asset.id}:${capability}:primary`,
-    );
-    if (indexed) {
-      return indexed;
-    }
-    const binding = this._bindings().find(
-      (candidate) =>
-        candidate.capability === capability && candidate.role === "primary",
-    );
-    return binding
-      ? {
-          asset_id: this.asset.id,
-          capability,
-          role: "primary",
-          status: "resolved",
-          config_valid: true,
-          runtime_available: true,
-          entity_id: binding.entity_id,
-          binding,
-        }
-      : null;
-  }
-
-  _representation() {
-    return (
-      this.registry
-        ?.representations ?? []
-    ).find(
-      (representation) =>
-        representation.asset_id ===
-        this.asset.id,
-    );
-  }
-
   _renderAreaOptions() {
     const knownFloorIds =
       new Set(
@@ -1179,86 +1101,23 @@ export class BindHomeAssetDetailEditor
   }
 
   _renderConnections() {
-    const representation =
-      this._representation();
-
-    return html`
-      <section class="connections">
-        <h3>
-          ${this.t(
-            "editor.connections",
-          )}
-        </h3>
-
-        <div class="connection-grid">
-          <article class="connection-card">
-            <bindhome-asset-topology
-              .hass=${this.hass}
-              .t=${this.t}
-              .asset=${this.asset}
-              .assets=${this.assets}
-              .areas=${this.areas}
-              .registry=${this.registry}
-              .onRefresh=${this.refreshTopologyData}
-              @topology-sync-warning=${(event) => { this._error = event.detail; }}
-            ></bindhome-asset-topology>
-          </article>
-
-          <article class="connection-card">
-            <h4>
-              ${this.t(
-                "editor.bindings",
-              )}
-            </h4>
-            <div class="connection-list">
-              ${(this.asset.capabilities ?? []).map(
-                (capability) => html`
-                  <bindhome-primary-connection-editor
-                    .hass=${this.hass}
-                    .t=${this.t}
-                    .asset=${this.asset}
-                    .capability=${capability}
-                    .status=${this._primaryStatus(capability)}
-                    .areas=${this.areas}
-                    .entityRegistry=${this.entityRegistry}
-                    .deviceRegistry=${this.deviceRegistry}
-                    .refreshBindingData=${this.refreshBindingData}
-                  ></bindhome-primary-connection-editor>
-                `,
-              )}
-            </div>
-          </article>
-
-          <article class="connection-card">
-            <h4>
-              ${this.t(
-                "editor.representation",
-              )}
-            </h4>
-
-            ${representation
-              ? html`
-                  <p>
-                    ${this.t(
-                      "editor.platform",
-                    )}:
-                    <strong>
-                      ${representation.platform}
-                    </strong>
-                  </p>
-                `
-              : html`
-                  <p class="muted">
-                    ${this.t(
-                      "editor.no_representation",
-                    )}
-                  </p>
-                `}
-          </article>
-        </div>
-      </section>
-    `;
-  }
+  return html`
+    <bindhome-asset-connections
+      .hass=${this.hass}
+      .t=${this.t}
+      .asset=${this.asset}
+      .assets=${this.assets}
+      .areas=${this.areas}
+      .registry=${this.registry}
+      .bindingStatuses=${this.bindingStatuses}
+      .entityRegistry=${this.entityRegistry}
+      .deviceRegistry=${this.deviceRegistry}
+      .refreshBindingData=${this.refreshBindingData}
+      .refreshTopologyData=${this.refreshTopologyData}
+      @topology-sync-warning=${(event) => { this._error = event.detail; }}
+    ></bindhome-asset-connections>
+  `;
+}
 
   render() {
     if (!this.asset) {
