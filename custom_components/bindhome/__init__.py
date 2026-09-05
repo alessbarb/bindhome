@@ -14,6 +14,7 @@ from .const import DOMAIN
 from .deletion_websocket import async_register_deletion_websocket_commands
 from .manager import BindHomeManager
 from .panel import async_register_panel, async_unregister_panel
+from .recovery import async_clear_recovery_state, async_set_recovery_state
 from .representation import implemented_platforms
 from .services import async_register_services
 from .store import BindHomeStoreError
@@ -40,8 +41,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: BindHomeConfigEntry) -> 
     try:
         await manager.async_load()
     except BindHomeStoreError as err:
+        async_set_recovery_state(hass, entry.entry_id, err)
         raise ConfigEntryError(str(err)) from err
 
+    async_clear_recovery_state(hass, entry.entry_id)
     entry.runtime_data = manager
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await async_register_panel(hass)
