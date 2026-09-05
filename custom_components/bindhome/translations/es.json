@@ -1,4 +1,65 @@
 {
+  "title": "BindHome",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurar BindHome",
+        "description": "Crea el Registry de infraestructura de BindHome para esta instalación de Home Assistant."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "BindHome ya está configurado."
+    }
+  },
+  "services": {
+    "create_asset": {
+      "name": "Crear Asset",
+      "description": "Crea un Asset de infraestructura estable.",
+      "fields": {
+        "name": { "name": "Nombre", "description": "Nombre legible del Asset." },
+        "asset_type": { "name": "Tipo de Asset", "description": "Tipo genérico de infraestructura en lower_snake_case." },
+        "code": { "name": "Código", "description": "Código opcional del Asset visible para las personas." },
+        "area_id": { "name": "Área", "description": "Área opcional de Home Assistant que contiene el Asset." },
+        "capabilities": { "name": "Capabilities", "description": "Lista de Capabilities lógicas en lower_snake_case." }
+      }
+    },
+    "delete_asset": {
+      "name": "Eliminar Asset",
+      "description": "Elimina un Asset que no tenga relaciones ni Bindings activos.",
+      "fields": { "asset_id": { "name": "ID del Asset", "description": "ID inmutable del Asset de BindHome." } }
+    },
+    "add_relation": {
+      "name": "Añadir relación",
+      "description": "Crea una relación de topología dirigida entre dos Assets.",
+      "fields": {
+        "source_asset_id": { "name": "ID del Asset de origen", "description": "Asset de origen de BindHome." },
+        "relation_type": { "name": "Tipo de relación", "description": "Tipo genérico de relación en lower_snake_case." },
+        "target_asset_id": { "name": "ID del Asset de destino", "description": "Asset de destino de BindHome." }
+      }
+    },
+    "remove_relation": {
+      "name": "Eliminar relación",
+      "description": "Elimina una relación de topología.",
+      "fields": { "relation_id": { "name": "ID de la relación", "description": "ID de la relación de BindHome." } }
+    },
+    "set_binding": {
+      "name": "Establecer Binding",
+      "description": "Vincula una Capability y un rol de un Asset con la entidad de Home Assistant que la implementa actualmente.",
+      "fields": {
+        "asset_id": { "name": "ID del Asset", "description": "ID del Asset de BindHome." },
+        "capability": { "name": "Capability", "description": "Capability proporcionada por el Asset." },
+        "entity_id": { "name": "Entidad", "description": "Implementación actual en Home Assistant." },
+        "role": { "name": "Rol", "description": "Rol del Binding; por defecto, primary." }
+      }
+    },
+    "remove_binding": {
+      "name": "Eliminar Binding",
+      "description": "Elimina un Binding de una Capability sin borrar el Asset de infraestructura.",
+      "fields": { "binding_id": { "name": "ID del Binding", "description": "ID del Binding de BindHome." } }
+    },
+    "get_registry": { "name": "Obtener Registry", "description": "Devuelve el Registry completo de BindHome sin modificarlo." }
+  },
+  "system_health": { "info": { "loaded": "Cargado", "assets": "Assets", "relations": "Relaciones", "bindings": "Bindings", "representations": "Representations" } },
   "issues": {
     "registry_recovery": {
       "title": "BindHome necesita recuperar el Registry",

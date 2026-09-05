@@ -59,7 +59,7 @@
     },
     "get_registry": { "name": "Get registry", "description": "Return the complete BindHome registry without modifying it." }
   },
-  "system_health": { "info": { "loaded": "Loaded", "assets": "Assets", "relations": "Relations", "bindings": "Bindings" } },
+  "system_health": { "info": { "loaded": "Loaded", "assets": "Assets", "relations": "Relations", "bindings": "Bindings", "representations": "Representations" } },
   "issues": {
     "registry_recovery": {
       "title": "BindHome needs Registry recovery",
