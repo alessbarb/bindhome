@@ -1,4 +1,10 @@
 {
+  "issues": {
+    "registry_recovery": {
+      "title": "BindHome necesita recuperar el Registry",
+      "description": "BindHome no ha podido cargar el Registry de forma segura ({reason}): {message}. El funcionamiento normal permanece desactivado para proteger los datos de infraestructura almacenados. Restaura una copia de seguridad válida de BindHome mediante la API de recuperación para administradores y vuelve a cargar la integración."
+    }
+  },
   "common": {
     "panel_common_floor": "Planta",
     "panel_common_area": "Área",

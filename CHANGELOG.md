@@ -26,6 +26,7 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ### Reliability
 
+- Registry load failures now enter an explicit fail-closed recovery state with a critical Home Assistant Repair. Administrators can validate and restore a BindHome backup directly to storage even when the normal manager cannot load; successful restore reloads the config entry instead of requiring manual `.storage` edits. ([#65](https://github.com/alessbarb/bindhome/pull/65))
 - Same-task nested manager mutations inside an open Registry transaction now fail immediately with an explicit transaction error instead of being able to deadlock on a non-reentrant `asyncio.Lock`; concurrent mutations from different tasks continue to serialize normally. ([#62](https://github.com/alessbarb/bindhome/pull/62))
 - Staged Registry state is revalidated before persistence, and the manager-independent store write path now validates canonical state before touching Home Assistant storage, giving future startup migrations a documented validate-before-write persistence primitive. ([#62](https://github.com/alessbarb/bindhome/pull/62))
 - Live Registry adoption derives its persisted collection set from the Registry serialization contract instead of maintaining a separate hand-written list, so future persisted collections cannot be silently omitted; new persisted fields without collection semantics fail closed until explicitly handled. ([#62](https://github.com/alessbarb/bindhome/pull/62))
