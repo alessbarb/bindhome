@@ -10,6 +10,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
 from .backup_websocket import async_register_backup_websocket_commands
+from .binding_events import BindingTargetEventTracker
 from .const import DOMAIN
 from .deletion_websocket import async_register_deletion_websocket_commands
 from .manager import BindHomeManager
@@ -46,6 +47,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: BindHomeConfigEntry) -> 
 
     async_clear_recovery_state(hass, entry.entry_id)
     entry.runtime_data = manager
+
+    binding_target_tracker = BindingTargetEventTracker(hass, manager)
+    binding_target_tracker.async_setup()
+    entry.async_on_unload(binding_target_tracker.async_unload)
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await async_register_panel(hass)
     return True
