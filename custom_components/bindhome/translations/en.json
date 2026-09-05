@@ -64,7 +64,15 @@
     "registry_recovery": {
       "title": "BindHome needs Registry recovery",
       "description": "BindHome could not safely load its Registry ({reason}): {message}. Normal BindHome operation remains disabled to protect stored infrastructure data. Restore a valid BindHome backup through the administrator recovery API, then reload the integration."
-    }
+    },
+    "stale_areas": {
+    "title": "BindHome has elements assigned to missing Areas",
+    "description": "{count} BindHome elements reference Home Assistant Areas that no longer exist: {assets}. Open BindHome, edit the affected elements and assign an existing room or choose no room. This Repair clears automatically when every stale Area reference is fixed."
+  },
+  "stale_bindings": {
+    "title": "BindHome has connections to missing entities",
+    "description": "{count} BindHome connections point to Home Assistant entities that no longer exist: {bindings}. Open the affected element in BindHome and change or disconnect the connection. Temporarily unavailable hardware does not create this Repair. This Repair clears automatically when every broken connection is fixed."
+  }
   },
   "common": {
     "panel_common_floor": "Floor",

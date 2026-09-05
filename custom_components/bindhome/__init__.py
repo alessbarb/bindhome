@@ -13,6 +13,7 @@ from .backup_websocket import async_register_backup_websocket_commands
 from .binding_events import BindingTargetEventTracker
 from .const import DOMAIN
 from .deletion_websocket import async_register_deletion_websocket_commands
+from .integrity_repairs import IntegrityRepairTracker
 from .manager import BindHomeManager
 from .panel import async_register_panel, async_unregister_panel
 from .recovery import async_clear_recovery_state, async_set_recovery_state
@@ -51,6 +52,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: BindHomeConfigEntry) -> 
     binding_target_tracker = BindingTargetEventTracker(hass, manager)
     binding_target_tracker.async_setup()
     entry.async_on_unload(binding_target_tracker.async_unload)
+
+    integrity_repair_tracker = IntegrityRepairTracker(hass, manager, entry.entry_id)
+    integrity_repair_tracker.async_setup()
+    entry.async_on_unload(integrity_repair_tracker.async_unload)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     await async_register_panel(hass)

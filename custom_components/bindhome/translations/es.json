@@ -64,7 +64,15 @@
     "registry_recovery": {
       "title": "BindHome necesita recuperar el Registry",
       "description": "BindHome no ha podido cargar el Registry de forma segura ({reason}): {message}. El funcionamiento normal permanece desactivado para proteger los datos de infraestructura almacenados. Restaura una copia de seguridad válida de BindHome mediante la API de recuperación para administradores y vuelve a cargar la integración."
-    }
+    },
+    "stale_areas": {
+    "title": "BindHome tiene elementos asignados a Áreas inexistentes",
+    "description": "{count} elementos de BindHome hacen referencia a Áreas de Home Assistant que ya no existen: {assets}. Abre BindHome, edita los elementos afectados y asigna una estancia existente o déjalos sin estancia. Esta reparación desaparece automáticamente cuando se corrigen todas las referencias obsoletas."
+  },
+  "stale_bindings": {
+    "title": "BindHome tiene conexiones con entidades inexistentes",
+    "description": "{count} conexiones de BindHome apuntan a entidades de Home Assistant que ya no existen: {bindings}. Abre el elemento afectado en BindHome y cambia o desconecta la conexión. El hardware temporalmente no disponible no genera esta reparación. Esta reparación desaparece automáticamente cuando se corrigen todas las conexiones rotas."
+  }
   },
   "common": {
     "panel_common_floor": "Planta",
