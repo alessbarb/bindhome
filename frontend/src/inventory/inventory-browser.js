@@ -2,11 +2,15 @@ import { LitElement, css, html, nothing } from "lit";
 
 import { pluralKey, presetDisplayName } from "../i18n/localize.js";
 import { buildInventoryHierarchy } from "./inventory-browser-state.js";
+import {
+  NO_AREA_KEY,
+  UNKNOWN_AREA_KEY,
+  locationKeyForAsset,
+  replaceInventoryAsset,
+  targetForInventoryKey,
+} from "./inventory-browser-selection.js";
 
 import "./asset-detail-editor.js";
-
-const NO_AREA_KEY = "__bindhome_no_area_assets__";
-const UNKNOWN_AREA_KEY = "__bindhome_unknown_area_assets__";
 
 export class BindHomeInventoryBrowser extends LitElement {
   static properties = {
@@ -358,78 +362,9 @@ export class BindHomeInventoryBrowser extends LitElement {
     );
   }
 
-  _allAreaNodes(hierarchy = this._hierarchy) {
-    return [
-      ...hierarchy.floors.flatMap(
-        (floorNode) => floorNode.areas,
-      ),
-      ...hierarchy.noFloorAreas,
-    ];
-  }
-
-  _areaNode(areaId, hierarchy = this._hierarchy) {
-    return this._allAreaNodes(hierarchy).find(
-      ({ area }) => area.area_id === areaId,
-    );
-  }
-
-  _targetForKey(
-    key,
-    hierarchy = this._hierarchy,
-  ) {
-    if (!key) {
-      return null;
-    }
-
-    if (key === NO_AREA_KEY) {
-      if (!hierarchy.noAreaAssets.length) {
-        return null;
-      }
-
-      return {
-        kind: "no-area",
-        title: this.t("browser.no_area"),
-        description: this.t(
-          "browser.no_area_intro",
-        ),
-        assets: hierarchy.noAreaAssets,
-      };
-    }
-
-    if (key === UNKNOWN_AREA_KEY) {
-      if (!hierarchy.unknownAreaAssets.length) {
-        return null;
-      }
-
-      return {
-        kind: "unknown-area",
-        title: this.t(
-          "browser.unknown_area",
-        ),
-        description: this.t(
-          "browser.unknown_area_intro",
-        ),
-        assets: hierarchy.unknownAreaAssets,
-      };
-    }
-
-    const node = this._areaNode(
-      key,
-      hierarchy,
-    );
-
-    if (!node) {
-      return null;
-    }
-
-    return {
-      kind: "area",
-      title: node.area.name,
-      description: "",
-      area: node.area,
-      assets: node.assets,
-    };
-  }
+  _targetForKey(key, hierarchy = this._hierarchy) {
+  return targetForInventoryKey(key, hierarchy, this.t);
+}
 
   willUpdate(changed) {
     if (changed.has("selectedAssetId") && this.selectedAssetId) {
@@ -499,17 +434,8 @@ export class BindHomeInventoryBrowser extends LitElement {
   }
 
   _locationKeyForAsset(asset) {
-    if (!asset.area_id) {
-      return NO_AREA_KEY;
-    }
-
-    return this.areas.some(
-      (area) =>
-        area.area_id === asset.area_id,
-    )
-      ? asset.area_id
-      : UNKNOWN_AREA_KEY;
-  }
+  return locationKeyForAsset(asset, this.areas);
+}
 
   _handleEditingChanged(event) {
     this._editorLocked =
@@ -521,13 +447,10 @@ export class BindHomeInventoryBrowser extends LitElement {
 
     const updated = event.detail;
 
-    const nextAssets =
-      this.assets.map(
-        (asset) =>
-          asset.id === updated.id
-            ? updated
-            : asset,
-      );
+    const nextAssets = replaceInventoryAsset(
+    this.assets,
+    updated,
+  );
 
     this.assets = nextAssets;
 
