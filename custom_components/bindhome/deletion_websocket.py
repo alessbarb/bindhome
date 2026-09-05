@@ -20,7 +20,7 @@ from homeassistant.helpers import config_validation as cv
 from .const import DOMAIN
 from .deletion import async_delete_asset_with_dependencies, build_asset_delete_impact
 from .manager import BindHomeManager
-from .registry import RegistryNotFoundError
+from .registry import RegistryConflictError, RegistryNotFoundError
 
 WS_ASSET_DELETE_IMPACT = f"{DOMAIN}/assets/delete_impact"
 WS_ASSET_DELETE_WITH_DEPENDENCIES = f"{DOMAIN}/assets/delete_with_dependencies"
@@ -51,11 +51,14 @@ def ws_asset_delete_impact(
 ) -> None:
     """Return the current deletion impact without mutating anything."""
     try:
-        impact = build_asset_delete_impact(_get_manager(hass), msg["asset_id"])
+        manager = _get_manager(hass)
+        impact = build_asset_delete_impact(manager, msg["asset_id"])
     except RegistryNotFoundError as err:
         connection.send_error(msg["id"], ERR_NOT_FOUND, str(err))
         return
-    connection.send_result(msg["id"], impact.to_dict())
+    result = impact.to_dict()
+    result["revision"] = manager.revision
+    connection.send_result(msg["id"], result)
 
 
 @require_admin
@@ -63,6 +66,7 @@ def ws_asset_delete_impact(
     {
         vol.Required("type"): WS_ASSET_DELETE_WITH_DEPENDENCIES,
         vol.Required("asset_id"): cv.string,
+        vol.Optional("based_on_revision"): vol.All(int, vol.Range(min=0)),
     }
 )
 @async_response
@@ -72,18 +76,27 @@ async def ws_asset_delete_with_dependencies(
     msg: dict[str, Any],
 ) -> None:
     """Delete an Asset and all BindHome-owned dependencies transactionally."""
+    manager = _get_manager(hass)
     try:
         impact = await async_delete_asset_with_dependencies(
-            _get_manager(hass),
+            manager,
             msg["asset_id"],
+            expected_revision=msg.get("based_on_revision"),
         )
     except RegistryNotFoundError as err:
         connection.send_error(msg["id"], ERR_NOT_FOUND, str(err))
         return
+    except RegistryConflictError as err:
+        connection.send_error(msg["id"], "conflict", str(err))
+        return
 
     connection.send_result(
         msg["id"],
-        {"deleted": True, "impact": impact.to_dict()},
+        {
+            "deleted": True,
+            "impact": impact.to_dict(),
+            "revision": manager.revision,
+        },
     )
 
 
