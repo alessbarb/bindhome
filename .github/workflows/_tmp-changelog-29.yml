@@ -1,0 +1,35 @@
+name: Temporary changelog 29
+
+on:
+  push:
+    branches:
+      - reliability/event-driven-light
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: reliability/event-driven-light
+      - name: Add changelog entry and remove temporary workflow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("CHANGELOG.md")
+          text = path.read_text()
+          entry = "- Logical `light` Representations now follow backing-entity state changes through Home Assistant events instead of periodic polling. Rebinding moves the listener to the new target, unavailable/removed states update promptly, and entity removal cleans listeners without duplication. ([#29](https://github.com/alessbarb/bindhome/issues/29))\n"
+          marker = "### Reliability\n\n"
+          if entry not in text:
+              text = text.replace(marker, marker + entry, 1)
+              path.write_text(text)
+          PY
+          rm .github/workflows/_tmp-changelog-29.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md .github/workflows/_tmp-changelog-29.yml
+          git commit -m "docs: restore event-driven light changelog"
+          git push
