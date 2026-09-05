@@ -1,3 +1,4 @@
+import { defineBindHomeElement } from "../custom-elements.js";
 import {
   LitElement,
   css,
@@ -1201,7 +1202,7 @@ export class BindHomeAssetDetailEditor
   }
 }
 
-customElements.define(
+defineBindHomeElement(
   "bindhome-asset-detail-editor",
   BindHomeAssetDetailEditor,
 );

@@ -1,3 +1,4 @@
+import { defineBindHomeElement } from "../custom-elements.js";
 // @ts-check
 import { LitElement, css, html } from "lit";
 import { tokens } from "../styles/shared-styles.js";
@@ -148,4 +149,4 @@ export class BindHomeSearchView extends LitElement {
     </div>`;
   }
 }
-customElements.define("bindhome-search-view", BindHomeSearchView);
+defineBindHomeElement("bindhome-search-view", BindHomeSearchView);

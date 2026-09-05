@@ -1,3 +1,4 @@
+import { defineBindHomeElement } from "../custom-elements.js";
 // @ts-check
 import { LitElement, css, html, nothing } from "lit";
 import { tokens } from "../styles/shared-styles.js";
@@ -220,4 +221,4 @@ export class BindHomeAddView extends LitElement {
     return html`<button class="preset" @click=${() => this._choose(item.preset)}><ha-icon icon=${item.presentation.icon}></ha-icon><strong>${item.name}</strong></button>`;
   }
 }
-customElements.define("bindhome-add-view", BindHomeAddView);
+defineBindHomeElement("bindhome-add-view", BindHomeAddView);

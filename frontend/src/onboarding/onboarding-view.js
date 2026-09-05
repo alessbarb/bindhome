@@ -1,3 +1,4 @@
+import { defineBindHomeElement } from "../custom-elements.js";
 import { LitElement, css, html } from "lit";
 
 export class BindHomeOnboardingView extends LitElement {
@@ -90,4 +91,4 @@ export class BindHomeOnboardingView extends LitElement {
   }
 }
 
-customElements.define("bindhome-onboarding-view", BindHomeOnboardingView);
+defineBindHomeElement("bindhome-onboarding-view", BindHomeOnboardingView);

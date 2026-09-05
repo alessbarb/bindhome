@@ -1,3 +1,4 @@
+import { defineBindHomeElement } from "../custom-elements.js";
 import { LitElement, css, html, nothing } from "lit";
 import {
   RESULT_LIMIT,
@@ -292,7 +293,7 @@ export class BindHomeTopologyExplorer extends LitElement {
   `;
 }
 
-customElements.define(
+defineBindHomeElement(
   "bindhome-topology-explorer",
   BindHomeTopologyExplorer,
 );

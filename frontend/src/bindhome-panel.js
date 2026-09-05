@@ -1,3 +1,4 @@
+import { defineBindHomeElement } from "./custom-elements.js";
 // Typed contracts live in types.d.ts; shell race behavior is covered by regression tests.
 import { LitElement, css, html } from "lit";
 import { createBindHomeApi } from "./api/bindhome-api.js";
@@ -575,4 +576,4 @@ export class BindHomePanel extends LitElement {
     </div>`;
   }
 }
-customElements.define("bindhome-panel", BindHomePanel);
+defineBindHomeElement("bindhome-panel", BindHomePanel);
