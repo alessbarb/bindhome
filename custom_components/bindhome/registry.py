@@ -306,24 +306,27 @@ class BindHomeRegistry:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any] | None) -> BindHomeRegistry:
-        """Load and validate a serialized registry."""
+        """Parse and validate only the current canonical Registry schema.
+
+        Historical schema migration belongs in ``migrations.py``. Keeping this
+        parser strict prevents ordinary model parsing from silently changing
+        persisted semantics.
+        """
         registry = cls()
         if data is None:
             return registry
         if not isinstance(data, dict):
             raise RegistryValidationError("Persisted registry must be a dictionary")
 
-        schema_version = data.get("schema_version", REGISTRY_SCHEMA_VERSION)
+        if "schema_version" not in data:
+            raise RegistryValidationError(
+                "Persisted registry is missing schema_version"
+            )
+        schema_version = data["schema_version"]
         if schema_version != REGISTRY_SCHEMA_VERSION:
             raise RegistryValidationError(
                 f"Unsupported registry schema version: {schema_version}"
             )
-
-        # Persisted registries created before Representation existed have no
-        # "representations" key. Preserve their exact previous runtime
-        # behaviour once by migrating every formerly implicit on_off logical
-        # light to an explicit light Representation.
-        legacy_implicit_representations = "representations" not in data
 
         for raw_asset in data.get("assets", []):
             try:
@@ -349,26 +352,19 @@ class BindHomeRegistry:
                     f"Invalid binding in registry: {err}"
                 ) from err
 
-        if legacy_implicit_representations:
-            for asset in registry.assets.values():
-                if "on_off" not in asset.capabilities:
-                    continue
+        if "representations" not in data:
+            raise RegistryValidationError(
+                "Current registry schema is missing representations"
+            )
 
+        for raw_representation in data.get("representations", []):
+            try:
                 registry.set_representation(
-                    Representation.create(
-                        asset_id=asset.id,
-                        platform="light",
-                    )
+                    Representation.from_dict(raw_representation)
                 )
-        else:
-            for raw_representation in data.get("representations", []):
-                try:
-                    registry.set_representation(
-                        Representation.from_dict(raw_representation)
-                    )
-                except (ModelValidationError, RegistryError) as err:
-                    raise RegistryValidationError(
-                        f"Invalid representation in registry: {err}"
-                    ) from err
+            except (ModelValidationError, RegistryError) as err:
+                raise RegistryValidationError(
+                    f"Invalid representation in registry: {err}"
+                ) from err
 
         return registry
