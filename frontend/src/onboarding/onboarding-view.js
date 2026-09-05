@@ -10,6 +10,7 @@ export class BindHomeOnboardingView extends LitElement {
 
   constructor() {
     super();
+    /** @type {import('../types.js').Localizer} */
     this.t = (key) => key;
     this.floors = [];
     this.areas = [];

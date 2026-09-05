@@ -20,6 +20,7 @@ export class BindHomeTopologyExplorer extends LitElement {
 
   constructor() {
     super();
+    /** @type {import('../types.js').Localizer} */
     this.t = (key) => key;
     this.assets = [];
     this.areas = [];

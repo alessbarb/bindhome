@@ -26,6 +26,7 @@ export class BindHomeInventorySection extends LitElement {
     super();
     this.hass = null;
     this.registry = {};
+    /** @type {import('../types.js').Localizer} */
     this.t = (key) => key;
     this.presets = [];
     this.floors = [];
