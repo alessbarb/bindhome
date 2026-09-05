@@ -18,6 +18,10 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ## [Unreleased]
 
+### Changed
+
+- Stable Binding target identity is now reflected consistently across backup/restore, typed frontend contracts, Advanced infrastructure inspection and the normative architecture/product documentation. Normal connection UI continues to show the current resolved Home Assistant `entity_id`, while technical surfaces can inspect the stable Entity Registry entry identity and last-known fallback. ([#53](https://github.com/alessbarb/bindhome/issues/53))
+
 ### Reliability
 
 - Bound Entity Registry targets now follow Home Assistant entity renames and removals at runtime without rewriting BindHome storage. Renames move logical Representation subscriptions to the current `entity_id`, removals become stale immediately, unrelated Registry events are ignored, and config-entry unload removes every listener cleanly. ([#52](https://github.com/alessbarb/bindhome/issues/52))

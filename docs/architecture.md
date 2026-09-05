@@ -70,17 +70,23 @@ Capabilities are extensible identifiers. BindHome deliberately does not maintain
 
 ### Binding
 
-A Binding maps:
+A Binding maps a stable BindHome functional key to a Home Assistant entity target:
 
 ```text
-Asset + Capability + Role -> Home Assistant entity_id
+(asset_id, capability, role)
+        -> Entity Registry entry identity, when registered
+        -> current Home Assistant entity_id at runtime
 ```
 
-The Home Assistant entity is replaceable. Setting a new Binding for the same functional key changes the current implementation while preserving the Asset.
+For Home Assistant entities that have an Entity Registry entry, `entity_registry_id` is the authoritative persisted target identity. The mutable `entity_id` is retained as the last-known human-readable value, but runtime resolution obtains the current `entity_id` from Home Assistant's Entity Registry.
+
+A normal Home Assistant entity rename therefore does not change the BindHome Binding and does not require a BindHome persistence write. If the referenced Entity Registry entry is removed, the Binding becomes explicitly stale; BindHome never falls back to a potentially reused old `entity_id` or guesses replacement hardware.
+
+Entities that exist only in the Home Assistant state machine have no stable Entity Registry entry. For those targets, the persisted `entity_id` remains an explicit compatibility fallback.
+
+Setting a new Binding for the same functional key changes the current implementation while preserving the Asset and, when replacing an existing Binding, its Binding identity.
 
 Binding targets may also be logical entities produced by BindHome Representations. BindHome-to-BindHome composition is allowed only when the resulting functional dependency graph remains acyclic. Cycle validation operates at `(asset_id, capability, role)` granularity.
-
-Home Assistant's Entity Registry is authoritative for registered entity identity, but BindHome 1.1.x currently persists the mutable `entity_id` string in hardware Bindings. Renaming a bound entity in Home Assistant can therefore make that Binding stale until it is rebound. Stable Entity Registry target identity is planned in issue #31.
 
 ### Relation
 
@@ -140,7 +146,9 @@ If persistence fails, live RAM remains unchanged and no Registry-changed signal 
 
 Storage loading fails closed when persisted BindHome state is corrupt, unreadable or uses an unsupported storage/schema version. Unsafe persisted state is never silently replaced with an empty Registry.
 
-Legacy Registry payloads that predate explicit Representations are validated and migrated to the canonical schema. The canonical form is persisted only after validation succeeds.
+Supported historical Registry payloads are migrated stepwise before model parsing. Schema v2 adds stable Entity Registry target identity to Bindings. Historical `entity_id`-only Bindings are enriched only when an exact Home Assistant Entity Registry lookup proves the same target; unresolved historical references remain explicit fallbacks rather than being guessed or rebound.
+
+The canonical form is persisted only after validation succeeds.
 
 ### Backup and restore
 
@@ -148,6 +156,8 @@ BindHome provides a versioned deterministic Registry backup envelope through adm
 
 - `bindhome/backup/export`;
 - `bindhome/backup/restore`.
+
+The complete Binding target contract is serialized: stable `entity_registry_id` when present plus the last-known/fallback `entity_id`. Restore validates and preserves that identity. Historical backups use the same exact-match enrichment rule as startup migration.
 
 Restore is a validated full Registry replacement and uses the same persist-before-adopt transaction boundary as ordinary mutations.
 
@@ -158,8 +168,12 @@ See [Registry backup and restore](backup-restore.md).
 `resolver.py` translates a stable BindHome functional key into the current Home Assistant entity implementation:
 
 ```text
-(asset_id, capability, role) -> Home Assistant entity_id
+(asset_id, capability, role)
+        -> stable Entity Registry entry identity when present
+        -> current Home Assistant entity_id
 ```
+
+For registered targets, the Entity Registry entry identity is authoritative. A rename is transparent because the resolver reads the entry's current `entity_id`. If the stable entry disappears, resolution reports a stale target and does not fall back to the stored old name. State-machine-only targets continue through the explicit `entity_id` fallback.
 
 Resolution distinguishes configuration validity from runtime availability. A correctly configured entity that is temporarily `unavailable` is not treated as a broken Binding.
 
@@ -172,6 +186,10 @@ The read model exposes statuses such as:
 - runtime unavailable;
 - runtime unknown;
 - resolved.
+
+`BindingStatus` exposes the persisted Binding separately from the currently resolved `entity_id`. This lets normal UI show the current Home Assistant identifier after a rename while Advanced/debug surfaces can still inspect the stable target identity and last-known fallback.
+
+A config-entry-scoped Entity Registry listener follows renames and removals for bound stable targets. These events update runtime consumers without rewriting BindHome storage. Logical Representations re-resolve their target and move subscriptions accordingly.
 
 Operations on logical BindHome entities resolve the current Binding and then delegate service execution to Home Assistant. Home Assistant remains responsible for actual domain behaviour and hardware communication.
 
@@ -262,7 +280,7 @@ The panel reads Home Assistant Floors, Areas, Entity Registry and Device Registr
 
 Room inventory uses Home Assistant Areas as location references and BindHome presets to generate editable local drafts. Accepted batches are persisted with one transactional `bindhome/assets/create_bulk` request.
 
-Human editing preserves stable Asset identity. Hardware connection uses replacement-safe Binding operations rather than delete-before-set sequences.
+Human editing preserves stable Asset identity. Hardware connection uses replacement-safe Binding operations rather than delete-before-set sequences. Normal connection UI displays the resolver's current Home Assistant `entity_id`; the stable Registry target identity remains an implementation detail available to technical/Advanced inspection.
 
 Topology uses the same directed Relation objects as the backend and supports bounded search/navigation.
 
