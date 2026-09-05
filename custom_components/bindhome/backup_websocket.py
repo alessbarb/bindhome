@@ -130,6 +130,7 @@ async def ws_backup_restore(
     msg: dict[str, Any],
 ) -> None:
     """Restore Registry through the live manager or the fail-closed recovery path."""
+    recovery_reload: bool | None = None
     try:
         entry = _get_entry(hass)
         if entry.state is config_entries.ConfigEntryState.LOADED:
@@ -137,9 +138,8 @@ async def ws_backup_restore(
                 _get_manager(hass),
                 msg["backup"],
             )
-            reloaded = True
         else:
-            registry, reloaded = await _async_restore_recovery_registry(
+            registry, recovery_reload = await _async_restore_recovery_registry(
                 hass,
                 msg["backup"],
             )
@@ -153,14 +153,13 @@ async def ws_backup_restore(
         connection.send_error(msg["id"], ERR_INVALID_FORMAT, str(err))
         return
 
-    connection.send_result(
-        msg["id"],
-        {
-            "restored": True,
-            "reloaded": reloaded,
-            "registry": registry.to_dict(),
-        },
-    )
+    result: dict[str, Any] = {
+        "restored": True,
+        "registry": registry.to_dict(),
+    }
+    if recovery_reload is not None:
+        result["reloaded"] = recovery_reload
+    connection.send_result(msg["id"], result)
 
 
 def async_register_backup_websocket_commands(hass: HomeAssistant) -> None:
