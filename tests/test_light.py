@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 import pytest
 from homeassistant.components.light import ColorMode
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.setup import async_setup_component
 
 from custom_components.bindhome.light import BindHomeLight
@@ -123,7 +124,7 @@ async def test_logical_light_is_safely_unavailable_for_degraded_binding(
     assert logical.is_on is None
 
 
-async def test_logical_light_does_not_forward_missing_binding(
+async def test_logical_light_raises_for_missing_binding(
     hass: HomeAssistant,
 ) -> None:
     registry = BindHomeRegistry()
@@ -134,7 +135,8 @@ async def test_logical_light_does_not_forward_missing_binding(
 
     logical = _logical_light(hass, registry, asset)
 
-    await logical.async_turn_on()
+    with pytest.raises(HomeAssistantError, match="binding_not_found"):
+        await logical.async_turn_on()
 
     assert calls.await_count == 0
 
