@@ -210,10 +210,11 @@ async def test_resolver_uses_ha_registry_identity_after_rename(
 architecture = ROOT / "docs/architecture.md"
 text = architecture.read_text(encoding="utf-8")
 old = (
-    "Home Assistant's Entity Registry owns durable entity identity, but BindHome "
-    "1.1.x hardware Bindings still persist the mutable `entity_id`. A Home "
-    "Assistant entity-id rename can therefore leave the Binding stale until "
-    "stable Entity Registry identity tracking is implemented in #31.\n"
+    "Home Assistant's Entity Registry is authoritative for registered entity "
+    "identity, but BindHome 1.1.x currently persists the mutable `entity_id` "
+    "string in hardware Bindings. Renaming a bound entity in Home Assistant can "
+    "therefore make that Binding stale until it is rebound. Stable Entity "
+    "Registry target identity is planned in issue #31.\n"
 )
 new = (
     "Home Assistant's Entity Registry owns durable entity identity. Schema-v2 "
