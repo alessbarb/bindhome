@@ -248,6 +248,14 @@ If validation or persistence fails:
 
 Bulk creation is one transaction, not N independent client-side creates.
 
+### Live multi-session coordination
+
+The first-party panel must converge on committed Registry changes made in another open panel/admin session without polling or requiring a manual refresh. A committed Registry notification causes the client to reacquire the current authoritative read model.
+
+Panel mutations are based on the Registry revision last read by that client. If another writer commits first, a stale panel mutation must fail before persistence instead of silently overwriting newer Registry state. The UI must keep the conflict explicit and offer a clear reload path; local uncommitted draft state should not be discarded merely because another session changed the Registry.
+
+The revision used for this coordination is a runtime token, not persistent infrastructure identity. It may reset when the BindHome manager reloads, at which point clients reacquire a fresh snapshot/revision. Generic API callers may omit the revision precondition for backward compatibility, but the BindHome panel uses it for optimistic concurrency.
+
 Home Assistant Entity Registry rename/removal events are read-side/runtime events, not BindHome Registry mutations. Following a registered target's current `entity_id` must not rewrite BindHome storage merely because the Home Assistant name changed.
 
 ## Destructive operations
