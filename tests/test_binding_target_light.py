@@ -10,7 +10,10 @@ from custom_components.bindhome.const import SIGNAL_BINDING_TARGET_CHANGED
 from custom_components.bindhome.light import BindHomeLight
 from custom_components.bindhome.models import Asset, Binding
 from custom_components.bindhome.registry import BindHomeRegistry
-from custom_components.bindhome.resolver import BindingResolver, HomeAssistantEntityProbe
+from custom_components.bindhome.resolver import (
+    BindingResolver,
+    HomeAssistantEntityProbe,
+)
 
 
 async def test_logical_light_moves_subscription_after_stable_target_rename(
