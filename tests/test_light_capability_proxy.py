@@ -11,7 +11,11 @@ from custom_components.bindhome.registry import BindHomeRegistry
 from custom_components.bindhome.resolver import BindingResolver, HomeAssistantEntityProbe
 
 
-def _setup(registry: BindHomeRegistry, hass: HomeAssistant, entity_id: str) -> BindHomeLight:
+def _setup(
+    registry: BindHomeRegistry,
+    hass: HomeAssistant,
+    entity_id: str,
+) -> BindHomeLight:
     asset = registry.add_asset(
         Asset.create(
             name="Proxy light",
@@ -139,8 +143,8 @@ async def test_color_backing_light_projects_color_and_effect_metadata(
     assert logical.color_temp_kelvin == 3200
     assert logical.min_color_temp_kelvin == 2000
     assert logical.max_color_temp_kelvin == 6500
-    assert LightEntityFeature.EFFECT in logical.supported_features
-    assert LightEntityFeature.TRANSITION in logical.supported_features
+    assert logical.supported_features & LightEntityFeature.EFFECT
+    assert logical.supported_features & LightEntityFeature.TRANSITION
     assert logical.effect == "relax"
     assert logical.effect_list == ["relax", "focus"]
 
