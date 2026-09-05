@@ -2,7 +2,6 @@
 
 import json
 
-
 MANIFEST_PATH = "custom_components/bindhome/manifest.json"
 
 
