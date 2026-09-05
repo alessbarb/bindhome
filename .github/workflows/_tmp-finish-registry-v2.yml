@@ -26,7 +26,9 @@ jobs:
       - name: Apply exact panel wiring
         run: python .github/_tmp_finish_registry.py
       - name: Install Python dependencies
-        run: python -m pip install -e '.[dev]'
+        run: |
+          python -m pip install --upgrade pip
+          pip install .[dev]
       - name: Verify Python
         run: |
           ruff check custom_components tests
