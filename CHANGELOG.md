@@ -18,6 +18,14 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ## [Unreleased]
 
+---
+
+## [1.3.0] - 2026-09-06
+
+Third feature release focused on stable Binding identity, event-driven logical Representations, live multi-session Registry synchronization and frontend runtime reliability.
+
+**Minimum Home Assistant:** `2026.8.0`
+
 ### Changed
 
 - Logical `light` Representations now mirror supported Home Assistant light capabilities from their current backing `light` entity, including brightness/color metadata and supported transition/effect features, while non-light targets remain ON/OFF-only. Light service parameters are forwarded to backing lights, rebinding refreshes advertised capabilities without changing logical identity, and unresolved or unavailable commands now raise a visible Home Assistant error instead of succeeding as silent no-ops. ([#30](https://github.com/alessbarb/bindhome/issues/30))
@@ -25,12 +33,22 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ### Reliability
 
+- The panel now follows committed BindHome Registry changes through a live WebSocket subscription instead of manual refresh or polling. A runtime-only monotonic revision lets the first-party panel attach optimistic-concurrency preconditions to mutations, reject stale writes before persistence, refresh other open sessions deterministically and offer a localized reload path after conflicts. The revision is not persisted and legacy callers that do not opt into revision preconditions retain their previous mutation contract. ([#35](https://github.com/alessbarb/bindhome/issues/35), [#80](https://github.com/alessbarb/bindhome/pull/80))
+
 - BindHome custom-element registration is now idempotent across repeated panel bundle evaluation in the same browser tab. All production `bindhome-*` Web Components use one guarded registration helper, preventing cache-busted or reloaded bundles from aborting with a duplicate `CustomElementRegistry` definition error. ([#77](https://github.com/alessbarb/bindhome/issues/77))
-- The BindHome panel now keeps Home Assistant's high-frequency `hass` updates local to the active top-level view. Inactive Home, Add and Advanced views retain their mounted UI state without receiving routine state-machine churn, reducing unnecessary frontend work while preserving drafts and navigation state.
+- The BindHome panel now keeps Home Assistant's high-frequency `hass` updates local to the active top-level view. Inactive Home, Add and Advanced views retain their mounted UI state without receiving routine state-machine churn, reducing unnecessary frontend work while preserving drafts and navigation state. ([#76](https://github.com/alessbarb/bindhome/pull/76))
 - Bound Entity Registry targets now follow Home Assistant entity renames and removals at runtime without rewriting BindHome storage. Renames move logical Representation subscriptions to the current `entity_id`, removals become stale immediately, unrelated Registry events are ignored, and config-entry unload removes every listener cleanly. ([#52](https://github.com/alessbarb/bindhome/issues/52))
 - Binding resolution now treats persisted Home Assistant Entity Registry entry identity as authoritative, resolving the current `entity_id` at read time so normal HA renames stay transparent. Removed Registry entries fail stale without falling back to a potentially reused entity name; state-machine-only targets retain the explicit `entity_id` fallback. ([#51](https://github.com/alessbarb/bindhome/issues/51))
 - Logical `light` Representations now follow backing-entity state changes through Home Assistant events instead of periodic polling. Rebinding moves the listener to the new target, unavailable/removed states update promptly, and entity removal cleans listeners without duplication. ([#29](https://github.com/alessbarb/bindhome/issues/29))
 - Registry schema v2 adds stable Home Assistant Entity Registry identity to persisted Bindings while retaining `entity_id` as the last-known/state-machine fallback. v1 data and backups migrate deterministically, exact registered targets are enriched before canonical persistence, and unresolved targets are never guessed or silently rebound. ([#50](https://github.com/alessbarb/bindhome/issues/50))
+
+### Compatibility
+
+- BindHome 1.3.0 persists Registry schema v2 so registered Binding targets can retain stable Home Assistant Entity Registry identity across `entity_id` renames. Existing schema-v1 data migrates deterministically on upgrade. After 1.3.0 has written schema v2, BindHome 1.2.0 cannot read that Registry in place; a controlled downgrade requires restoring a compatible schema-v1 backup through the supported recovery path rather than editing Home Assistant `.storage` manually. ([#50](https://github.com/alessbarb/bindhome/issues/50))
+
+### Distribution
+
+- Version promoted to `1.3.0` across Python, Home Assistant and frontend package metadata.
 
 ---
 
@@ -193,7 +211,8 @@ First public BindHome release.
 
 ---
 
-[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/alessbarb/bindhome/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/alessbarb/bindhome/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/alessbarb/bindhome/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/alessbarb/bindhome/compare/v1.0.0...v1.1.0

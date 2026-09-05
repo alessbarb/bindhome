@@ -1,6 +1,6 @@
 # BindHome
 
-**Current stable release: `1.2.0` · Home Assistant `2026.8.0+`**
+**Current stable release: `1.3.0` · Home Assistant `2026.8.0+`**
 
 **Model the home, not the hardware.**
 

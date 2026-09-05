@@ -101,7 +101,7 @@ async def test_loaded_config_entry_diagnostics_snapshot(monkeypatch) -> None:
     monkeypatch.setattr(
         diagnostics,
         "async_get_integration",
-        AsyncMock(return_value=SimpleNamespace(version="1.2.0")),
+        AsyncMock(return_value=SimpleNamespace(version="1.3.0")),
     )
     monkeypatch.setattr(
         diagnostics,
@@ -121,7 +121,7 @@ async def test_loaded_config_entry_diagnostics_snapshot(monkeypatch) -> None:
 
     assert result == {
         "integration": {
-            "version": "1.2.0",
+            "version": "1.3.0",
             "storage_version": 1,
             "registry_schema_version": REGISTRY_SCHEMA_VERSION,
         },
@@ -171,7 +171,7 @@ async def test_degraded_diagnostics_expose_reason_without_registry_or_message(
     monkeypatch.setattr(
         diagnostics,
         "async_get_integration",
-        AsyncMock(return_value=SimpleNamespace(version="1.2.0")),
+        AsyncMock(return_value=SimpleNamespace(version="1.3.0")),
     )
     monkeypatch.setattr(
         diagnostics,
@@ -217,7 +217,7 @@ async def test_diagnostics_redact_asset_codes_names_and_entity_ids(monkeypatch) 
     monkeypatch.setattr(
         diagnostics,
         "async_get_integration",
-        AsyncMock(return_value=SimpleNamespace(version="1.2.0")),
+        AsyncMock(return_value=SimpleNamespace(version="1.3.0")),
     )
     monkeypatch.setattr(
         diagnostics,

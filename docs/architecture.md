@@ -142,6 +142,16 @@ The identity of the live Registry object is preserved so long-lived resolvers an
 
 If persistence fails, live RAM remains unchanged and no Registry-changed signal is emitted.
 
+### Live Registry revision and subscriptions
+
+The manager also maintains a monotonic **runtime-only Registry revision** for coordinating live clients. A successful committed Registry mutation advances the revision exactly once after persistence and live adoption; rejected, stale or failed mutations do not advance it.
+
+`bindhome/registry/get` exposes the current revision and `bindhome/registry/subscribe` emits committed revision notifications. The subscription is an invalidation signal: clients fetch the current Registry/read models rather than applying speculative partial patches.
+
+Revision-aware mutation callers may include `based_on_revision`. If that value no longer matches the manager revision, the mutation fails with an explicit conflict before persistence. The field is optional so existing API callers retain their established request/response behavior, while the first-party panel uses it to protect edits made from an older snapshot.
+
+The runtime revision is deliberately not part of the persisted Registry schema or backup envelope. It may reset when the config entry/manager reloads; clients reacquire the authoritative snapshot and revision from `bindhome/registry/get` after reconnect/reload. This concurrency token therefore has no identity or migration semantics and does not imply Registry schema v3.
+
 ### Startup and recovery
 
 Storage loading fails closed when persisted BindHome state is corrupt, unreadable or uses an unsupported storage/schema version. Unsafe persisted state is never silently replaced with an empty Registry.
