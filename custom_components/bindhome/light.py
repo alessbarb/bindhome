@@ -24,11 +24,7 @@ from .const import DOMAIN, SIGNAL_BINDING_TARGET_CHANGED, SIGNAL_REGISTRY_CHANGE
 from .manager import BindHomeManager
 from .models import Asset, Representation
 from .representation import runtime_contract
-from .resolver import (
-    BindingResolver,
-    Resolution,
-    ResolutionStatus,
-)
+from .resolver import BindingResolver, Resolution, ResolutionStatus
 
 _CAPABILITY = "on_off"
 _KNOWN_LIGHT_FEATURES = (
@@ -75,7 +71,11 @@ def _supported_color_modes(attributes: dict[str, Any]) -> set[ColorMode]:
         return {ColorMode.ONOFF}
 
 
-def _tuple_value(value: Any, length: int, caster: type[int] | type[float]) -> tuple | None:
+def _tuple_value(
+    value: Any,
+    length: int,
+    caster: type[int] | type[float],
+) -> tuple[Any, ...] | None:
     """Return a typed tuple from one state attribute when structurally valid."""
     if not isinstance(value, (list, tuple)) or len(value) != length:
         return None
@@ -358,7 +358,7 @@ class BindHomeLight(LightEntity):
         self._attr_rgbw_color = _tuple_value(attributes.get("rgbw_color"), 4, int)
         self._attr_rgbww_color = _tuple_value(attributes.get("rgbww_color"), 5, int)
 
-        if LightEntityFeature.EFFECT in self._attr_supported_features:
+        if self._attr_supported_features & LightEntityFeature.EFFECT:
             effect = attributes.get("effect")
             self._attr_effect = effect if isinstance(effect, str) else None
             effect_list = attributes.get("effect_list")
