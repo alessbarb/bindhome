@@ -149,4 +149,5 @@ def test_registers_backup_commands_under_bindhome_namespace() -> None:
     assert set(hass.data["websocket_api"]) == {
         backup_websocket.WS_BACKUP_EXPORT,
         backup_websocket.WS_BACKUP_RESTORE,
+        backup_websocket.WS_BACKUP_RECOVERY_STATUS,
     }
