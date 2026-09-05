@@ -17,6 +17,7 @@ export interface Binding {
   asset_id: string;
   capability: string;
   entity_id: string;
+  entity_registry_id?: string | null;
   role: string;
 }
 export interface Representation {
@@ -33,8 +34,8 @@ export interface BindingStatus {
   status: string;
   config_valid?: boolean;
   runtime_available?: boolean;
-  entity_id?: string;
-  binding?: Binding;
+  entity_id?: string | null;
+  binding?: Binding | null;
 }
 export interface CreationPreset {
   preset_id: string;
