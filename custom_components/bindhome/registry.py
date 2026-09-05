@@ -319,7 +319,9 @@ class BindHomeRegistry:
             raise RegistryValidationError("Persisted registry must be a dictionary")
 
         if "schema_version" not in data:
-            raise RegistryValidationError("Persisted registry is missing schema_version")
+            raise RegistryValidationError(
+                "Persisted registry is missing schema_version"
+            )
         schema_version = data["schema_version"]
         if schema_version != REGISTRY_SCHEMA_VERSION:
             raise RegistryValidationError(
