@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
 from homeassistant.core import HomeAssistant
@@ -21,6 +22,7 @@ from .registry import (
     RegistryError,
     RegistryValidationError,
 )
+from .registry_state import replace_registry_contents
 from .representation import (
     binding_key,
     representation_asset_for_entity,
@@ -28,6 +30,7 @@ from .representation import (
 )
 from .resolver import BindingResolver, HomeAssistantEntityProbe
 from .store import BindHomeStore
+from .transaction import BindHomeMutationLock
 from .validation import validate_entity
 
 
@@ -95,13 +98,28 @@ class BindHomeManager:
         self.hass = hass
         self.registry = BindHomeRegistry()
         self._store = BindHomeStore(hass)
-        self._mutation_lock = asyncio.Lock()
+        self._mutation_lock = BindHomeMutationLock()
         self._probe = HomeAssistantEntityProbe(hass)
 
     @property
     def resolver(self) -> BindingResolver:
         """Return a resolver bound to the current registry and Home Assistant."""
         return BindingResolver(self.registry, self._probe)
+
+    @asynccontextmanager
+    async def transaction(self) -> AsyncIterator[BindHomeRegistry]:
+        """Yield an isolated Registry and commit it once on successful exit.
+
+        Concurrent callers serialize through the mutation lock. Re-entering the
+        manager from the same task while a transaction is open fails fast rather
+        than deadlocking on ``asyncio.Lock`` semantics. Transaction callers must
+        therefore perform multi-step changes directly against the staged
+        Registry yielded here.
+        """
+        async with self._mutation_lock:
+            staged = self._stage_registry()
+            yield staged
+            await self._async_commit_staged_registry(staged)
 
     def _stage_registry(self) -> BindHomeRegistry:
         """Return an isolated validated copy of the live registry."""
@@ -111,29 +129,20 @@ class BindHomeManager:
         self,
         staged: BindHomeRegistry,
     ) -> None:
-        """Persist staged state, then atomically publish it to runtime consumers."""
-        await self._store.async_save(staged)
-        self._adopt_staged_registry(staged)
+        """Persist validated staged state, then publish it to runtime consumers."""
+        canonical = BindHomeRegistry.from_dict(staged.to_dict())
+        await self._store.async_save(canonical)
+        self._adopt_staged_registry(canonical)
         async_dispatcher_send(self.hass, SIGNAL_REGISTRY_CHANGED)
 
     def _adopt_staged_registry(self, staged: BindHomeRegistry) -> None:
         """Commit staged state while preserving the live registry identity.
 
         Long-lived runtime consumers may retain references to the current
-        BindHomeRegistry, so commits replace its contents rather than replacing
-        the registry object itself.
+        BindHomeRegistry, so commits replace its persisted collections rather
+        than replacing the registry object itself.
         """
-        self.registry.assets.clear()
-        self.registry.assets.update(staged.assets)
-
-        self.registry.relations.clear()
-        self.registry.relations.update(staged.relations)
-
-        self.registry.bindings.clear()
-        self.registry.bindings.update(staged.bindings)
-
-        self.registry.representations.clear()
-        self.registry.representations.update(staged.representations)
+        replace_registry_contents(self.registry, staged)
 
     async def async_load(self) -> None:
         """Load persisted registry state."""
