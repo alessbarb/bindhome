@@ -69,15 +69,15 @@ export class BindHomePanel extends LitElement {
     this._onboardingVisible = false;
     this._onboardingDismissed = false;
     this._onboardingPreferenceIdentity = null;
-  this._hassByView = { home: null, add: null, advanced: null };
-  this._refreshBindingDataHandler = () => this._refreshBindingData();
-  this._refreshTopologyDataHandler = () => this._refreshTopologyData();
-  this._refreshAssetsHandler = () => this._refreshAssets();
-  this._addCreatedHandler = async (created) => {
-    const assets = await this._refreshAssets();
-    const asset = created ?? assets?.at(-1);
-    if (asset) this._openAsset(asset.id);
-  };
+    this._hassByView = { home: null, add: null, advanced: null };
+    this._refreshBindingDataHandler = () => this._refreshBindingData();
+    this._refreshTopologyDataHandler = () => this._refreshTopologyData();
+    this._refreshAssetsHandler = () => this._refreshAssets();
+    this._addCreatedHandler = async (created) => {
+      const assets = await this._refreshAssets();
+      const asset = created ?? assets?.at(-1);
+      if (asset) this._openAsset(asset.id);
+    };
   }
   static styles = css`
     :host {
@@ -425,12 +425,12 @@ export class BindHomePanel extends LitElement {
     this._selectedAreaId = !updated.area_id ? NO_AREA : this._areas.some((area) => area.area_id === updated.area_id) ? updated.area_id : STALE_AREA;
   }
   _hassFor(view) {
-  if (this._view === view || this._hassByView[view] == null) {
-    this._hassByView[view] = this.hass;
+    if (this._view === view || this._hassByView[view] == null) {
+      this._hassByView[view] = this.hass;
+    }
+    return this._hassByView[view];
   }
-  return this._hassByView[view];
-}
-_renderViews() {
+  _renderViews() {
     const common = {
       t: this._t,
       floors: this._floors,
