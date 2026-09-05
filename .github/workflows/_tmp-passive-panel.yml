@@ -17,7 +17,7 @@ jobs:
           ref: perf/passive-panel-rendering
           fetch-depth: 0
 
-      - name: Patch panel to keep only the active view live
+      - name: Stop routine hass updates at inactive views
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -25,116 +25,59 @@ jobs:
           path = Path("frontend/src/bindhome-panel.js")
           source = path.read_text()
 
-          import_line = 'import { LitElement, css, html } from "lit";\n'
-          cache_import = 'import { cache } from "lit/directives/cache.js";\n'
-          if cache_import not in source:
-              if import_line not in source:
-                  raise SystemExit("Lit import anchor not found")
-              source = source.replace(import_line, import_line + cache_import, 1)
-
-          start = source.index("  _renderViews() {")
-          end = source.index("  render() {", start)
-
-          replacement = r'''  _renderViews() {
-            const common = {
-              hass: this.hass,
-              t: this._t,
-              floors: this._floors,
-              areas: this._areas,
-              assets: this._assets,
-              registry: this._registry ?? {},
-              bindingStatuses: this._bindingStatuses,
-              entityRegistry: this._entityRegistry,
-              deviceRegistry: this._deviceRegistry,
-              refreshBindingData: () => this._refreshBindingData(),
-              refreshTopologyData: () => this._refreshTopologyData(),
+          constructor_anchor = "    this._onboardingPreferenceIdentity = null;\n"
+          constructor_insert = """    this._onboardingPreferenceIdentity = null;
+            this._hassByView = { home: null, add: null, advanced: null };
+            this._refreshBindingDataHandler = () => this._refreshBindingData();
+            this._refreshTopologyDataHandler = () => this._refreshTopologyData();
+            this._refreshAssetsHandler = () => this._refreshAssets();
+            this._addCreatedHandler = async (created) => {
+              const assets = await this._refreshAssets();
+              const asset = created ?? assets?.at(-1);
+              if (asset) this._openAsset(asset.id);
             };
+          """
+          if constructor_anchor not in source:
+              raise SystemExit("constructor anchor not found")
+          source = source.replace(constructor_anchor, constructor_insert, 1)
 
-            let view;
-            if (this._view === "home") {
-              view = html`<section class="view" data-view="home">
-                <bindhome-home-view
-                  .hass=${common.hass}
-                  .t=${common.t}
-                  .floors=${common.floors}
-                  .areas=${common.areas}
-                  .assets=${common.assets}
-                  .registry=${common.registry}
-                  .bindingStatuses=${common.bindingStatuses}
-                  .entityRegistry=${common.entityRegistry}
-                  .deviceRegistry=${common.deviceRegistry}
-                  .advancedEnabled=${this._advancedPinned}
-                  .refreshBindingData=${common.refreshBindingData}
-                  .refreshTopologyData=${common.refreshTopologyData}
-                  .refreshAssets=${() => this._refreshAssets()}
-                  .selectedAssetId=${this._selectedAssetId}
-                  .selectedAreaId=${this._selectedAreaId}
-                  @home-navigate=${this._homeNavigate}
-                  @add-in-area=${(e) => this._openAdd(e.detail)}
-                  @open-advanced=${(event) => this._editAsset(event.detail)}
-                  @asset-committed=${(event) => this._humanAssetCommitted(event.detail)}
-                ></bindhome-home-view>
-              </section>`;
-            } else if (this._view === "add") {
-              view = html`<section class="view" data-view="add">
-                <bindhome-add-view
-                  .hass=${this.hass}
-                  .t=${this._t}
-                  .presets=${this._presets}
-                  .floors=${this._floors}
-                  .areas=${this._areas}
-                  .assets=${this._assets}
-                  .contextAreaId=${this._contextAreaId}
-                  .sessionId=${this._addSessionId}
-                  .onCreated=${async (created) => {
-                    const assets = await this._refreshAssets();
-                    const asset = created ?? assets?.at(-1);
-                    if (asset) this._openAsset(asset.id);
-                  }}
-                  @assets-refreshed=${this._assetsRefreshed}
-                  @go-home=${() => this._navigate("home")}
-                ></bindhome-add-view>
-              </section>`;
-            } else if (this._view === "search") {
-              view = html`<section class="view" data-view="search">
-                <bindhome-search-view
-                  .t=${this._t}
-                  .assets=${this._assets}
-                  .areas=${this._areas}
-                  .floors=${this._floors}
-                  @open-asset=${(e) => this._openAsset(e.detail)}
-                ></bindhome-search-view>
-              </section>`;
-            } else {
-              view = html`<section class="view" data-view="advanced">
-                <bindhome-advanced-view
-                  .hass=${common.hass}
-                  .t=${common.t}
-                  .presets=${this._presets}
-                  .floors=${common.floors}
-                  .areas=${common.areas}
-                  .assets=${common.assets}
-                  .registry=${common.registry}
-                  .bindingStatuses=${common.bindingStatuses}
-                  .entityRegistry=${common.entityRegistry}
-                  .deviceRegistry=${common.deviceRegistry}
-                  .refreshBindingData=${common.refreshBindingData}
-                  .refreshTopologyData=${common.refreshTopologyData}
-                  .selectedAssetId=${this._advancedAssetId}
-                  @assets-refreshed=${this._assetsRefreshed}
-                ></bindhome-advanced-view>
-              </section>`;
+          render_anchor = "  _renderViews() {\n"
+          helper = """  _hassFor(view) {
+            if (this._view === view || this._hassByView[view] == null) {
+              this._hassByView[view] = this.hass;
             }
-
-            return cache(view);
+            return this._hassByView[view];
           }
-          '''
+          _renderViews() {
+          """
+          if render_anchor not in source:
+              raise SystemExit("render anchor not found")
+          source = source.replace(render_anchor, helper, 1)
 
-          source = source[:start] + replacement + source[end:]
+          replacements = {
+              "      hass: this.hass,\n": "",
+              "      refreshBindingData: () => this._refreshBindingData(),\n": "      refreshBindingData: this._refreshBindingDataHandler,\n",
+              "      refreshTopologyData: () => this._refreshTopologyData(),\n": "      refreshTopologyData: this._refreshTopologyDataHandler,\n",
+              "          .hass=${common.hass}\n": "          .hass=${this._hassFor(\"home\")}\n",
+              "          .refreshAssets=${() => this._refreshAssets()}\n": "          .refreshAssets=${this._refreshAssetsHandler}\n",
+              "          .hass=${this.hass}\n": "          .hass=${this._hassFor(\"add\")}\n",
+              "          .onCreated=${async (created) => {\n            const assets = await this._refreshAssets();\n            const asset = created ?? assets?.at(-1);\n            if (asset) this._openAsset(asset.id);\n          }}\n": "          .onCreated=${this._addCreatedHandler}\n",
+          }
+          for old, new in replacements.items():
+              if old not in source:
+                  raise SystemExit(f"source anchor not found: {old!r}")
+              source = source.replace(old, new, 1)
+
+          # The second common.hass occurrence belongs to Advanced.
+          old = "          .hass=${common.hass}\n"
+          if old not in source:
+              raise SystemExit("advanced hass anchor not found")
+          source = source.replace(old, "          .hass=${this._hassFor(\"advanced\")}\n", 1)
+
           path.write_text(source)
           PY
 
-      - name: Add regression coverage for passive view mounting
+      - name: Add regression coverage for passive hass propagation
         run: |
           cat > frontend/test/passive-panel.test.js <<'EOF'
           import assert from "node:assert/strict";
@@ -170,6 +113,23 @@ jobs:
             await element.updateComplete;
           }
 
+          function countRequests(element) {
+            let count = 0;
+            const original = element.requestUpdate.bind(element);
+            element.requestUpdate = (...args) => {
+              count += 1;
+              return original(...args);
+            };
+            return {
+              get count() {
+                return count;
+              },
+              reset() {
+                count = 0;
+              },
+            };
+          }
+
           function fixture() {
             const panel = document.createElement("bindhome-panel");
             panel._loading = false;
@@ -180,32 +140,75 @@ jobs:
             panel._areas = [];
             panel._assets = [];
             panel._registry = { assets: [], relations: [], bindings: [], representations: [] };
+            panel.hass = { language: "en", states: {}, callWS: async () => ({}) };
             document.body.append(panel);
             return panel;
           }
 
-          test("only the active top-level BindHome view stays in the live DOM", async () => {
+          test("routine hass updates propagate only into the active top-level view", async () => {
             const panel = fixture();
             await settle(panel);
 
             const home = panel.shadowRoot.querySelector("bindhome-home-view");
+            const add = panel.shadowRoot.querySelector("bindhome-add-view");
+            const advanced = panel.shadowRoot.querySelector("bindhome-advanced-view");
             assert.ok(home);
-            assert.equal(panel.shadowRoot.querySelector("bindhome-add-view"), null);
-            assert.equal(panel.shadowRoot.querySelector("bindhome-search-view"), null);
-            assert.equal(panel.shadowRoot.querySelector("bindhome-advanced-view"), null);
+            assert.ok(add);
+            assert.ok(advanced);
 
-            panel._navigate("search");
-            await settle(panel);
-            assert.equal(panel.shadowRoot.querySelector("bindhome-home-view"), null);
-            assert.ok(panel.shadowRoot.querySelector("bindhome-search-view"));
-            assert.equal(panel.shadowRoot.querySelector("bindhome-add-view"), null);
-            assert.equal(panel.shadowRoot.querySelector("bindhome-advanced-view"), null);
+            const homeRequests = countRequests(home);
+            const addRequests = countRequests(add);
+            const advancedRequests = countRequests(advanced);
 
-            panel._navigate("home");
+            panel.hass = {
+              language: "en",
+              states: { "sensor.example": { state: "one" } },
+              callWS: async () => ({}),
+            };
             await settle(panel);
-            assert.equal(panel.shadowRoot.querySelector("bindhome-home-view"), home);
+
+            assert.ok(homeRequests.count > 0);
+            assert.equal(addRequests.count, 0);
+            assert.equal(advancedRequests.count, 0);
+
+            panel._setAdvancedPinned(true);
+            panel._navigate("advanced");
+            await settle(panel);
+            homeRequests.reset();
+            addRequests.reset();
+            advancedRequests.reset();
+
+            panel.hass = {
+              language: "en",
+              states: { "sensor.example": { state: "two" } },
+              callWS: async () => ({}),
+            };
+            await settle(panel);
+
+            assert.equal(homeRequests.count, 0);
+            assert.equal(addRequests.count, 0);
+            assert.ok(advancedRequests.count > 0);
           });
           EOF
+
+      - name: Document passive panel behavior
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("CHANGELOG.md")
+          source = path.read_text()
+          anchor = "### Reliability\n\n"
+          entry = (
+              "- The BindHome panel now keeps Home Assistant's high-frequency `hass` updates local to the active top-level view. "
+              "Inactive Home, Add and Advanced views retain their mounted UI state without receiving routine state-machine churn, "
+              "reducing unnecessary frontend work while preserving drafts and navigation state.\n"
+          )
+          if anchor not in source:
+              raise SystemExit("CHANGELOG Reliability anchor not found")
+          source = source.replace(anchor, anchor + entry, 1)
+          path.write_text(source)
+          PY
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -233,8 +236,8 @@ jobs:
       - name: Commit source, regression test and generated bundle
         run: |
           git rm .github/workflows/_tmp-passive-panel.yml
-          git add frontend/src/bindhome-panel.js frontend/test/passive-panel.test.js custom_components/bindhome/panel/static/bindhome-panel.js
+          git add CHANGELOG.md frontend/src/bindhome-panel.js frontend/test/passive-panel.test.js custom_components/bindhome/panel/static/bindhome-panel.js
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "perf: keep inactive panel views out of live DOM"
+          git commit -m "perf: isolate inactive views from hass churn"
           git push origin HEAD:perf/passive-panel-rendering
