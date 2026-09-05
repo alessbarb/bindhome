@@ -68,7 +68,6 @@ jobs:
                   raise SystemExit(f"source anchor not found: {old!r}")
               source = source.replace(old, new, 1)
 
-          # The second common.hass occurrence belongs to Advanced.
           old = "          .hass=${common.hass}\n"
           if old not in source:
               raise SystemExit("advanced hass anchor not found")
@@ -113,23 +112,6 @@ jobs:
             await element.updateComplete;
           }
 
-          function countRequests(element) {
-            let count = 0;
-            const original = element.requestUpdate.bind(element);
-            element.requestUpdate = (...args) => {
-              count += 1;
-              return original(...args);
-            };
-            return {
-              get count() {
-                return count;
-              },
-              reset() {
-                count = 0;
-              },
-            };
-          }
-
           function fixture() {
             const panel = document.createElement("bindhome-panel");
             panel._loading = false;
@@ -156,38 +138,46 @@ jobs:
             assert.ok(add);
             assert.ok(advanced);
 
-            const homeRequests = countRequests(home);
-            const addRequests = countRequests(add);
-            const advancedRequests = countRequests(advanced);
+            const initialHomeHass = home.hass;
+            const initialAddHass = add.hass;
+            const initialAdvancedHass = advanced.hass;
+            const initialAddCreated = add.onCreated;
+            const initialHomeRefresh = home.refreshBindingData;
+            const initialAdvancedRefresh = advanced.refreshBindingData;
 
-            panel.hass = {
+            const homeHass = {
               language: "en",
               states: { "sensor.example": { state: "one" } },
               callWS: async () => ({}),
             };
+            panel.hass = homeHass;
             await settle(panel);
 
-            assert.ok(homeRequests.count > 0);
-            assert.equal(addRequests.count, 0);
-            assert.equal(advancedRequests.count, 0);
+            assert.equal(home.hass, homeHass);
+            assert.notEqual(home.hass, initialHomeHass);
+            assert.equal(add.hass, initialAddHass);
+            assert.equal(advanced.hass, initialAdvancedHass);
+            assert.equal(add.onCreated, initialAddCreated);
+            assert.equal(home.refreshBindingData, initialHomeRefresh);
+            assert.equal(advanced.refreshBindingData, initialAdvancedRefresh);
 
             panel._setAdvancedPinned(true);
             panel._navigate("advanced");
             await settle(panel);
-            homeRequests.reset();
-            addRequests.reset();
-            advancedRequests.reset();
+            assert.equal(advanced.hass, homeHass);
+            assert.equal(add.hass, initialAddHass);
 
-            panel.hass = {
+            const advancedHass = {
               language: "en",
               states: { "sensor.example": { state: "two" } },
               callWS: async () => ({}),
             };
+            panel.hass = advancedHass;
             await settle(panel);
 
-            assert.equal(homeRequests.count, 0);
-            assert.equal(addRequests.count, 0);
-            assert.ok(advancedRequests.count > 0);
+            assert.equal(advanced.hass, advancedHass);
+            assert.equal(home.hass, homeHass);
+            assert.equal(add.hass, initialAddHass);
           });
           EOF
 
