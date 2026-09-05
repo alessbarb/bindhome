@@ -16,7 +16,7 @@ from custom_components.bindhome.backup import (
 )
 from custom_components.bindhome.const import SIGNAL_REGISTRY_CHANGED
 from custom_components.bindhome.manager import BindHomeManager
-from custom_components.bindhome.models import Asset
+from custom_components.bindhome.models import Asset, Binding
 from custom_components.bindhome.registry import BindHomeRegistry
 from custom_components.bindhome.store import BindHomeStoreError
 
@@ -55,6 +55,29 @@ def test_backup_round_trip_restores_registry_exactly() -> None:
 
     assert restored is not registry
     assert restored.to_dict() == registry.to_dict()
+
+
+def test_backup_round_trip_preserves_stable_binding_target_identity() -> None:
+    registry = _registry("Workshop socket", "SOCK-01")
+    asset = next(iter(registry.assets.values()))
+    binding = registry.set_binding(
+        Binding.create(
+            asset_id=asset.id,
+            capability="on_off",
+            entity_id="switch.workshop_old_name",
+            entity_registry_id="stable-ha-registry-entry-id",
+        )
+    )
+
+    payload = export_registry_backup(registry)
+    exported_binding = payload["registry"]["bindings"][0]
+    assert exported_binding["entity_id"] == "switch.workshop_old_name"
+    assert exported_binding["entity_registry_id"] == "stable-ha-registry-entry-id"
+
+    restored = parse_registry_backup(payload)
+    restored_binding = restored.bindings[binding.id]
+    assert restored_binding.entity_id == "switch.workshop_old_name"
+    assert restored_binding.entity_registry_id == "stable-ha-registry-entry-id"
 
 
 @pytest.mark.parametrize(
