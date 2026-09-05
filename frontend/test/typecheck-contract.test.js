@@ -25,6 +25,7 @@ test("checkJs rejects an invalid JavaScript JSDoc assignment", () => {
       process.execPath,
       [
         tscPath,
+        "--ignoreConfig",
         "--noEmit",
         "--allowJs",
         "--checkJs",
