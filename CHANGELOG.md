@@ -18,10 +18,39 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ## [Unreleased]
 
-No changes yet beyond the `1.0.0` release candidate.
+No changes yet beyond `1.1.0`.
 
 ---
 
+## [1.1.0] - 2026-09-05
+
+First feature update after the public 1.0 release, focused on making the normal human workflow faster and safer.
+
+**Minimum Home Assistant:** `2026.8.0`
+
+### Added
+
+- `Añadir` now offers both single-element creation and **bulk room inventory** in the normal human flow, reusing the existing atomic room workflow rather than introducing a second bulk-save path. ([#24](https://github.com/alessbarb/bindhome/pull/24))
+- Added administrator-only **safe Asset deletion** with an authoritative impact preview before confirmation. The operation removes BindHome-owned Relations, owned Bindings, dependent BindHome-to-BindHome Bindings and the optional logical Representation in one transaction before the strict final Asset deletion. ([#24](https://github.com/alessbarb/bindhome/pull/24))
+- Floor groups in **Casa** can now be collapsed and expanded to reduce vertical space when browsing larger homes. ([#24](https://github.com/alessbarb/bindhome/pull/24))
+
+### Changed
+
+- The Home Assistant config flow is now one-click after selecting BindHome: the single config entry is created immediately instead of displaying an empty confirmation form. HACS still installs the integration separately from Home Assistant config-entry creation. ([#24](https://github.com/alessbarb/bindhome/pull/24))
+- Completing first-run onboarding now lands in **Casa** instead of automatically opening `Añadir`. ([#24](https://github.com/alessbarb/bindhome/pull/24))
+
+### Reliability
+
+- Human deletion fails closed: persistence occurs before live Registry adoption, storage failure leaves live state unchanged, and the existing strict Asset-delete invariant remains the final guard against future unhandled reference types. ([#24](https://github.com/alessbarb/bindhome/pull/24))
+- Deleting a BindHome Asset never deletes the physical Home Assistant Device or external Entity used as hardware. When a BindHome-owned logical Representation is removed, the UI explicitly warns that external dashboards, scripts or automations referencing that logical entity may require adjustment. ([#24](https://github.com/alessbarb/bindhome/pull/24))
+
+### Distribution
+
+- Version promoted to `1.1.0` across Python, Home Assistant and frontend package metadata. ([#24](https://github.com/alessbarb/bindhome/pull/24))
+- Dependabot upgraded the frontend bundler **esbuild** from `0.25.12` to `0.28.2`. ([#21](https://github.com/alessbarb/bindhome/pull/21))
+- Dependabot upgraded the frontend typechecker **TypeScript** from `5.9.2` to `7.0.2`. ([#22](https://github.com/alessbarb/bindhome/pull/22))
+
+---
 ## [1.0.0] - 2026-09-04
 
 First public BindHome release.
@@ -83,6 +112,7 @@ First public BindHome release.
 
 ### Distribution
 
+- Stable GitHub Releases are published automatically from the exact green `main` commit after all protected release gates pass. ([#23](https://github.com/alessbarb/bindhome/pull/23))
 - Version promoted to `1.0.0` across Python, Home Assistant and frontend package metadata. ([#20](https://github.com/alessbarb/bindhome/pull/20))
 - Added HACS repository metadata, brand asset and automatic HACS publication validation. ([#20](https://github.com/alessbarb/bindhome/pull/20))
 - Added permanent Home Assistant compatibility CI for the supported floor and current stable release. ([#20](https://github.com/alessbarb/bindhome/pull/20))
@@ -102,5 +132,6 @@ First public BindHome release.
 
 ---
 
-[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/alessbarb/bindhome/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/alessbarb/bindhome/releases/tag/v1.0.0
