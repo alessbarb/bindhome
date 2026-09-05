@@ -1,4 +1,4 @@
-"""Tests for BindHome Home Assistant diagnostics."""
+"""Regression tests for BindHome Home Assistant diagnostics and redaction."""
 
 from __future__ import annotations
 
