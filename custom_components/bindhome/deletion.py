@@ -9,8 +9,8 @@ from homeassistant.helpers import entity_registry as er
 from .const import DOMAIN
 from .manager import BindHomeManager
 from .models import Binding, Relation, Representation
-from .representation import representation_asset_for_entity, runtime_contract
 from .registry import BindHomeRegistry
+from .representation import representation_asset_for_entity, runtime_contract
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,7 +34,9 @@ class AssetDeleteImpact:
                 binding.to_dict() for binding in self.dependent_bindings
             ],
             "representation": (
-                self.representation.to_dict() if self.representation is not None else None
+                self.representation.to_dict()
+                if self.representation is not None
+                else None
             ),
             "logical_entity_id": self.logical_entity_id,
         }
