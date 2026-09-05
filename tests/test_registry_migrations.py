@@ -17,7 +17,10 @@ from custom_components.bindhome.migrations import (
     RegistrySchemaFutureError,
     migrate_registry_payload,
 )
-from custom_components.bindhome.registry import BindHomeRegistry, RegistryValidationError
+from custom_components.bindhome.registry import (
+    BindHomeRegistry,
+    RegistryValidationError,
+)
 
 _FIXTURES = Path(__file__).parent / "fixtures" / "registry"
 
