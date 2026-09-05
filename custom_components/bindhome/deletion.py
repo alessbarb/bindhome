@@ -100,9 +100,11 @@ def build_asset_delete_impact(
 async def async_delete_asset_with_dependencies(
     manager: BindHomeManager,
     asset_id: str,
+    *,
+    expected_revision: int | None = None,
 ) -> AssetDeleteImpact:
     """Delete an Asset and its BindHome-owned dependencies as one transaction."""
-    async with manager.transaction() as staged:
+    async with manager.transaction(expected_revision=expected_revision) as staged:
         impact = build_asset_delete_impact(manager, asset_id, registry=staged)
 
         for relation in impact.relations:
