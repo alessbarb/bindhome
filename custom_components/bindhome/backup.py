@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from .registry import BindHomeRegistry, RegistryValidationError
+from .registry_state import replace_registry_contents
 
 if TYPE_CHECKING:
     from .manager import BindHomeManager
@@ -61,9 +62,9 @@ async def async_restore_registry_backup(
     data: object,
 ) -> BindHomeRegistry:
     """Validate and atomically replace the live Registry from a backup."""
-    staged = parse_registry_backup(data)
+    replacement = parse_registry_backup(data)
 
-    async with manager._mutation_lock:
-        await manager._async_commit_staged_registry(staged)
+    async with manager.transaction() as staged:
+        replace_registry_contents(staged, replacement)
 
     return manager.registry

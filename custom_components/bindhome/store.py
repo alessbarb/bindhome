@@ -97,13 +97,22 @@ class BindHomeStore:
                 f"Persisted BindHome registry is invalid: {err}"
             ) from err
 
-        # Persist the already-supported legacy in-memory migration once so
-        # future starts load the canonical explicit Representation form.
+        # Startup canonicalization deliberately uses the same manager-independent
+        # validate-before-write persistence primitive as runtime commits. Future
+        # schema migrations can therefore persist a canonical payload without
+        # inventing a third write path before a live manager exists.
         if "schema_version" not in data or "representations" not in data:
             await self.async_save(registry)
 
         return registry
 
     async def async_save(self, registry: BindHomeRegistry) -> None:
-        """Persist the registry immediately or raise on storage failure."""
-        await self._store.async_save(registry.to_dict())
+        """Validate canonical Registry state, then persist it atomically.
+
+        This method is safe to use both for runtime commits and during startup,
+        when no live manager, mutation lock or Registry-changed signal exists.
+        Validation/serialization must complete before Home Assistant storage is
+        touched.
+        """
+        canonical = BindHomeRegistry.from_dict(registry.to_dict())
+        await self._store.async_save(canonical.to_dict())
