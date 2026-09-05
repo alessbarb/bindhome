@@ -8,11 +8,16 @@ Central operation::
 
     (asset_id, capability, role) -> current Home Assistant entity_id
 
+For registered Home Assistant entities, BindHome treats the persisted Entity
+Registry entry id as authoritative and resolves the current mutable ``entity_id``
+at read time. ``Binding.entity_id`` remains a last-known display value and the
+explicit fallback for state-machine-only entities.
+
 Two independent axes are reported:
 
-* configuration validity -- the binding exists and its entity reference still
-  points at something Home Assistant knows about (Entity Registry or state
-  machine). A device that is merely offline is still a valid configuration.
+* configuration validity -- the binding exists and its stable/fallback entity
+  reference still points at something Home Assistant knows about. A device that
+  is merely offline is still a valid configuration.
 * runtime availability -- the entity currently has a usable state, i.e. not
   ``unavailable``, ``unknown`` or missing from the state machine.
 
@@ -106,7 +111,11 @@ class Resolution:
 
 
 class EntityProbe(Protocol):
-    """Read-only view of Home Assistant entity existence and state."""
+    """Read-only view of Home Assistant entity identity, existence and state."""
+
+    def resolve_registry_entity_id(self, entity_registry_id: str) -> str | None:
+        """Return the current entity_id for one stable Registry entry id."""
+        ...
 
     def is_known(self, entity_id: str) -> bool:
         """Return True if the entity exists in the registry or state machine."""
@@ -119,19 +128,26 @@ class EntityProbe(Protocol):
 class StaticEntityProbe:
     """In-memory :class:`EntityProbe` for tests and offline evaluation.
 
-    ``registered`` is the set of entity ids present in the Entity Registry.
-    ``states`` maps entity ids present in the state machine to their state
-    string. The union models Home Assistant's "entity exists" definition.
+    ``registry_entries`` maps stable Entity Registry entry ids to their current
+    mutable entity ids. ``registered`` remains a convenience for tests that only
+    care about entity-id existence. ``states`` maps entity ids present in the
+    state machine to their state string.
     """
 
     def __init__(
         self,
         *,
+        registry_entries: dict[str, str] | None = None,
         registered: set[str] | None = None,
         states: dict[str, str] | None = None,
     ) -> None:
+        self.registry_entries: dict[str, str] = dict(registry_entries or {})
         self.registered: set[str] = set(registered or set())
+        self.registered.update(self.registry_entries.values())
         self.states: dict[str, str] = dict(states or {})
+
+    def resolve_registry_entity_id(self, entity_registry_id: str) -> str | None:
+        return self.registry_entries.get(entity_registry_id)
 
     def is_known(self, entity_id: str) -> bool:
         return entity_id in self.registered or entity_id in self.states
@@ -143,12 +159,18 @@ class StaticEntityProbe:
 class HomeAssistantEntityProbe:
     """:class:`EntityProbe` backed by a live Home Assistant instance.
 
-    "Entity exists" matches the existing definition in ``services.py``: present
-    in the Entity Registry or in the state machine.
+    Stable Registry lookups use Home Assistant's own Entity Registry entry id;
+    state-machine-only entities retain the existing entity-id fallback.
     """
 
     def __init__(self, hass: HomeAssistant) -> None:
         self._hass = hass
+
+    def resolve_registry_entity_id(self, entity_registry_id: str) -> str | None:
+        from homeassistant.helpers import entity_registry as er
+
+        entry = er.async_get(self._hass).entities.get_entry(entity_registry_id)
+        return entry.entity_id if entry is not None else None
 
     def is_known(self, entity_id: str) -> bool:
         from homeassistant.helpers import entity_registry as er
@@ -205,16 +227,35 @@ class BindingResolver:
                 asset_id, capability, role, ResolutionStatus.BINDING_NOT_FOUND
             )
 
-        entity_id = binding.entity_id
-        if not self._probe.is_known(entity_id):
-            return Resolution(
-                asset_id=asset_id,
-                capability=capability,
-                role=role,
-                status=ResolutionStatus.ENTITY_NOT_FOUND,
-                binding=binding,
-                entity_id=entity_id,
+        if binding.entity_registry_id is not None:
+            entity_id = self._probe.resolve_registry_entity_id(
+                binding.entity_registry_id
             )
+            if entity_id is None:
+                # A stable Registry target must never fall back to the stored
+                # mutable entity_id: that name may already belong to another
+                # Registry entry after removal/reuse.
+                return Resolution(
+                    asset_id=asset_id,
+                    capability=capability,
+                    role=role,
+                    status=ResolutionStatus.ENTITY_NOT_FOUND,
+                    binding=binding,
+                    entity_id=None,
+                )
+        else:
+            # Explicit compatibility path for state-machine-only entities and
+            # legacy targets that do not have a Registry entry identity.
+            entity_id = binding.entity_id
+            if not self._probe.is_known(entity_id):
+                return Resolution(
+                    asset_id=asset_id,
+                    capability=capability,
+                    role=role,
+                    status=ResolutionStatus.ENTITY_NOT_FOUND,
+                    binding=binding,
+                    entity_id=entity_id,
+                )
 
         state = self._probe.get_state(entity_id)
         status = _runtime_status(state)
@@ -253,6 +294,12 @@ class BindingResolver:
                 f"No binding for ({asset_id}, {capability}, {role})"
             )
         if result.status is ResolutionStatus.ENTITY_NOT_FOUND:
+            binding = result.binding
+            if binding is not None and binding.entity_registry_id is not None:
+                raise StaleBindingError(
+                    "Bound Entity Registry entry "
+                    f"{binding.entity_registry_id} no longer exists"
+                )
             raise StaleBindingError(f"Bound entity {result.entity_id} no longer exists")
         assert result.entity_id is not None
         return result.entity_id
