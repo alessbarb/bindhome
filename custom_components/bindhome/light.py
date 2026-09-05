@@ -342,7 +342,9 @@ class BindHomeLight(LightEntity):
         self._attr_brightness = brightness if isinstance(brightness, int) else None
 
         color_temp = attributes.get("color_temp_kelvin")
-        self._attr_color_temp_kelvin = color_temp if isinstance(color_temp, int) else None
+        self._attr_color_temp_kelvin = (
+            color_temp if isinstance(color_temp, int) else None
+        )
         min_color_temp = attributes.get("min_color_temp_kelvin")
         self._attr_min_color_temp_kelvin = (
             min_color_temp if isinstance(min_color_temp, int) else None
