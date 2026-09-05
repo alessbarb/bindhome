@@ -69,6 +69,15 @@ export class BindHomePanel extends LitElement {
     this._onboardingVisible = false;
     this._onboardingDismissed = false;
     this._onboardingPreferenceIdentity = null;
+    this._hassByView = { home: null, add: null, advanced: null };
+    this._refreshBindingDataHandler = () => this._refreshBindingData();
+    this._refreshTopologyDataHandler = () => this._refreshTopologyData();
+    this._refreshAssetsHandler = () => this._refreshAssets();
+    this._addCreatedHandler = async (created) => {
+      const assets = await this._refreshAssets();
+      const asset = created ?? assets?.at(-1);
+      if (asset) this._openAsset(asset.id);
+    };
   }
   static styles = css`
     :host {
@@ -415,9 +424,14 @@ export class BindHomePanel extends LitElement {
     this._selectedAssetId = updated.id;
     this._selectedAreaId = !updated.area_id ? NO_AREA : this._areas.some((area) => area.area_id === updated.area_id) ? updated.area_id : STALE_AREA;
   }
+  _hassFor(view) {
+    if (this._view === view || this._hassByView[view] == null) {
+      this._hassByView[view] = this.hass;
+    }
+    return this._hassByView[view];
+  }
   _renderViews() {
     const common = {
-      hass: this.hass,
       t: this._t,
       floors: this._floors,
       areas: this._areas,
@@ -426,12 +440,12 @@ export class BindHomePanel extends LitElement {
       bindingStatuses: this._bindingStatuses,
       entityRegistry: this._entityRegistry,
       deviceRegistry: this._deviceRegistry,
-      refreshBindingData: () => this._refreshBindingData(),
-      refreshTopologyData: () => this._refreshTopologyData(),
+      refreshBindingData: this._refreshBindingDataHandler,
+      refreshTopologyData: this._refreshTopologyDataHandler,
     };
     return html`<section class="view" ?hidden=${this._view !== "home"}>
         <bindhome-home-view
-          .hass=${common.hass}
+          .hass=${this._hassFor("home")}
           .t=${common.t}
           .floors=${common.floors}
           .areas=${common.areas}
@@ -443,7 +457,7 @@ export class BindHomePanel extends LitElement {
           .advancedEnabled=${this._advancedPinned}
           .refreshBindingData=${common.refreshBindingData}
           .refreshTopologyData=${common.refreshTopologyData}
-          .refreshAssets=${() => this._refreshAssets()}
+          .refreshAssets=${this._refreshAssetsHandler}
           .selectedAssetId=${this._selectedAssetId}
           .selectedAreaId=${this._selectedAreaId}
           @home-navigate=${this._homeNavigate}
@@ -454,7 +468,7 @@ export class BindHomePanel extends LitElement {
       </section>
       <section class="view" ?hidden=${this._view !== "add"}>
         <bindhome-add-view
-          .hass=${this.hass}
+          .hass=${this._hassFor("add")}
           .t=${this._t}
           .presets=${this._presets}
           .floors=${this._floors}
@@ -462,11 +476,7 @@ export class BindHomePanel extends LitElement {
           .assets=${this._assets}
           .contextAreaId=${this._contextAreaId}
           .sessionId=${this._addSessionId}
-          .onCreated=${async (created) => {
-            const assets = await this._refreshAssets();
-            const asset = created ?? assets?.at(-1);
-            if (asset) this._openAsset(asset.id);
-          }}
+          .onCreated=${this._addCreatedHandler}
           @assets-refreshed=${this._assetsRefreshed}
           @go-home=${() => this._navigate("home")}
         ></bindhome-add-view>
@@ -482,7 +492,7 @@ export class BindHomePanel extends LitElement {
       </section>
       <section class="view" ?hidden=${this._view !== "advanced"}>
         <bindhome-advanced-view
-          .hass=${common.hass}
+          .hass=${this._hassFor("advanced")}
           .t=${common.t}
           .presets=${this._presets}
           .floors=${common.floors}
