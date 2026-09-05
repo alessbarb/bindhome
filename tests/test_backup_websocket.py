@@ -151,3 +151,96 @@ def test_registers_backup_commands_under_bindhome_namespace() -> None:
         backup_websocket.WS_BACKUP_RESTORE,
         backup_websocket.WS_BACKUP_RECOVERY_STATUS,
     }
+
+
+@pytest.mark.asyncio
+async def test_recovery_restore_works_without_loaded_manager(monkeypatch) -> None:
+    entry = SimpleNamespace(
+        entry_id="entry-recovery",
+        state=backup_websocket.config_entries.ConfigEntryState.SETUP_ERROR,
+    )
+    reload_entry = AsyncMock(return_value=True)
+    hass = SimpleNamespace(
+        config_entries=SimpleNamespace(
+            async_entries=lambda domain: [entry],
+            async_reload=reload_entry,
+        )
+    )
+    recovery = SimpleNamespace(
+        to_dict=lambda: {
+            "entry_id": entry.entry_id,
+            "reason": "corrupt_storage",
+            "message": "corrupt",
+        }
+    )
+    monkeypatch.setattr(
+        backup_websocket, "async_get_recovery_state", lambda hass, entry_id: recovery
+    )
+    save = AsyncMock()
+    monkeypatch.setattr(
+        backup_websocket, "BindHomeStore", lambda hass: SimpleNamespace(async_save=save)
+    )
+    restored = BindHomeRegistry()
+    restored.add_asset(
+        Asset.create(name="Recovered socket", asset_type="socket", code="REC-01")
+    )
+    connection = FakeConnection()
+
+    await call(
+        backup_websocket.ws_backup_restore,
+        hass,
+        connection,
+        {"id": "recovery", "backup": export_registry_backup(restored)},
+    )
+
+    save.assert_awaited_once()
+    saved_registry = save.await_args.args[0]
+    assert saved_registry.to_dict() == restored.to_dict()
+    reload_entry.assert_awaited_once_with(entry.entry_id)
+    assert connection.errors == []
+    assert connection.results == [
+        (
+            "recovery",
+            {
+                "restored": True,
+                "reloaded": True,
+                "registry": restored.to_dict(),
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_invalid_recovery_backup_never_writes_storage(monkeypatch) -> None:
+    entry = SimpleNamespace(
+        entry_id="entry-recovery",
+        state=backup_websocket.config_entries.ConfigEntryState.SETUP_ERROR,
+    )
+    hass = SimpleNamespace(
+        config_entries=SimpleNamespace(
+            async_entries=lambda domain: [entry],
+            async_reload=AsyncMock(return_value=True),
+        )
+    )
+    monkeypatch.setattr(
+        backup_websocket,
+        "async_get_recovery_state",
+        lambda hass, entry_id: SimpleNamespace(),
+    )
+    save = AsyncMock()
+    monkeypatch.setattr(
+        backup_websocket, "BindHomeStore", lambda hass: SimpleNamespace(async_save=save)
+    )
+    connection = FakeConnection()
+
+    await call(
+        backup_websocket.ws_backup_restore,
+        hass,
+        connection,
+        {"id": "invalid-recovery", "backup": {}},
+    )
+
+    save.assert_not_awaited()
+    assert connection.results == []
+    assert connection.errors
+    assert connection.errors[0][1] == ERR_INVALID_FORMAT

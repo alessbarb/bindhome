@@ -16,7 +16,7 @@ from .store import (
     BindHomeStoreVersionError,
 )
 
-_RECOVERY_STATES: HassKey[dict[str, "RegistryRecoveryState"]] = HassKey(
+_RECOVERY_STATES: HassKey[dict[str, RegistryRecoveryState]] = HassKey(
     f"{DOMAIN}_registry_recovery_states"
 )
 _ISSUE_PREFIX = "registry_recovery"

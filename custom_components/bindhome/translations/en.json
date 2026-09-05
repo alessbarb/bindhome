@@ -60,6 +60,12 @@
     "get_registry": { "name": "Get registry", "description": "Return the complete BindHome registry without modifying it." }
   },
   "system_health": { "info": { "loaded": "Loaded", "assets": "Assets", "relations": "Relations", "bindings": "Bindings" } },
+  "issues": {
+    "registry_recovery": {
+      "title": "BindHome needs Registry recovery",
+      "description": "BindHome could not safely load its Registry ({reason}): {message}. Normal BindHome operation remains disabled to protect stored infrastructure data. Restore a valid BindHome backup through the administrator recovery API, then reload the integration."
+    }
+  },
   "common": {
     "panel_common_floor": "Floor",
     "panel_common_area": "Area",
