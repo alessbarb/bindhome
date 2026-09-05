@@ -1,4 +1,4 @@
-"""Translation parity tests for Home Assistant-facing BindHome strings."""
+"""Regression tests for Home Assistant-facing BindHome translation parity."""
 
 from __future__ import annotations
 
