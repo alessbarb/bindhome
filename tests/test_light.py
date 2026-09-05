@@ -232,3 +232,120 @@ async def test_logical_light_exposes_valid_on_off_light_attributes(
     assert logical.supported_color_modes == {ColorMode.ONOFF}
     assert logical.color_mode is ColorMode.ONOFF
     assert logical.state_attributes["color_mode"] == ColorMode.ONOFF
+
+
+async def test_logical_light_updates_from_backing_state_events_without_polling(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    registry = BindHomeRegistry()
+    asset = _asset(registry, ["on_off"])
+    _binding(registry, asset, "switch.hardware")
+    hass.states.async_set("switch.hardware", "off")
+    logical = _logical_light(hass, registry, asset)
+    writes = AsyncMock()
+    monkeypatch.setattr(logical, "async_write_ha_state", writes)
+
+    await logical.async_added_to_hass()
+
+    assert logical.should_poll is False
+    assert logical.available is True
+    assert logical.is_on is False
+
+    hass.states.async_set("switch.hardware", "on")
+    await hass.async_block_till_done()
+
+    assert logical.available is True
+    assert logical.is_on is True
+
+    await logical.async_will_remove_from_hass()
+
+
+async def test_logical_light_rebinding_moves_state_subscription(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    registry = BindHomeRegistry()
+    asset = _asset(registry, ["on_off"])
+    _binding(registry, asset, "switch.hardware_a")
+    hass.states.async_set("switch.hardware_a", "off")
+    hass.states.async_set("switch.hardware_b", "on")
+    logical = _logical_light(hass, registry, asset)
+    monkeypatch.setattr(logical, "async_write_ha_state", AsyncMock())
+
+    await logical.async_added_to_hass()
+    assert logical.is_on is False
+
+    _binding(registry, asset, "switch.hardware_b")
+    logical.refresh_binding_subscription()
+    assert logical.is_on is True
+
+    hass.states.async_set("switch.hardware_a", "on")
+    await hass.async_block_till_done()
+    assert logical.is_on is True
+
+    hass.states.async_set("switch.hardware_b", "off")
+    await hass.async_block_till_done()
+    assert logical.is_on is False
+
+    await logical.async_will_remove_from_hass()
+
+
+async def test_logical_light_unavailable_and_removed_states_update_immediately(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    registry = BindHomeRegistry()
+    asset = _asset(registry, ["on_off"])
+    _binding(registry, asset, "switch.hardware")
+    hass.states.async_set("switch.hardware", "on")
+    logical = _logical_light(hass, registry, asset)
+    monkeypatch.setattr(logical, "async_write_ha_state", AsyncMock())
+
+    await logical.async_added_to_hass()
+    assert logical.available is True
+
+    hass.states.async_set("switch.hardware", "unavailable")
+    await hass.async_block_till_done()
+    assert logical.available is False
+    assert logical.is_on is None
+
+    hass.states.async_remove("switch.hardware")
+    await hass.async_block_till_done()
+    assert logical.available is False
+    assert logical.is_on is None
+
+    await logical.async_will_remove_from_hass()
+
+
+async def test_logical_light_repeated_registry_refresh_does_not_duplicate_listener(
+    hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    registry = BindHomeRegistry()
+    asset = _asset(registry, ["on_off"])
+    _binding(registry, asset, "switch.hardware")
+    hass.states.async_set("switch.hardware", "off")
+    logical = _logical_light(hass, registry, asset)
+
+    subscriptions: list[tuple[str, ...]] = []
+    unsubs: list[bool] = []
+
+    def fake_track(_hass, entity_ids, _callback):
+        subscriptions.append(tuple(entity_ids))
+
+        def unsub() -> None:
+            unsubs.append(True)
+
+        return unsub
+
+    monkeypatch.setattr(
+        "custom_components.bindhome.light.async_track_state_change_event",
+        fake_track,
+    )
+
+    logical.refresh_binding_subscription()
+    logical.refresh_binding_subscription()
+    logical.refresh_binding_subscription()
+
+    assert subscriptions == [("switch.hardware",)]
+    assert unsubs == []
+
+    await logical.async_will_remove_from_hass()
+    assert unsubs == [True]
