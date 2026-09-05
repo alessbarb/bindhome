@@ -8,27 +8,20 @@ from custom_components.bindhome.const import DOMAIN, NAME
 
 
 async def test_config_flow_single_instance(hass: HomeAssistant) -> None:
-    """Test standard flow creation and abort on second instance."""
+    """Create BindHome immediately and abort a second instance."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
-    assert result["type"] == data_entry_flow.FlowResultType.FORM
-    assert result["step_id"] == "user"
+    assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
+    assert result["title"] == NAME
+    assert result["data"] == {}
 
-    result2 = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        user_input={},
-    )
-    assert result2["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
-    assert result2["title"] == NAME
-    assert result2["data"] == {}
-
-    # Second attempt should abort immediately
-    result3 = await hass.config_entries.flow.async_init(
+    # Second attempt should abort immediately.
+    result2 = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
-    assert result3["type"] == data_entry_flow.FlowResultType.ABORT
-    assert result3["reason"] == "single_instance_allowed"
+    assert result2["type"] == data_entry_flow.FlowResultType.ABORT
+    assert result2["reason"] == "single_instance_allowed"
 
 
 async def test_config_flow_aborts_if_already_configured(
