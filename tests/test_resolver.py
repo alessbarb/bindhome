@@ -34,9 +34,16 @@ def _bind(
     cap: str,
     entity: str,
     role: str = "primary",
+    entity_registry_id: str | None = None,
 ) -> Binding:
     return registry.set_binding(
-        Binding.create(asset_id=asset.id, capability=cap, entity_id=entity, role=role)
+        Binding.create(
+            asset_id=asset.id,
+            capability=cap,
+            entity_id=entity,
+            entity_registry_id=entity_registry_id,
+            role=role,
+        )
     )
 
 
@@ -81,6 +88,7 @@ def test_both_probe_implementations_satisfy_the_entity_probe_protocol() -> None:
     ha_probe: EntityProbe = HomeAssistantEntityProbe.__new__(HomeAssistantEntityProbe)
     assert static_probe.is_known("switch.relay") is True
     assert static_probe.get_state("switch.relay") == "on"
+    assert callable(ha_probe.entity_id_for_registry_id)
     assert callable(ha_probe.is_known)
     assert callable(ha_probe.get_state)
 
@@ -261,3 +269,69 @@ def test_multiple_capabilities_resolve_to_different_entities() -> None:
         resolver.resolve_entity_id(asset.id, "power_measurement")
         == "sensor.relay_power"
     )
+
+
+def test_stable_registry_identity_resolves_current_entity_id_after_rename() -> None:
+    registry = BindHomeRegistry()
+    asset = _asset(registry, ["on_off"])
+    _bind(
+        registry,
+        asset,
+        "on_off",
+        "switch.before_rename",
+        entity_registry_id="registry-entry-1",
+    )
+    probe = StaticEntityProbe(
+        registry_entries={"registry-entry-1": "switch.after_rename"},
+        states={"switch.after_rename": "on"},
+    )
+    resolver = BindingResolver(registry, probe)
+
+    result = resolver.resolve(asset.id, "on_off")
+
+    assert result.status is ResolutionStatus.RESOLVED
+    assert result.entity_id == "switch.after_rename"
+    assert result.binding is not None
+    assert result.binding.entity_id == "switch.before_rename"
+    assert resolver.resolve_entity_id(asset.id, "on_off") == "switch.after_rename"
+
+
+def test_missing_stable_registry_entry_never_falls_back_to_reused_entity_id() -> None:
+    registry = BindHomeRegistry()
+    asset = _asset(registry, ["on_off"])
+    _bind(
+        registry,
+        asset,
+        "on_off",
+        "switch.old_name",
+        entity_registry_id="deleted-registry-entry",
+    )
+    # A different entity may later reuse the old entity_id. Stable identity must
+    # fail closed instead of silently rebinding to that unrelated entity.
+    probe = StaticEntityProbe(states={"switch.old_name": "on"})
+    resolver = BindingResolver(registry, probe)
+
+    result = resolver.resolve(asset.id, "on_off")
+
+    assert result.status is ResolutionStatus.ENTITY_NOT_FOUND
+    assert result.entity_id == "switch.old_name"
+    assert result.config_valid is False
+    with pytest.raises(StaleBindingError):
+        resolver.resolve_entity_id(asset.id, "on_off")
+
+
+def test_entity_id_fallback_remains_supported_without_stable_registry_identity() -> (
+    None
+):
+    registry = BindHomeRegistry()
+    asset = _asset(registry, ["on_off"])
+    _bind(registry, asset, "on_off", "switch.state_machine_only")
+    probe = StaticEntityProbe(states={"switch.state_machine_only": "off"})
+    resolver = BindingResolver(registry, probe)
+
+    result = resolver.resolve(asset.id, "on_off")
+
+    assert result.status is ResolutionStatus.RESOLVED
+    assert result.entity_id == "switch.state_machine_only"
+    assert result.binding is not None
+    assert result.binding.entity_registry_id is None

@@ -80,7 +80,7 @@ The Home Assistant entity is replaceable. Setting a new Binding for the same fun
 
 Binding targets may also be logical entities produced by BindHome Representations. BindHome-to-BindHome composition is allowed only when the resulting functional dependency graph remains acyclic. Cycle validation operates at `(asset_id, capability, role)` granularity.
 
-Home Assistant's Entity Registry is authoritative for registered entity identity, but BindHome 1.1.x currently persists the mutable `entity_id` string in hardware Bindings. Renaming a bound entity in Home Assistant can therefore make that Binding stale until it is rebound. Stable Entity Registry target identity is planned in issue #31.
+Home Assistant's Entity Registry owns durable entity identity. Schema-v2 Bindings persist that stable Entity Registry entry id when available, and runtime resolution maps it to the current `entity_id`, so normal Home Assistant entity-id renames do not break the Binding. `entity_id` remains the explicit compatibility fallback for targets that are not represented in the Entity Registry. A missing stable Registry entry fails closed rather than falling back to a possibly reused old entity id.
 
 ### Relation
 
