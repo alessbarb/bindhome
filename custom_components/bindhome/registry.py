@@ -327,10 +327,6 @@ class BindHomeRegistry:
             raise RegistryValidationError(
                 f"Unsupported registry schema version: {schema_version}"
             )
-        if "representations" not in data:
-            raise RegistryValidationError(
-                "Current registry schema is missing representations"
-            )
 
         for raw_asset in data.get("assets", []):
             try:
@@ -355,6 +351,11 @@ class BindHomeRegistry:
                 raise RegistryValidationError(
                     f"Invalid binding in registry: {err}"
                 ) from err
+
+        if "representations" not in data:
+            raise RegistryValidationError(
+                "Current registry schema is missing representations"
+            )
 
         for raw_representation in data.get("representations", []):
             try:
