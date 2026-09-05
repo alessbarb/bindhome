@@ -114,9 +114,8 @@ def migrate_registry_payload(data: object) -> RegistryMigrationResult:
 
     if source_version > REGISTRY_SCHEMA_VERSION:
         raise RegistrySchemaFutureError(
-            "Registry schema version "
-            f"{source_version} is newer than supported version "
-            f"{REGISTRY_SCHEMA_VERSION}"
+            f"Unsupported registry schema version: {source_version}; "
+            f"newer than supported version {REGISTRY_SCHEMA_VERSION}"
         )
     if source_version < MIN_SUPPORTED_REGISTRY_SCHEMA_VERSION:
         raise RegistryMigrationError(
