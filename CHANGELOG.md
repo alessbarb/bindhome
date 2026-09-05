@@ -20,6 +20,7 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ### Changed
 
+- Logical `light` Representations now mirror supported Home Assistant light capabilities from their current backing `light` entity, including brightness/color metadata and supported transition/effect features, while non-light targets remain ON/OFF-only. Light service parameters are forwarded to backing lights, rebinding refreshes advertised capabilities without changing logical identity, and unresolved or unavailable commands now raise a visible Home Assistant error instead of succeeding as silent no-ops. ([#30](https://github.com/alessbarb/bindhome/issues/30))
 - Stable Binding target identity is now reflected consistently across backup/restore, typed frontend contracts, Advanced infrastructure inspection and the normative architecture/product documentation. Normal connection UI continues to show the current resolved Home Assistant `entity_id`, while technical surfaces can inspect the stable Entity Registry entry identity and last-known fallback. ([#53](https://github.com/alessbarb/bindhome/issues/53))
 
 ### Reliability
