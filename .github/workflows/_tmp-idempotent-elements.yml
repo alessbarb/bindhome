@@ -1,0 +1,49 @@
+name: Temporary Verify Idempotent Elements
+
+on:
+  push:
+    branches:
+      - fix/idempotent-custom-elements
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/idempotent-custom-elements
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Apply systematic registration migration
+        run: python .github/_tmp_idempotent_elements.py
+      - name: Verify frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          npm run build
+      - name: Verify generated bundle contains guarded registration
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          bundle = Path("custom_components/bindhome/panel/static/bindhome-panel.js").read_text()
+          if "customElements.get" not in bundle:
+              raise SystemExit("generated bundle does not contain guarded custom-element lookup")
+          if "bindhome-primary-connection-editor" not in bundle:
+              raise SystemExit("expected custom element missing from generated bundle")
+          PY
+      - name: Commit verified result and remove temporary tooling
+        run: |
+          rm .github/_tmp_idempotent_elements.py .github/workflows/_tmp-idempotent-elements.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "fix: make BindHome custom-element registration idempotent"
+          git push origin HEAD:fix/idempotent-custom-elements
