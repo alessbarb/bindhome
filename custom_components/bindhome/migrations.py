@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from .const import REGISTRY_SCHEMA_VERSION
 from .registry import BindHomeRegistry, RegistryValidationError
