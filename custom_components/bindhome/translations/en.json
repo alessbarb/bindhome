@@ -16,111 +16,50 @@
       "name": "Create asset",
       "description": "Create a stable infrastructure asset.",
       "fields": {
-        "name": {
-          "name": "Name",
-          "description": "Human-readable asset name."
-        },
-        "asset_type": {
-          "name": "Asset type",
-          "description": "Generic lower_snake_case infrastructure type."
-        },
-        "code": {
-          "name": "Code",
-          "description": "Optional human-facing asset code."
-        },
-        "area_id": {
-          "name": "Area",
-          "description": "Optional Home Assistant area containing the asset."
-        },
-        "capabilities": {
-          "name": "Capabilities",
-          "description": "List of lower_snake_case logical capabilities."
-        }
+        "name": { "name": "Name", "description": "Human-readable asset name." },
+        "asset_type": { "name": "Asset type", "description": "Generic lower_snake_case infrastructure type." },
+        "code": { "name": "Code", "description": "Optional human-facing asset code." },
+        "area_id": { "name": "Area", "description": "Optional Home Assistant area containing the asset." },
+        "capabilities": { "name": "Capabilities", "description": "List of lower_snake_case logical capabilities." }
       }
     },
     "delete_asset": {
       "name": "Delete asset",
       "description": "Delete an asset that has no relations or active bindings.",
-      "fields": {
-        "asset_id": {
-          "name": "Asset ID",
-          "description": "Immutable BindHome asset ID."
-        }
-      }
+      "fields": { "asset_id": { "name": "Asset ID", "description": "Immutable BindHome asset ID." } }
     },
     "add_relation": {
       "name": "Add relation",
       "description": "Create a directed topology relation between two assets.",
       "fields": {
-        "source_asset_id": {
-          "name": "Source asset ID",
-          "description": "Source BindHome asset."
-        },
-        "relation_type": {
-          "name": "Relation type",
-          "description": "Generic lower_snake_case relation type."
-        },
-        "target_asset_id": {
-          "name": "Target asset ID",
-          "description": "Target BindHome asset."
-        }
+        "source_asset_id": { "name": "Source asset ID", "description": "Source BindHome asset." },
+        "relation_type": { "name": "Relation type", "description": "Generic lower_snake_case relation type." },
+        "target_asset_id": { "name": "Target asset ID", "description": "Target BindHome asset." }
       }
     },
     "remove_relation": {
       "name": "Remove relation",
       "description": "Remove a topology relation.",
-      "fields": {
-        "relation_id": {
-          "name": "Relation ID",
-          "description": "BindHome relation ID."
-        }
-      }
+      "fields": { "relation_id": { "name": "Relation ID", "description": "BindHome relation ID." } }
     },
     "set_binding": {
       "name": "Set binding",
       "description": "Bind an asset capability and role to the Home Assistant entity that currently implements it.",
       "fields": {
-        "asset_id": {
-          "name": "Asset ID",
-          "description": "BindHome asset ID."
-        },
-        "capability": {
-          "name": "Capability",
-          "description": "Capability provided by the asset."
-        },
-        "entity_id": {
-          "name": "Entity",
-          "description": "Current Home Assistant implementation."
-        },
-        "role": {
-          "name": "Role",
-          "description": "Binding role, defaulting to primary."
-        }
+        "asset_id": { "name": "Asset ID", "description": "BindHome asset ID." },
+        "capability": { "name": "Capability", "description": "Capability provided by the asset." },
+        "entity_id": { "name": "Entity", "description": "Current Home Assistant implementation." },
+        "role": { "name": "Role", "description": "Binding role, defaulting to primary." }
       }
     },
     "remove_binding": {
       "name": "Remove binding",
       "description": "Remove a capability binding without deleting the infrastructure asset.",
-      "fields": {
-        "binding_id": {
-          "name": "Binding ID",
-          "description": "BindHome binding ID."
-        }
-      }
+      "fields": { "binding_id": { "name": "Binding ID", "description": "BindHome binding ID." } }
     },
-    "get_registry": {
-      "name": "Get registry",
-      "description": "Return the complete BindHome registry without modifying it."
-    }
+    "get_registry": { "name": "Get registry", "description": "Return the complete BindHome registry without modifying it." }
   },
-  "system_health": {
-    "info": {
-      "loaded": "Loaded",
-      "assets": "Assets",
-      "relations": "Relations",
-      "bindings": "Bindings"
-    }
-  },
+  "system_health": { "info": { "loaded": "Loaded", "assets": "Assets", "relations": "Relations", "bindings": "Bindings" } },
   "common": {
     "panel_common_floor": "Floor",
     "panel_common_area": "Area",
@@ -192,6 +131,19 @@
     "panel_add_show_all": "Show all",
     "panel_add_saving": "Adding…",
     "panel_add_create_error": "The element could not be added. Your draft was preserved.",
+    "panel_add_mode_label": "Add mode",
+    "panel_add_single_mode": "One element",
+    "panel_add_bulk_mode": "Several in a room",
+    "panel_delete_title": "Delete element",
+    "panel_delete_prepare_body": "Before deleting, BindHome will calculate the relations, bindings and representation that will be affected.",
+    "panel_delete_prepare": "Review deletion",
+    "panel_delete_loading": "Reviewing…",
+    "panel_delete_impact": "This will remove {relations} relations, {bindings} bindings owned by this element and {dependent} bindings from other BindHome elements.",
+    "panel_delete_hardware_safe": "Home Assistant devices and physical entities associated with this element will not be deleted.",
+    "panel_delete_logical_warning": "The logical Home Assistant entity {entity_id} will also disappear. Dashboards, automations or scripts outside BindHome that reference it may need to be updated.",
+    "panel_delete_deleting": "Deleting…",
+    "panel_delete_confirm": "Delete permanently",
+    "panel_delete_error": "The element could not be deleted. Nothing was partially removed.",
     "panel_search_label": "Search home elements",
     "panel_search_placeholder": "Name, type, code, room or floor",
     "panel_search_suggestions": "Suggested elements",
