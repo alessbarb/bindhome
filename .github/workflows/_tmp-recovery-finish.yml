@@ -39,7 +39,7 @@ jobs:
               path = Path('custom_components/bindhome/translations') / filename
               text = path.read_text()
               if '"registry_recovery"' not in text:
-                  anchor = '  "system_health":'
+                  anchor = '  "common": {'
                   pos = text.index(anchor)
                   block = (
                       '  "issues": {\n'
@@ -81,12 +81,12 @@ jobs:
           ruff check custom_components/bindhome tests
           ruff format --check custom_components/bindhome tests
           pytest
-      - name: Remove temporary workflow and commit verified recovery
+      - name: Remove temporary workflows and commit verified recovery
         run: |
-          rm .github/workflows/_tmp-recovery-finish.yml
+          rm -f .github/workflows/_tmp-recovery-finish.yml .github/workflows/_tmp-fix-recovery-workflow.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add custom_components tests CHANGELOG.md .github/workflows/_tmp-recovery-finish.yml
+          git add custom_components tests CHANGELOG.md .github/workflows
           git diff --cached --check
           git commit -m 'test: complete fail-closed Registry recovery'
           git push origin HEAD:reliability/registry-recovery
