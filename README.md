@@ -1,6 +1,6 @@
 # BindHome
 
-**Current stable release: `1.3.0` · Home Assistant `2026.8.0+`**
+**Current stable release: `1.4.0` · Home Assistant `2026.8.0+`**
 
 **Model the home, not the hardware.**
 
@@ -284,11 +284,11 @@ Existing installations that already contain Assets do not receive the first-run 
 
 ---
 
-## BindHome 1.2.0
+## BindHome 1.4.0
 
-BindHome 1.2.0 is a reliability-focused release. It keeps the public Registry schema at v1 while making future evolution and recovery safer: multi-step mutations now use a supported manager transaction boundary, historical Registry payloads migrate through explicit validated steps, failed loads expose a fail-closed Home Assistant Repair with backup recovery, and config-entry diagnostics provide aggregate support data without exporting home or hardware identifiers.
+BindHome 1.4.0 makes the stable physical model substantially easier to maintain as a real Home Assistant installation evolves. Authenticated non-admin users can browse the intended household inventory in read-only mode, while mutations, recovery and administrative surfaces remain protected. Administrators gain assisted import from Home Assistant metadata, guided hardware replacement that preserves stable Asset/Representation identity, actionable integrity Repairs, and a deterministic CSV inventory round-trip contract.
 
-The release also enforces English/Spanish translation parity and real JavaScript typechecking for the production panel source. Existing Assets, Relations, Bindings and Representations remain compatible with the 1.1 release line.
+The release also adds the `bindhome.resolve` response action for querying the current implementation of an Asset capability, formalizes ownership of logical Representation metadata versus Home Assistant user overrides, and improves Casa navigation with authoritative Floor/Area metadata, persistent collapsed Floors, clearer empty states and accessible refresh feedback. Registry schema remains v2 and the verified minimum Home Assistant release remains `2026.8.0`.
 
 ---
 

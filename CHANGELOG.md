@@ -24,9 +24,37 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 - The BindHome header now exposes Home Assistant's native sidebar menu control, letting phone/narrow layouts and desktop setups with an always-hidden docked sidebar open HA navigation using the platform's own context, kiosk and notification semantics. ([#115](https://github.com/alessbarb/bindhome/issues/115))
 - Panel preferences for Advanced pinning, onboarding dismissal and collapsed Floors now persist in Home Assistant per-user frontend data so they follow the authenticated user across browsers and devices; existing browser-local values migrate once when the server preference is unset, and explicit user changes cannot be overwritten by a late asynchronous restore. ([#113](https://github.com/alessbarb/bindhome/issues/113))
 - BindHome panel views now have canonical URLs with deep-linkable Home/Area/Asset, Add, Search and Advanced routes; browser history and search query state stay synchronized without remounting active workflows. ([#109](https://github.com/alessbarb/bindhome/issues/109))
-- Home navigation now follows Home Assistant Floor/Area icons more closely, persists collapsed floors per HA user/browser, provides an empty-room first action and exposes an accessible refresh-in-progress state. ([#46](https://github.com/alessbarb/bindhome/issues/46))
-- Guided hardware replacement now lets administrators review compatible Home Assistant targets and atomically rebind existing Assets without changing stable Asset, topology or Representation identity. ([#39](https://github.com/alessbarb/bindhome/issues/39))
-- Logical Representation metadata ownership is now explicit: BindHome keeps the integration-provided original name and physical Area aligned with the Asset while preserving Home Assistant user overrides such as the custom entity name, `entity_id` and icon across reconciliation and restart. ([#44](https://github.com/alessbarb/bindhome/issues/44))
+
+---
+
+## [1.4.0] - 2026-09-06
+
+Maintenance-focused release that turns the stable BindHome model into something easier to inspect, populate, repair and rebind as Home Assistant hardware changes.
+
+**Minimum Home Assistant:** `2026.8.0`
+
+### Added
+
+- Authenticated non-admin users can open BindHome in a read-only household mode. Intended inventory, topology and Binding status reads are available without administrator privileges, while mutations, backup/recovery and administrative internals remain admin-only and write controls are hidden from read-only users. ([#34](https://github.com/alessbarb/bindhome/issues/34))
+- Added the `bindhome.resolve` Home Assistant response action. Callers can resolve an Asset capability/role to structured status, current entity, configuration validity, runtime availability and state without depending on BindHome internals. ([#37](https://github.com/alessbarb/bindhome/issues/37))
+- Added assisted import from Home Assistant metadata with deterministic proposals, stable Entity Registry identity, conservative duplicate detection, explicit create/merge/skip review and one atomic commit for the reviewed batch. The panel exposes the complete review workflow without mutating Home Assistant devices or entities. ([#38](https://github.com/alessbarb/bindhome/issues/38), [#55](https://github.com/alessbarb/bindhome/issues/55), [#84](https://github.com/alessbarb/bindhome/issues/84), [#85](https://github.com/alessbarb/bindhome/issues/85), [#86](https://github.com/alessbarb/bindhome/issues/86))
+- Added actionable Home Assistant Repairs for stale Asset Areas and broken Binding targets. Issues are grouped, avoid runtime-unavailable false positives, follow stable Entity Registry renames and clear automatically when the underlying condition is repaired. ([#47](https://github.com/alessbarb/bindhome/issues/47))
+- Added a deterministic, versioned CSV inventory round-trip contract for Assets, including stable/human Area references, row-level validation, create/update semantics and transaction-safe import through administrator WebSocket commands. Bindings and topology remain outside the CSV format. ([#48](https://github.com/alessbarb/bindhome/issues/48))
+
+### Changed
+
+- Existing Bindings now have a guided hardware-replacement workflow: compatible candidates are reviewed explicitly and revalidated immediately before the atomic replacement, preserving the Asset, topology and logical Representation while leaving the old Home Assistant hardware untouched. ([#39](https://github.com/alessbarb/bindhome/issues/39))
+- Logical Representation metadata ownership is explicit: BindHome keeps integration-provided original identity and physical Area aligned with the Asset while preserving Home Assistant user overrides such as custom entity name, `entity_id`, icon, aliases and labels. ([#44](https://github.com/alessbarb/bindhome/issues/44))
+- Casa navigation now follows Home Assistant Floor/Area icons where configured, persists collapsed Floor state, exposes clearer child counts and empty-room actions, keeps selection accessible, and gives refresh an explicit loading/disabled state. ([#46](https://github.com/alessbarb/bindhome/issues/46))
+
+### Reliability
+
+- Assisted import and hardware replacement reuse the existing Registry transaction boundary and stable Binding target identity, so validation/storage failure cannot partially adopt a reviewed batch or replace the live Binding.
+- Integrity Repairs are event-driven rather than polled and distinguish broken configuration from temporarily unavailable runtime state.
+
+### Distribution
+
+- Version promoted to `1.4.0` across Python, Home Assistant and frontend package metadata.
 
 ---
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bindhome"
-version = "1.3.0"
+version = "1.4.0"
 description = "Stable home infrastructure bound to replaceable Home Assistant hardware"
 readme = "README.md"
 requires-python = ">=3.14"
