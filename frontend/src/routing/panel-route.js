@@ -143,8 +143,8 @@ export function navigatePanelUrl(url, options = {}) {
     targetWindow.history.pushState({ from: current }, "", url);
   }
 
-  targetWindow.dispatchEvent(
-    new targetWindow.CustomEvent("location-changed", { detail: { replace } }),
-  );
+  const event = targetWindow.document.createEvent("CustomEvent");
+  event.initCustomEvent("location-changed", false, false, { replace });
+  targetWindow.dispatchEvent(event);
   return true;
 }
