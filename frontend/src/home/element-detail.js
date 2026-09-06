@@ -13,6 +13,7 @@ import "./contextual-relation-editor.js";
 import "./human-asset-editor.js";
 import "./asset-delete-control.js";
 import "./representation-control.js";
+import "./hardware-adoption-control.js";
 
 export class BindHomeElementDetail extends LitElement {
   static properties = {
@@ -200,6 +201,17 @@ export class BindHomeElementDetail extends LitElement {
             .readOnly=${this.readOnly} .onRefresh=${this.refreshBindingData}
           ></bindhome-representation-control>
         </section>
+        ${this.readOnly
+          ? nothing
+          : html`<section class="section">
+              <bindhome-hardware-adoption-control
+                .hass=${this.hass}
+                .t=${this.t}
+                .asset=${this.asset}
+                .bindingStatuses=${this.bindingStatuses}
+                .readOnly=${this.readOnly}
+              ></bindhome-hardware-adoption-control>
+            </section>`}
         <section class="section">
           <details>
             <summary><ha-icon icon="mdi:code-tags"></ha-icon>${this.t("detail.technical")}</summary>
