@@ -1,12 +1,19 @@
-"""Tests for assisted-import discovery WebSocket API."""
+"""Tests for assisted-import WebSocket API."""
 
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import pytest
 from homeassistant import config_entries
 
 from custom_components.bindhome import import_websocket
-from custom_components.bindhome.registry import BindHomeRegistry
+from custom_components.bindhome.import_proposals import (
+    ImportAssetCandidate,
+    ImportBindingCandidate,
+    ImportProposal,
+    ImportSource,
+)
+from custom_components.bindhome.registry import BindHomeRegistry, RegistryConflictError
 
 
 class FakeConnection:
@@ -37,12 +44,36 @@ def _hass() -> tuple[SimpleNamespace, SimpleNamespace]:
     return hass, manager
 
 
-def test_registers_import_discovery_command() -> None:
+def _proposal() -> ImportProposal:
+    return ImportProposal.create(
+        source=ImportSource.create(
+            entity_ids=("switch.current",),
+            entity_registry_ids=("registry-1",),
+        ),
+        asset=ImportAssetCandidate.create(
+            name="Relay",
+            asset_type="switch",
+            capabilities=("on_off",),
+        ),
+        bindings=(
+            ImportBindingCandidate.create(
+                capability="on_off",
+                entity_id="switch.current",
+                entity_registry_id="registry-1",
+            ),
+        ),
+    )
+
+
+def test_registers_import_commands() -> None:
     hass = SimpleNamespace(data={})
 
     import_websocket.async_register_import_websocket_commands(hass)
 
-    assert set(hass.data["websocket_api"]) == {import_websocket.WS_IMPORT_DISCOVER}
+    assert set(hass.data["websocket_api"]) == {
+        import_websocket.WS_IMPORT_DISCOVER,
+        import_websocket.WS_IMPORT_COMMIT,
+    }
 
 
 def test_discovery_response_includes_scope_revision_and_proposals(monkeypatch) -> None:
@@ -71,3 +102,47 @@ def test_discovery_response_includes_scope_revision_and_proposals(monkeypatch) -
             },
         )
     ]
+
+
+def test_reviewed_decisions_reject_unknown_proposal() -> None:
+    proposal = _proposal()
+
+    with pytest.raises(RegistryConflictError, match="no longer available"):
+        import_websocket._reviewed_decisions(
+            [proposal],
+            [{"proposal_id": "missing", "action": "skip"}],
+        )
+
+
+def test_reviewed_binding_selection_uses_current_candidate() -> None:
+    proposal = _proposal()
+
+    reviewed = import_websocket._reviewed_decisions(
+        [proposal],
+        [
+            {
+                "proposal_id": proposal.proposal_id,
+                "action": "create",
+                "asset": {
+                    "name": "Reviewed relay",
+                    "asset_type": "relay_point",
+                    "capabilities": ["on_off"],
+                },
+                "bindings": [
+                    {
+                        "capability": "on_off",
+                        "role": "primary",
+                        "entity_registry_id": "registry-1",
+                        "entity_id": "switch.old_name",
+                    }
+                ],
+            }
+        ],
+    )
+
+    decision = reviewed[0][1]
+    assert decision.asset is not None
+    assert decision.asset.name == "Reviewed relay"
+    assert decision.asset.asset_type == "relay_point"
+    assert decision.bindings == proposal.bindings
+    assert decision.bindings[0].entity_id == "switch.current"

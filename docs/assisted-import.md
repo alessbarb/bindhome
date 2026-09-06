@@ -150,3 +150,15 @@ Entity Registry entry IDs are retained as the strong target identity. A Home Ass
 State-machine-only entities are included only during whole-installation discovery and use the explicit `entity_id` fallback defined by the contract. Discovery does not guess an Area for them.
 
 The discovery response also includes the current BindHome Registry revision so the later reviewed commit can reject stale decisions through optimistic concurrency.
+
+## Transactional commit implementation in v1.4
+
+`bindhome/import/commit` accepts administrator-reviewed `create`, `merge` and `skip` decisions for proposal IDs returned by discovery. The command requires the discovery Registry revision and repeats discovery in the same Area or whole-installation scope before accepting the batch.
+
+The client may edit the final Asset name, type, Area and Capabilities for `create`, and may submit a subset of proposed Bindings. Binding selectors cannot introduce an arbitrary Home Assistant target: registered targets are matched by stable Entity Registry ID, while state-machine-only targets use the explicit `entity_id` fallback. A Home Assistant rename therefore resolves to the current candidate instead of making mutable display identity authoritative.
+
+All non-skipped decisions are applied to the isolated Registry yielded by one `BindHomeManager.transaction()`. Reviewed Areas, merge targets and Binding targets are validated before the transaction can persist. A later validation error discards earlier staged changes, and storage failure occurs before live Registry adoption.
+
+A target already bound to another BindHome Asset is rejected during import commit. Reapplying the same target to the same explicitly selected Asset is allowed, so repeat imports are idempotent rather than creating duplicate physical Assets. Registered Bindings persist the current stable Entity Registry target identity.
+
+The commit workflow never creates, updates, moves or deletes Home Assistant Areas, Devices or Entities.
