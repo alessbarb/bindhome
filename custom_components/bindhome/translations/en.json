@@ -666,6 +666,14 @@
     "panel_representation_removed": "Logical light removed.",
     "panel_representation_error": "Could not update the logical light.",
     "panel_representation_conflict": "The model changed after your review. Refresh and confirm again.",
-    "panel_representation_saved_refresh_failed": "The change was saved, but the view could not refresh. Refresh status before another change."
+    "panel_representation_saved_refresh_failed": "The change was saved, but the view could not refresh. Refresh status before another change.",
+    "panel_health_direct_reference_debt": "Direct-reference debt",
+    "panel_health_direct_references": "Direct references to bound hardware",
+    "panel_health_direct_references_intro": "Read-only audit of automations, scripts, scenes and dashboards that still address physical backing entities directly.",
+    "panel_health_reference_sources_incomplete": "{count} configuration sources could not be fully audited. Missing or unreadable sources are reported rather than treated as clean.",
+    "panel_health_direct_reference_count": "References found: {count}",
+    "panel_health_reference_deterministic": "Exact reference with one provable logical replacement",
+    "panel_health_reference_manual": "Manual review required",
+    "panel_health_no_direct_references": "No direct references to currently bound backing entities were found in the readable sources."
   }
 }
