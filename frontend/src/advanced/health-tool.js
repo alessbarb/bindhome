@@ -26,6 +26,7 @@ export class BindHomeHealthTool extends LitElement {
     bindingStatuses: { attribute: false },
     _recovery: { state: true },
     _drift: { state: true },
+    _referenceAudit: { state: true },
     _loading: { state: true },
     _error: { state: true },
   };
@@ -40,6 +41,7 @@ export class BindHomeHealthTool extends LitElement {
     this.bindingStatuses = { records: [], summary: {} };
     this._recovery = null;
     this._drift = [];
+    this._referenceAudit = null;
     this._loading = false;
     this._error = null;
   }
@@ -64,7 +66,7 @@ export class BindHomeHealthTool extends LitElement {
       .head h2 { margin: 0; font-size: 20px; }
       .head p { margin: 6px 0 0; }
       .refresh { border: 0; background: transparent; color: var(--primary-color); min-height: 40px; }
-      .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+      .summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
       .metric { border: 1px solid var(--divider-color); border-radius: 10px; padding: 12px; }
       .metric strong { display: block; font-size: 22px; }
       .status-strip { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
@@ -75,12 +77,18 @@ export class BindHomeHealthTool extends LitElement {
       .item:first-of-type { border-top: 0; }
       .item-copy { min-width: 0; }
       .item-copy strong, .item-copy span { display: block; }
-      .item-copy span { color: var(--secondary-text-color); margin-top: 3px; }
+      .item-copy span { color: var(--secondary-text-color); margin-top: 3px; overflow-wrap: anywhere; }
+      .reference-list { display: grid; gap: 6px; margin-top: 8px; }
+      .reference { padding: 8px 10px; border-radius: 8px; background: var(--secondary-background-color); }
+      .reference code { overflow-wrap: anywhere; }
       .action { flex: none; border: 0; border-radius: 8px; padding: 9px 12px; background: var(--primary-color); color: var(--text-primary-color, white); }
       .ok { color: var(--success-color, var(--primary-color)); }
       .warning { color: var(--warning-color); }
       .error { color: var(--error-color); }
       .empty { color: var(--secondary-text-color); margin: 8px 0 0; }
+      @media (max-width: 760px) {
+        .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
       @media (max-width: 600px) {
         :host { padding: 0 12px; }
         .summary { grid-template-columns: 1fr; }
@@ -134,11 +142,13 @@ export class BindHomeHealthTool extends LitElement {
     this._error = null;
     try {
       const api = createBindHomeApi(this.hass);
-      const [recovery, discovery] = await Promise.all([
+      const [recovery, discovery, referenceAudit] = await Promise.all([
         api.getBackupRecoveryStatus(),
         api.discoverImport(),
+        api.auditDirectReferences(),
       ]);
       this._recovery = recovery;
+      this._referenceAudit = referenceAudit;
       const grouped = new Map();
       for (const proposal of discovery?.proposals ?? []) {
         if (proposal?.duplicate_status === DOCUMENTED_IMPORT_STATUS) continue;
@@ -171,6 +181,33 @@ export class BindHomeHealthTool extends LitElement {
     </div>`;
   }
 
+  _renderReferenceDebt() {
+    const groups = this._referenceAudit?.groups ?? [];
+    const summary = this._referenceAudit?.summary ?? {};
+    return html`<div class="section">
+      <h3>${this.t("health.direct_references")}</h3>
+      <p class="muted">${this.t("health.direct_references_intro")}</p>
+      ${summary.incomplete_sources
+        ? html`<p class="warning">${this.t("health.reference_sources_incomplete", { count: summary.incomplete_sources })}</p>`
+        : nothing}
+      ${groups.length
+        ? groups.map((group) => html`<div class="item">
+            <div class="item-copy">
+              <strong>${group.entity_id}</strong>
+              <span>${this.t("health.direct_reference_count", { count: group.reference_count })}</span>
+              <div class="reference-list">
+                ${(group.references ?? []).map((reference) => html`<div class="reference">
+                  <strong>${reference.consumer_name || reference.consumer_id}</strong>
+                  <span><code>${reference.consumer_id}</code> · <code>${reference.path}</code></span>
+                  <span>${this.t(reference.classification === "deterministic_rewrite" ? "health.reference_deterministic" : "health.reference_manual")}${reference.replacement_entity_id ? ` · ${reference.replacement_entity_id}` : ""}</span>
+                </div>`)}
+              </div>
+            </div>
+          </div>`)
+        : html`<p class="empty">${this.t("health.no_direct_references")}</p>`}
+    </div>`;
+  }
+
   render() {
     const summary = this.bindingStatuses?.summary ?? {};
     const records = this.bindingStatuses?.records ?? [];
@@ -178,7 +215,9 @@ export class BindHomeHealthTool extends LitElement {
     const staleBindings = this._actionableBindings();
     const unbound = this._bindingRecords(UNBOUND_STATUS);
     const staleAreas = this._staleAreas();
-    const actionableCount = staleBindings.length + unbound.length + staleAreas.length + (this._recovery?.recovery_required ? 1 : 0) + this._drift.reduce((sum, item) => sum + item.count, 0);
+    const referenceSummary = this._referenceAudit?.summary ?? {};
+    const referenceCount = referenceSummary.references ?? 0;
+    const actionableCount = staleBindings.length + unbound.length + staleAreas.length + (this._recovery?.recovery_required ? 1 : 0) + this._drift.reduce((sum, item) => sum + item.count, 0) + referenceCount;
 
     return html`<section class="card" aria-busy=${this._loading ? "true" : "false"}>
       <div class="head">
@@ -195,6 +234,7 @@ export class BindHomeHealthTool extends LitElement {
         <div class="metric"><strong>${summary.total ?? records.length}</strong><span>${this.t("health.bindings_total")}</span></div>
         <div class="metric"><strong>${summary.config_valid ?? 0}</strong><span>${this.t("health.config_valid")}</span></div>
         <div class="metric"><strong>${summary.runtime_available ?? 0}</strong><span>${this.t("health.runtime_available")}</span></div>
+        <div class="metric"><strong>${referenceCount}</strong><span>${this.t("health.direct_reference_debt")}</span></div>
       </div>
       <div class="status-strip">
         ${Object.entries(byStatus).map(([status, count]) => html`<span class="pill">${this.t(`health.status.${status}`)}: ${count}</span>`)}
@@ -233,6 +273,8 @@ export class BindHomeHealthTool extends LitElement {
             </div>`)
           : html`<p class="empty">${this.t("health.no_inverse_drift")}</p>`}
       </div>
+
+      ${this._renderReferenceDebt()}
 
       ${this._error ? html`<p class="error" role="alert">${this.t("health.load_error", { error: this._error })}</p>` : nothing}
     </section>`;
