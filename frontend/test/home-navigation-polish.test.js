@@ -39,10 +39,26 @@ async function settle(element) {
   await window.happyDOM.waitUntilComplete();
   await element.updateComplete;
 }
-function homeFixture() {
+function userPreferenceConnection(store) {
+  return {
+    async sendMessagePromise(message) {
+      if (message.type === "frontend/get_user_data")
+        return { value: store.has(message.key) ? store.get(message.key) : null };
+      if (message.type === "frontend/set_user_data") {
+        store.set(message.key, message.value);
+        return undefined;
+      }
+      throw new Error(`Unexpected message ${message.type}`);
+    },
+  };
+}
+function homeFixture(preferenceStore = new Map()) {
   const element = document.createElement("bindhome-home-view");
   element.t = t;
-  element.hass = { user: { id: "user-a" } };
+  element.hass = {
+    user: { id: "user-a" },
+    connection: userPreferenceConnection(preferenceStore),
+  };
   element.floors = [{ floor_id: "ground", name: "Ground", level: 0, icon: null }];
   element.areas = [{ area_id: "living", name: "Living", floor_id: "ground", icon: "mdi:sofa" }];
   element.assets = [];
@@ -75,19 +91,20 @@ test("room header uses the authoritative HA Area icon", async () => {
 
 test("collapsed floors persist per Home Assistant user and expand naturally", async () => {
   window.localStorage.clear();
-  const first = homeFixture();
+  const preferences = new Map();
+  const first = homeFixture(preferences);
   await settle(first);
   first._toggleFloor("ground");
   await settle(first);
   assert.equal(first.shadowRoot.querySelector(".floor-title").getAttribute("aria-expanded"), "false");
-  assert.deepEqual(JSON.parse(window.localStorage.getItem("bindhome.home-collapsed-floors.user-a")), ["ground"]);
+  assert.deepEqual(preferences.get("bindhome.home-collapsed-floors"), ["ground"]);
 
-  const second = homeFixture();
+  const second = homeFixture(preferences);
   await settle(second);
   assert.equal(second.shadowRoot.querySelector(".floor-title").getAttribute("aria-expanded"), "false");
   second._toggleFloor("ground");
   await settle(second);
-  assert.deepEqual(JSON.parse(window.localStorage.getItem("bindhome.home-collapsed-floors.user-a")), []);
+  assert.deepEqual(preferences.get("bindhome.home-collapsed-floors"), []);
 });
 
 test("empty room offers first-element CTA for the selected HA Area", async () => {

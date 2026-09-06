@@ -6,6 +6,12 @@ import {
   subscribeBindHomeConflicts,
 } from "./api/bindhome-api.js";
 import { createHomeAssistantApi } from "./api/home-assistant-api.js";
+import {
+  ADVANCED_PINNED_PREFERENCE,
+  ONBOARDING_DISMISSED_PREFERENCE,
+  loadBooleanPreference,
+  saveUserPreference,
+} from "./api/user-preferences.js";
 import { createLocalizer, loadPanelTranslations } from "./i18n/localize.js";
 import { NO_AREA, STALE_AREA } from "./state/home-selectors.js";
 import {
@@ -81,9 +87,11 @@ export class BindHomePanel extends LitElement {
     this._addSessionId = 0;
     this._advancedPinned = false;
     this._advancedPreferenceIdentity = null;
+    this._advancedPreferenceGeneration = 0;
     this._onboardingVisible = false;
     this._onboardingDismissed = false;
     this._onboardingPreferenceIdentity = null;
+    this._onboardingPreferenceGeneration = 0;
     this._registryConflict = false;
     this._registryUnsubscribe = null;
     this._registrySubscriptionConnection = null;
@@ -524,34 +532,53 @@ export class BindHomePanel extends LitElement {
     this._searchQuery = typeof event.detail === "string" ? event.detail : "";
     if (this._view === "search") this._commitRoute({ replace: true });
   }
-  _advancedPreferenceKey() {
+  _legacyAdvancedPreferenceKey() {
     return `bindhome.advanced-pinned.${this.hass?.user?.id ?? "browser"}`;
   }
-  _restoreAdvancedPreference() {
-    const identity = this._advancedPreferenceKey();
+  async _restoreAdvancedPreference() {
+    const identity = this.hass?.user?.id ?? "browser";
     if (identity === this._advancedPreferenceIdentity) return;
     this._advancedPreferenceIdentity = identity;
-    try { this._advancedPinned = window.localStorage.getItem(identity) === "true"; }
-    catch { this._advancedPinned = false; }
+    const generation = ++this._advancedPreferenceGeneration;
+    const pinned = await loadBooleanPreference(
+      this.hass,
+      ADVANCED_PINNED_PREFERENCE,
+      this._legacyAdvancedPreferenceKey(),
+    );
+    if (
+      generation !== this._advancedPreferenceGeneration ||
+      identity !== this._advancedPreferenceIdentity
+    )
+      return;
+    this._advancedPinned = this._isAdmin() && pinned;
   }
   _setAdvancedPinned(pinned) {
     if (!this._isAdmin()) pinned = false;
+    this._advancedPreferenceIdentity = this.hass?.user?.id ?? "browser";
+    this._advancedPreferenceGeneration += 1;
     this._advancedPinned = pinned;
-    try { window.localStorage.setItem(this._advancedPreferenceKey(), String(pinned)); } catch { /* Browser storage may be unavailable. */ }
+    void saveUserPreference(this.hass, ADVANCED_PINNED_PREFERENCE, pinned);
     if (!pinned && this._view === "advanced") this._navigate("home");
   }
-  _onboardingPreferenceKey() {
+  _legacyOnboardingPreferenceKey() {
     return `bindhome.onboarding.v1.${this.hass?.user?.id ?? "browser"}`;
   }
-  _restoreOnboardingPreference() {
-    const identity = this._onboardingPreferenceKey();
+  async _restoreOnboardingPreference() {
+    const identity = this.hass?.user?.id ?? "browser";
     if (identity === this._onboardingPreferenceIdentity) return;
     this._onboardingPreferenceIdentity = identity;
-    try {
-      this._onboardingDismissed = window.localStorage.getItem(identity) === "true";
-    } catch {
-      this._onboardingDismissed = false;
-    }
+    const generation = ++this._onboardingPreferenceGeneration;
+    const dismissed = await loadBooleanPreference(
+      this.hass,
+      ONBOARDING_DISMISSED_PREFERENCE,
+      this._legacyOnboardingPreferenceKey(),
+    );
+    if (
+      generation !== this._onboardingPreferenceGeneration ||
+      identity !== this._onboardingPreferenceIdentity
+    )
+      return;
+    this._onboardingDismissed = dismissed;
     this._syncOnboardingVisibility();
   }
   _syncOnboardingVisibility() {
@@ -563,13 +590,15 @@ export class BindHomePanel extends LitElement {
       !this._onboardingDismissed;
   }
   _dismissOnboarding() {
+    this._onboardingPreferenceIdentity = this.hass?.user?.id ?? "browser";
+    this._onboardingPreferenceGeneration += 1;
     this._onboardingDismissed = true;
     this._onboardingVisible = false;
-    try {
-      window.localStorage.setItem(this._onboardingPreferenceKey(), "true");
-    } catch {
-      /* Browser storage may be unavailable. */
-    }
+    void saveUserPreference(
+      this.hass,
+      ONBOARDING_DISMISSED_PREFERENCE,
+      true,
+    );
   }
   _completeOnboarding() {
     this._dismissOnboarding();

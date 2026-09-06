@@ -181,6 +181,20 @@ async function settle(element) {
   await element.updateComplete;
 }
 
+function userPreferenceConnection(store) {
+  return {
+    async sendMessagePromise(message) {
+      if (message.type === "frontend/get_user_data")
+        return { value: store.has(message.key) ? store.get(message.key) : null };
+      if (message.type === "frontend/set_user_data") {
+        store.set(message.key, message.value);
+        return undefined;
+      }
+      throw new Error(`Unexpected message ${message.type}`);
+    },
+  };
+}
+
 test("human detail prioritizes name, Area, type, relations, passive state and technical disclosure", async () => {
   const element = document.createElement("bindhome-element-detail");
   element.t = t;
@@ -838,12 +852,15 @@ test("Human Edit identity change blocks a late write from contaminating another 
 
 test("Advanced switch controls navigation, persistence, and mounted state", async () => {
   window.localStorage.clear();
+  const preferenceStore = new Map();
+  const connection = userPreferenceConnection(preferenceStore);
 
   const panel = panelFixture();
   panel._translationLanguage = "en";
   panel.hass = {
     language: "en",
     user: { id: "user-a" },
+    connection,
     callWS: async () => ({ resources: {} }),
   };
 
@@ -877,10 +894,8 @@ test("Advanced switch controls navigation, persistence, and mounted state", asyn
   assert.equal(advancedButton.disabled, false);
   assert.equal(toggle.checked, true);
   assert.equal(
-    window.localStorage.getItem(
-      "bindhome.advanced-pinned.user-a",
-    ),
-    "true",
+    preferenceStore.get("bindhome.advanced-pinned"),
+    true,
   );
 
   advancedButton.click();
@@ -918,6 +933,7 @@ test("Advanced switch controls navigation, persistence, and mounted state", asyn
   restored.hass = {
     language: "en",
     user: { id: "user-a" },
+    connection,
     callWS: async () => ({ resources: {} }),
   };
 
@@ -1064,6 +1080,8 @@ test("new Add session ignores completion from an older in-flight session", async
 
 test("Advanced switch is the only authority for human-to-Advanced handoff", async () => {
   window.localStorage.clear();
+  const preferenceStore = new Map();
+  const connection = userPreferenceConnection(preferenceStore);
 
   const panel = panelFixture();
 
@@ -1071,6 +1089,7 @@ test("Advanced switch is the only authority for human-to-Advanced handoff", asyn
   panel.hass = {
     language: "en",
     user: { id: "master-switch-user" },
+    connection,
     callWS: async () => ({ resources: {} }),
   };
 
@@ -1087,10 +1106,8 @@ test("Advanced switch is the only authority for human-to-Advanced handoff", asyn
   // No stored preference means first use is OFF.
   assert.equal(panel._advancedPinned, false);
   assert.equal(
-    window.localStorage.getItem(
-      "bindhome.advanced-pinned.master-switch-user",
-    ),
-    null,
+    preferenceStore.has("bindhome.advanced-pinned"),
+    false,
   );
 
   // Human view exposes no technical escape hatch while OFF.
@@ -1134,10 +1151,8 @@ test("Advanced switch is the only authority for human-to-Advanced handoff", asyn
   assert.equal(panel._advancedAssetId, "a");
 
   assert.equal(
-    window.localStorage.getItem(
-      "bindhome.advanced-pinned.master-switch-user",
-    ),
-    "true",
+    preferenceStore.get("bindhome.advanced-pinned"),
+    true,
   );
 
   window.localStorage.clear();
