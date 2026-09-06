@@ -1,0 +1,305 @@
+name: Visibility Core Bootstrap
+
+on:
+  push:
+    branches:
+      - feat/managed-hardware-visibility
+
+permissions:
+  contents: write
+
+jobs:
+  apply-core:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/managed-hardware-visibility
+
+      - name: Apply Registry v3 and adoption lifecycle
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new, count=-1):
+              file = Path(path)
+              text = file.read_text()
+              if old not in text:
+                  raise SystemExit(f"Anchor missing in {path}: {old[:100]!r}")
+              file.write_text(text.replace(old, new, count))
+
+          # Registry schema v3 owns reversible visibility-adoption records.
+          replace(
+              "custom_components/bindhome/const.py",
+              "REGISTRY_SCHEMA_VERSION: Final = 2",
+              "REGISTRY_SCHEMA_VERSION: Final = 3",
+          )
+
+          models = Path("custom_components/bindhome/models.py")
+          text = models.read_text()
+          anchor = "\n\n@dataclass(frozen=True, slots=True)\nclass Relation:"
+          if anchor not in text:
+              raise SystemExit("HardwareAdoption insertion anchor missing")
+          adoption_model = r'''
+
+@dataclass(frozen=True, slots=True)
+class HardwareAdoption:
+    """Record reversible visibility ownership for one stable HA entity target."""
+
+    entity_registry_id: str
+    entity_id: str
+    previous_hidden_by: str | None
+    changed_hidden_by: bool
+    binding_ids: tuple[str, ...]
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        entity_registry_id: str,
+        entity_id: str,
+        previous_hidden_by: str | None,
+        changed_hidden_by: bool,
+        binding_ids: tuple[str, ...] | list[str],
+    ) -> HardwareAdoption:
+        """Create a canonical visibility ownership record."""
+        previous = (
+            normalize_identifier(previous_hidden_by, "previous_hidden_by")
+            if previous_hidden_by is not None
+            else None
+        )
+        if previous not in {None, "integration", "user"}:
+            raise ModelValidationError(
+                "previous_hidden_by must be integration, user or null",
+                field="previous_hidden_by",
+            )
+        if not isinstance(changed_hidden_by, bool):
+            raise ModelValidationError(
+                "changed_hidden_by must be a boolean",
+                field="changed_hidden_by",
+            )
+        owners = tuple(
+            sorted(
+                {
+                    normalize_non_empty(binding_id, "binding_id")
+                    for binding_id in binding_ids
+                }
+            )
+        )
+        if not owners:
+            raise ModelValidationError(
+                "Hardware adoption requires at least one Binding owner",
+                field="binding_ids",
+            )
+        return cls(
+            entity_registry_id=normalize_non_empty(
+                entity_registry_id, "entity_registry_id"
+            ),
+            entity_id=normalize_non_empty(entity_id, "entity_id"),
+            previous_hidden_by=previous,
+            changed_hidden_by=changed_hidden_by,
+            binding_ids=owners,
+        )
+
+    def with_binding(self, binding_id: str) -> HardwareAdoption:
+        """Add one Binding owner without changing the original visibility snapshot."""
+        owner = normalize_non_empty(binding_id, "binding_id")
+        return replace(self, binding_ids=tuple(sorted({*self.binding_ids, owner})))
+
+    def without_binding(self, binding_id: str) -> HardwareAdoption | None:
+        """Remove one Binding owner, returning None when the last owner leaves."""
+        owners = tuple(owner for owner in self.binding_ids if owner != binding_id)
+        return replace(self, binding_ids=owners) if owners else None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the exact reversible visibility ownership record."""
+        return {
+            "entity_registry_id": self.entity_registry_id,
+            "entity_id": self.entity_id,
+            "previous_hidden_by": self.previous_hidden_by,
+            "changed_hidden_by": self.changed_hidden_by,
+            "binding_ids": list(self.binding_ids),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> HardwareAdoption:
+        """Deserialize and validate a hardware adoption record."""
+        if not isinstance(data, dict):
+            raise ModelValidationError("Hardware adoption data must be a dictionary")
+        try:
+            raw_binding_ids = data["binding_ids"]
+            if not isinstance(raw_binding_ids, (list, tuple)):
+                raise ModelValidationError(
+                    "binding_ids must be a list or tuple",
+                    field="binding_ids",
+                )
+            changed = data["changed_hidden_by"]
+            if not isinstance(changed, bool):
+                raise ModelValidationError(
+                    "changed_hidden_by must be a boolean",
+                    field="changed_hidden_by",
+                )
+            previous = data.get("previous_hidden_by")
+            return cls.create(
+                entity_registry_id=str(data["entity_registry_id"]),
+                entity_id=str(data["entity_id"]),
+                previous_hidden_by=(str(previous) if previous is not None else None),
+                changed_hidden_by=changed,
+                binding_ids=[str(item) for item in raw_binding_ids],
+            )
+        except KeyError as err:
+            raise ModelValidationError(
+                f"Missing required hardware adoption field: {err.args[0]}",
+                field=str(err.args[0]),
+            ) from err
+'''
+          models.write_text(text.replace(anchor, adoption_model + anchor, 1))
+
+          # Registry owns adoption records and automatically releases ownership
+          # when a Binding target changes or a Binding is removed.
+          replace(
+              "custom_components/bindhome/registry.py",
+              "    Binding,\n    ModelValidationError,",
+              "    Binding,\n    HardwareAdoption,\n    ModelValidationError,",
+          )
+          replace(
+              "custom_components/bindhome/registry.py",
+              "        self.bindings: dict[str, Binding] = {}\n        self.representations: dict[str, Representation] = {}",
+              "        self.bindings: dict[str, Binding] = {}\n        self.representations: dict[str, Representation] = {}\n        self.adoptions: dict[str, HardwareAdoption] = {}",
+          )
+          replace(
+              "custom_components/bindhome/registry.py",
+              '''        if existing is not None:\n            updated = replace(\n                existing,\n                entity_id=binding.entity_id,\n                entity_registry_id=binding.entity_registry_id,\n            )\n            self.bindings[existing.id] = updated\n            return updated''',
+              '''        if existing is not None:\n            same_stable_target = (\n                existing.entity_registry_id is not None\n                and existing.entity_registry_id == binding.entity_registry_id\n            )\n            same_fallback_target = (\n                existing.entity_registry_id is None\n                and binding.entity_registry_id is None\n                and existing.entity_id == binding.entity_id\n            )\n            if not (same_stable_target or same_fallback_target):\n                self.remove_adoption_for_binding(existing.id)\n            updated = replace(\n                existing,\n                entity_id=binding.entity_id,\n                entity_registry_id=binding.entity_registry_id,\n            )\n            self.bindings[existing.id] = updated\n            return updated''',
+          )
+          replace(
+              "custom_components/bindhome/registry.py",
+              '''    def remove_binding(self, binding_id: str) -> None:\n        """Remove a capability binding."""\n        if binding_id not in self.bindings:\n            raise RegistryNotFoundError(f"Binding {binding_id} was not found")\n        del self.bindings[binding_id]\n\n    def set_representation(''',
+              '''    def remove_binding(self, binding_id: str) -> None:\n        """Remove a capability binding and release its visibility ownership."""\n        if binding_id not in self.bindings:\n            raise RegistryNotFoundError(f"Binding {binding_id} was not found")\n        self.remove_adoption_for_binding(binding_id)\n        del self.bindings[binding_id]\n\n    def set_adoption(self, adoption: HardwareAdoption) -> HardwareAdoption:\n        """Persist reversible visibility ownership for one stable HA target."""\n        for binding_id in adoption.binding_ids:\n            binding = self.bindings.get(binding_id)\n            if binding is None:\n                raise RegistryNotFoundError(f"Binding {binding_id} was not found")\n            if binding.entity_registry_id != adoption.entity_registry_id:\n                raise RegistryValidationError(\n                    "Hardware adoption owner does not target the adopted Entity Registry entry",\n                    field="binding_ids",\n                )\n        existing = self.adoptions.get(adoption.entity_registry_id)\n        if existing is not None and (\n            existing.previous_hidden_by != adoption.previous_hidden_by\n            or existing.changed_hidden_by != adoption.changed_hidden_by\n        ):\n            raise RegistryConflictError(\n                "Cannot replace the original visibility snapshot of an active adoption"\n            )\n        self.adoptions[adoption.entity_registry_id] = adoption\n        return adoption\n\n    def adoption_for_binding(self, binding_id: str) -> HardwareAdoption | None:\n        """Return the visibility record currently owned by one Binding."""\n        return next(\n            (\n                adoption\n                for adoption in self.adoptions.values()\n                if binding_id in adoption.binding_ids\n            ),\n            None,\n        )\n\n    def remove_adoption_for_binding(self, binding_id: str) -> bool:\n        """Release one Binding owner and delete the record after the last owner."""\n        for registry_id, adoption in tuple(self.adoptions.items()):\n            if binding_id not in adoption.binding_ids:\n                continue\n            remaining = adoption.without_binding(binding_id)\n            if remaining is None:\n                del self.adoptions[registry_id]\n            else:\n                self.adoptions[registry_id] = remaining\n            return True\n        return False\n\n    def clear_adoptions(self) -> None:\n        """Release all persisted visibility ownership records."""\n        self.adoptions.clear()\n\n    def set_representation(''',
+          )
+          replace(
+              "custom_components/bindhome/registry.py",
+              '''            "representations": [\n                representation.to_dict()\n                for representation in self.representations.values()\n            ],\n        }''',
+              '''            "representations": [\n                representation.to_dict()\n                for representation in self.representations.values()\n            ],\n            "adoptions": [\n                adoption.to_dict() for adoption in self.adoptions.values()\n            ],\n        }''',
+          )
+          replace(
+              "custom_components/bindhome/registry.py",
+              '''        for raw_representation in data.get("representations", []):\n            try:\n                registry.set_representation(\n                    Representation.from_dict(raw_representation)\n                )\n            except (ModelValidationError, RegistryError) as err:\n                raise RegistryValidationError(\n                    f"Invalid representation in registry: {err}"\n                ) from err\n\n        return registry''',
+              '''        for raw_representation in data.get("representations", []):\n            try:\n                registry.set_representation(\n                    Representation.from_dict(raw_representation)\n                )\n            except (ModelValidationError, RegistryError) as err:\n                raise RegistryValidationError(\n                    f"Invalid representation in registry: {err}"\n                ) from err\n\n        if "adoptions" not in data:\n            raise RegistryValidationError(\n                "Current registry schema is missing adoptions"\n            )\n        for raw_adoption in data.get("adoptions", []):\n            try:\n                registry.set_adoption(HardwareAdoption.from_dict(raw_adoption))\n            except (ModelValidationError, RegistryError) as err:\n                raise RegistryValidationError(\n                    f"Invalid hardware adoption in registry: {err}"\n                ) from err\n\n        return registry''',
+          )
+
+          # Explicit v2 -> v3 migration keeps historical payloads valid.
+          replace(
+              "custom_components/bindhome/migrations.py",
+              '''REGISTRY_MIGRATIONS: dict[int, MigrationStep] = {\n    0: _migrate_v0_to_v1,\n    1: _migrate_v1_to_v2,\n}''',
+              '''def _migrate_v2_to_v3(data: dict[str, Any]) -> dict[str, Any]:\n    """Add the reversible hardware-visibility ownership collection."""\n    migrated = deepcopy(data)\n    migrated.setdefault("adoptions", [])\n    migrated["schema_version"] = 3\n    return migrated\n\n\nREGISTRY_MIGRATIONS: dict[int, MigrationStep] = {\n    0: _migrate_v0_to_v1,\n    1: _migrate_v1_to_v2,\n    2: _migrate_v2_to_v3,\n}''',
+          )
+
+          # Apply Home Assistant visibility only after Registry persistence succeeds.
+          replace(
+              "custom_components/bindhome/manager.py",
+              "from .binding_identity import entity_registry_id_for_entity\n",
+              "from .adoption import (\n    sync_adoption_visibility_transition,\n    sync_current_adoption_visibility,\n)\nfrom .binding_identity import entity_registry_id_for_entity\n",
+          )
+          replace(
+              "custom_components/bindhome/manager.py",
+              '''        canonical = BindHomeRegistry.from_dict(staged.to_dict())\n        await self._store.async_save(canonical)\n        self._adopt_staged_registry(canonical)\n        self._revision += 1\n        async_dispatcher_send(self.hass, SIGNAL_REGISTRY_CHANGED)''',
+              '''        canonical = BindHomeRegistry.from_dict(staged.to_dict())\n        previous_adoptions = dict(self.registry.adoptions)\n        await self._store.async_save(canonical)\n        self._adopt_staged_registry(canonical)\n        self._revision += 1\n        sync_adoption_visibility_transition(\n            self.hass, previous_adoptions, self.registry.adoptions\n        )\n        async_dispatcher_send(self.hass, SIGNAL_REGISTRY_CHANGED)''',
+          )
+          replace(
+              "custom_components/bindhome/manager.py",
+              '''        self.registry = await self._store.async_load()\n        self._revision = 0''',
+              '''        self.registry = await self._store.async_load()\n        self._revision = 0\n        sync_current_adoption_visibility(self.hass, self.registry.adoptions)''',
+          )
+
+          # Register API and guarantee full reversal when the config entry is removed.
+          replace(
+              "custom_components/bindhome/__init__.py",
+              "from .backup_websocket import async_register_backup_websocket_commands\n",
+              "from .adoption import async_revert_all_adoptions\nfrom .adoption_websocket import async_register_adoption_websocket_commands\nfrom .backup_websocket import async_register_backup_websocket_commands\n",
+          )
+          replace(
+              "custom_components/bindhome/__init__.py",
+              '''    async_register_services(hass)\n    async_register_websocket_commands(hass)''',
+              '''    async_register_services(hass)\n    async_register_websocket_commands(hass)\n    async_register_adoption_websocket_commands(hass)''',
+          )
+          init_path = Path("custom_components/bindhome/__init__.py")
+          init_text = init_path.read_text()
+          removal = r'''
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Restore every visibility value BindHome owns before entry removal."""
+    manager = BindHomeManager(hass)
+    await manager.async_load()
+    await async_revert_all_adoptions(manager)
+'''
+          if "async def async_remove_entry(" not in init_text:
+              init_path.write_text(init_text.rstrip() + removal + "\n")
+
+          # Migrations tests now establish schema v3 as canonical.
+          test_path = Path("tests/test_registry_migrations.py")
+          test = test_path.read_text()
+          test = test.replace(
+              "def test_current_v2_golden_payload_loads_unchanged() -> None:\n    payload = _fixture(\"v2_canonical.json\")",
+              "def test_current_v3_golden_payload_loads_unchanged() -> None:\n    payload = _fixture(\"v3_canonical.json\")",
+          )
+          test = test.replace(
+              "assert result.source_version == 2\n    assert result.target_version == REGISTRY_SCHEMA_VERSION == 2",
+              "assert result.source_version == 3\n    assert result.target_version == REGISTRY_SCHEMA_VERSION == 3",
+              1,
+          )
+          test = test.replace(
+              "def test_v1_golden_payload_migrates_to_v2() -> None:",
+              "def test_v1_golden_payload_migrates_to_v3() -> None:",
+          )
+          test = test.replace("assert result.target_version == 2", "assert result.target_version == 3")
+          test = test.replace(
+              "assert result.canonical_payload[\"schema_version\"] == 2",
+              "assert result.canonical_payload[\"schema_version\"] == 3",
+          )
+          test = test.replace(
+              "assert result.registry.to_dict()[\"schema_version\"] == REGISTRY_SCHEMA_VERSION",
+              "assert result.registry.to_dict()[\"schema_version\"] == REGISTRY_SCHEMA_VERSION",
+          )
+          test = test.replace(
+              '"schema_version": 2,\n                "assets": [],',
+              '"schema_version": 3,\n                "assets": [],',
+          )
+          insertion = r'''
+
+def test_v2_golden_payload_migrates_to_v3_with_empty_adoptions() -> None:
+    payload = _fixture("v2_canonical.json")
+    original = deepcopy(payload)
+
+    result = migrate_registry_payload(payload)
+
+    assert payload == original
+    assert result.source_version == 2
+    assert result.target_version == REGISTRY_SCHEMA_VERSION == 3
+    assert result.changed is True
+    assert result.canonical_payload["schema_version"] == 3
+    assert result.canonical_payload["adoptions"] == []
+'''
+          marker = "\ndef test_v1_golden_payload_migrates_to_v3() -> None:"
+          if marker not in test:
+              raise SystemExit("Migration test insertion anchor missing")
+          test = test.replace(marker, insertion + marker, 1)
+          test_path.write_text(test)
+          PY
+
+      - name: Format Python
+        run: |
+          python -m pip install ruff
+          ruff format custom_components/bindhome tests/test_registry_migrations.py
+          ruff check --fix custom_components/bindhome tests/test_registry_migrations.py
+
+      - name: Remove one-shot workflow and commit
+        run: |
+          rm .github/workflows/visibility-core-bootstrap.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add custom_components/bindhome tests/fixtures/registry/v3_canonical.json tests/test_registry_migrations.py .github/workflows/visibility-core-bootstrap.yml
+          git diff --cached --exit-code && exit 0
+          git commit -m "feat: persist reversible hardware visibility ownership"
+          git push origin HEAD:feat/managed-hardware-visibility
