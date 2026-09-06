@@ -6,6 +6,7 @@ import "../inventory/inventory-section.js";
 import "../infrastructure/infrastructure-inspector.js";
 import "./csv-inventory-tool.js";
 import "./backup-restore-tool.js";
+import "./health-tool.js";
 export class BindHomeAdvancedView extends LitElement {
   static properties = {
     hass: { attribute: false },
@@ -148,6 +149,19 @@ export class BindHomeAdvancedView extends LitElement {
         ></bindhome-infrastructure-inspector>
       </section>
       <section class="view" ?hidden=${this._tab !== "maintenance"}>
+        <bindhome-health-tool
+          .hass=${this.hass}
+          .t=${this.t}
+          .areas=${this.areas}
+          .assets=${this.assets}
+          .bindingStatuses=${this.bindingStatuses}
+          @health-open-asset=${(event) => {
+            this.selectedAssetId = event.detail;
+            this._tab = "inventory";
+          }}
+          @health-review-import=${(event) => this.dispatchEvent(new CustomEvent("review-import", { detail: event.detail, bubbles: true, composed: true }))}
+          @health-open-recovery=${() => this.renderRoot.querySelector("bindhome-backup-restore-tool")?.scrollIntoView?.({ behavior: "smooth", block: "start" })}
+        ></bindhome-health-tool>
         <bindhome-csv-inventory-tool
           .hass=${this.hass}
           .t=${this.t}

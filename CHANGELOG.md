@@ -18,6 +18,10 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ## [Unreleased]
 
+### Added
+
+- Advanced Maintenance now includes a first-class model health surface for Binding status, stale Areas, declared capabilities without Bindings, Registry recovery and undocumented Home Assistant hardware discovered through the existing assisted-import engine; actionable findings route into the supported remediation workflows. ([#100](https://github.com/alessbarb/bindhome/issues/100))
+
 ### Changed
 
 - Advanced Maintenance now exposes the existing Registry backup/recovery contract: administrators can download a deterministic backup, see when they last exported one, inspect recovery mode, review backup contents and restore only after an explicit full-Registry overwrite confirmation. ([#99](https://github.com/alessbarb/bindhome/issues/99))
