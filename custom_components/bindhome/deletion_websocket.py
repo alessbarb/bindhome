@@ -11,12 +11,12 @@ from homeassistant.components.websocket_api.connection import ActiveConnection
 from homeassistant.components.websocket_api.const import ERR_NOT_FOUND
 from homeassistant.components.websocket_api.decorators import (
     async_response,
-    require_admin,
     websocket_command,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 
+from .authorization import admin_read, admin_write
 from .const import DOMAIN
 from .deletion import async_delete_asset_with_dependencies, build_asset_delete_impact
 from .manager import BindHomeManager
@@ -37,7 +37,7 @@ def _get_manager(hass: HomeAssistant) -> BindHomeManager:
     return cast(BindHomeManager, entries[0].runtime_data)
 
 
-@require_admin
+@admin_read
 @websocket_command(
     {
         vol.Required("type"): WS_ASSET_DELETE_IMPACT,
@@ -59,7 +59,7 @@ def ws_asset_delete_impact(
     connection.send_result(msg["id"], impact.to_dict())
 
 
-@require_admin
+@admin_write
 @websocket_command(
     {
         vol.Required("type"): WS_ASSET_DELETE_WITH_DEPENDENCIES,

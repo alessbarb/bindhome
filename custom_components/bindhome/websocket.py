@@ -15,7 +15,6 @@ from homeassistant.components.websocket_api.const import (
 )
 from homeassistant.components.websocket_api.decorators import (
     async_response,
-    require_admin,
     websocket_command,
 )
 from homeassistant.core import HomeAssistant, callback
@@ -24,6 +23,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from . import query
+from .authorization import admin_write, household_read
 from .const import DOMAIN, SIGNAL_REGISTRY_CHANGED
 from .manager import (
     AssetCreateSpec,
@@ -144,7 +144,7 @@ def _send_bulk_asset_error(
     )
 
 
-@require_admin
+@household_read
 @websocket_command({vol.Required("type"): WS_REGISTRY_GET})
 @async_response
 async def ws_registry_get(
@@ -160,7 +160,7 @@ async def ws_registry_get(
     connection.send_result(msg["id"], result)
 
 
-@require_admin
+@household_read
 @websocket_command({vol.Required("type"): WS_REGISTRY_SUBSCRIBE})
 def ws_registry_subscribe(
     hass: HomeAssistant,
@@ -182,7 +182,7 @@ def ws_registry_subscribe(
     connection.send_result(msg["id"], {"revision": manager.revision})
 
 
-@require_admin
+@admin_write
 @websocket_command(
     {
         vol.Required("type"): WS_ASSET_CREATE,
@@ -219,7 +219,7 @@ async def ws_asset_create(
     )
 
 
-@require_admin
+@admin_write
 @websocket_command(
     {
         vol.Required("type"): WS_ASSET_CREATE_BULK,
@@ -282,7 +282,7 @@ async def ws_asset_create_bulk(
     )
 
 
-@require_admin
+@admin_write
 @websocket_command(
     {
         vol.Required("type"): WS_ASSET_UPDATE,
@@ -332,7 +332,7 @@ async def ws_asset_update(
     )
 
 
-@require_admin
+@admin_write
 @websocket_command(
     {
         vol.Required("type"): WS_ASSET_DELETE,
@@ -360,7 +360,7 @@ async def ws_asset_delete(
     )
 
 
-@require_admin
+@admin_write
 @websocket_command(
     {
         vol.Required("type"): WS_RELATION_CREATE,
@@ -392,7 +392,7 @@ async def ws_relation_create(
     )
 
 
-@require_admin
+@admin_write
 @websocket_command(
     {
         vol.Required("type"): WS_RELATION_DELETE,
@@ -420,7 +420,7 @@ async def ws_relation_delete(
     )
 
 
-@require_admin
+@admin_write
 @websocket_command(
     {
         vol.Required("type"): WS_BINDING_SET,
@@ -454,7 +454,7 @@ async def ws_binding_set(
     )
 
 
-@require_admin
+@admin_write
 @websocket_command(
     {
         vol.Required("type"): WS_BINDING_DELETE,
@@ -482,7 +482,7 @@ async def ws_binding_delete(
     )
 
 
-@require_admin
+@admin_write
 @websocket_command(
     {
         vol.Required("type"): WS_REPRESENTATION_SET,
@@ -518,7 +518,7 @@ async def ws_representation_set(
     )
 
 
-@require_admin
+@admin_write
 @websocket_command(
     {
         vol.Required("type"): WS_REPRESENTATION_DELETE,
@@ -549,7 +549,7 @@ async def ws_representation_delete(
     )
 
 
-@require_admin
+@household_read
 @websocket_command({vol.Required("type"): WS_PRESET_LIST})
 @async_response
 async def ws_preset_list(
@@ -566,7 +566,7 @@ async def ws_preset_list(
     )
 
 
-@require_admin
+@household_read
 @websocket_command(
     {vol.Required("type"): WS_ASSET_GET, vol.Required("asset_id"): cv.string}
 )
@@ -583,7 +583,7 @@ async def ws_asset_get(
     connection.send_result(msg["id"], {"asset": asset.to_dict()})
 
 
-@require_admin
+@household_read
 @websocket_command({vol.Required("type"): WS_ASSET_LIST})
 @async_response
 async def ws_asset_list(
@@ -598,7 +598,7 @@ async def ws_asset_list(
     connection.send_result(msg["id"], {"assets": [asset.to_dict() for asset in assets]})
 
 
-@require_admin
+@household_read
 @websocket_command(
     {
         vol.Required("type"): WS_RELATION_LIST,
@@ -631,7 +631,7 @@ async def ws_relation_list(
     )
 
 
-@require_admin
+@household_read
 @websocket_command(
     {
         vol.Required("type"): WS_GRAPH_TRAVERSE,
@@ -670,7 +670,7 @@ async def ws_graph_traverse(
     )
 
 
-@require_admin
+@household_read
 @websocket_command(
     {
         vol.Required("type"): WS_GRAPH_PATH,
@@ -703,7 +703,7 @@ async def ws_graph_path(
     connection.send_result(msg["id"], {"path": path, "found": path is not None})
 
 
-@require_admin
+@household_read
 @websocket_command({vol.Required("type"): WS_BINDING_STATUS})
 @async_response
 async def ws_binding_status(

@@ -14,12 +14,12 @@ from homeassistant.components.websocket_api.const import (
 )
 from homeassistant.components.websocket_api.decorators import (
     async_response,
-    require_admin,
     websocket_command,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 
+from .authorization import admin_read, admin_write
 from .const import DOMAIN
 from .import_commit import (
     ImportBindingSelector,
@@ -161,7 +161,7 @@ def _reviewed_decisions(
     return tuple(reviewed)
 
 
-@require_admin
+@admin_read
 @websocket_command(
     {
         vol.Required("type"): WS_IMPORT_DISCOVER,
@@ -199,7 +199,7 @@ def ws_import_discover(
     )
 
 
-@require_admin
+@admin_write
 @websocket_command(
     {
         vol.Required("type"): WS_IMPORT_COMMIT,

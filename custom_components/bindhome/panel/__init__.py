@@ -65,7 +65,7 @@ async def async_register_panel(hass: HomeAssistant) -> None:
         sidebar_title=PANEL_TITLE,
         sidebar_icon=PANEL_ICON,
         js_url=(f"/{PANEL_URL_PATH}_static/{BUNDLE_FILENAME}?v={bundle_version}"),
-        require_admin=True,
+        require_admin=False,
     )
 
 

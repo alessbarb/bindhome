@@ -45,7 +45,7 @@ async def test_panel_registration(hass: HomeAssistant) -> None:
             sidebar_title="BindHome",
             sidebar_icon="mdi:home-switch",
             js_url=("/bindhome_static/bindhome-panel.js?v=123456789abc"),
-            require_admin=True,
+            require_admin=False,
         )
 
         mock_http.async_register_static_paths.assert_called_once()

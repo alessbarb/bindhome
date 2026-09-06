@@ -534,6 +534,7 @@
     "panel_import_review_preserved": "Se ha conservado toda tu revisión para que puedas corregirla o volver a ejecutar la búsqueda.",
     "panel_import_success": "Importación completada",
     "panel_import_success_detail": "Creados: {created} · fusionados: {merged} · omitidos: {skipped}.",
-    "panel_import_run_again": "Volver a importar"
+    "panel_import_run_again": "Volver a importar",
+    "read_only": "Solo lectura"
   }
 }

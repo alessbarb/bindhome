@@ -534,6 +534,7 @@
     "panel_import_review_preserved": "Your complete review has been preserved so you can correct it or rerun discovery.",
     "panel_import_success": "Import completed",
     "panel_import_success_detail": "Created: {created} · merged: {merged} · skipped: {skipped}.",
-    "panel_import_run_again": "Run import again"
+    "panel_import_run_again": "Run import again",
+    "read_only": "Read only"
   }
 }

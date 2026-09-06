@@ -26,6 +26,7 @@ export class BindHomeHomeView extends LitElement {
     entityRegistry: { attribute: false },
     deviceRegistry: { attribute: false },
     advancedEnabled: { type: Boolean, attribute: false },
+    readOnly: { type: Boolean, attribute: false },
     refreshBindingData: { attribute: false },
     refreshTopologyData: { attribute: false },
     refreshAssets: { attribute: false },
@@ -46,6 +47,7 @@ export class BindHomeHomeView extends LitElement {
     this.entityRegistry = [];
     this.deviceRegistry = [];
     this.advancedEnabled = false;
+    this.readOnly = false;
     this.refreshBindingData = null;
     this.refreshTopologyData = null;
     this.refreshAssets = null;
@@ -198,7 +200,7 @@ export class BindHomeHomeView extends LitElement {
       <header class="room-head">
         <ha-icon icon="mdi:floor-plan"></ha-icon>
         <div class="grow"><h2>${this._areaName()}</h2><span class="muted">${this.t("home.element_count", { count: items.length })}</span></div>
-        ${![NO_AREA, STALE_AREA].includes(this.selectedAreaId)
+        ${!this.readOnly && ![NO_AREA, STALE_AREA].includes(this.selectedAreaId)
           ? html`<button class="primary" @click=${() => this.dispatchEvent(new CustomEvent("add-in-area", { detail: this.selectedAreaId, bubbles: true, composed: true }))}>
               <ha-icon icon="mdi:plus"></ha-icon><span>${this.t("home.add_element")}</span>
             </button>`
@@ -242,6 +244,7 @@ export class BindHomeHomeView extends LitElement {
               .entityRegistry=${this.entityRegistry}
               .deviceRegistry=${this.deviceRegistry}
               .advancedEnabled=${this.advancedEnabled}
+              .readOnly=${this.readOnly}
               .refreshBindingData=${this.refreshBindingData}
               .refreshTopologyData=${this.refreshTopologyData}
               .refreshAssets=${this.refreshAssets}

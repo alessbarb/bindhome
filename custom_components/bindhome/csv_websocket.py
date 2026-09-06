@@ -11,11 +11,11 @@ from homeassistant.components.websocket_api.connection import ActiveConnection
 from homeassistant.components.websocket_api.const import ERR_INVALID_FORMAT
 from homeassistant.components.websocket_api.decorators import (
     async_response,
-    require_admin,
     websocket_command,
 )
 from homeassistant.core import HomeAssistant
 
+from .authorization import admin_read, admin_write
 from .const import DOMAIN
 from .csv_inventory import (
     CSV_FORMAT_VERSION,
@@ -51,7 +51,7 @@ def _validation_payload(error: CsvBatchValidationError) -> dict[str, object]:
     }
 
 
-@require_admin
+@admin_read
 @websocket_command({vol.Required("type"): WS_CSV_EXPORT})
 def ws_csv_export(
     hass: HomeAssistant,
@@ -75,7 +75,7 @@ def ws_csv_export(
     )
 
 
-@require_admin
+@admin_read
 @websocket_command(
     {
         vol.Required("type"): WS_CSV_VALIDATE,
@@ -110,7 +110,7 @@ def ws_csv_validate(
     )
 
 
-@require_admin
+@admin_write
 @websocket_command(
     {
         vol.Required("type"): WS_CSV_IMPORT,
