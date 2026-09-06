@@ -20,6 +20,28 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ---
 
+## [1.4.2] - 2026-09-06
+
+Distribution reliability hotfix after an incomplete local HACS installation was observed with a zero-byte BindHome `manifest.json`. The published 1.4.1 tag itself contains a valid manifest; 1.4.2 hardens the delivery boundary so tagged installs use a package that BindHome builds and validates explicitly.
+
+**Minimum Home Assistant:** `2026.8.0`. Compatibility tested against `2026.8.0` and `2026.9.0`.
+
+### Fixed
+
+- Stable releases now publish a dedicated `bindhome.zip` integration asset and `hacs.json` explicitly selects that asset for tagged HACS installs instead of relying only on GitHub's generic source archive.
+- Release packaging fails closed if `manifest.json` is missing, empty or invalid, if the integration entry point or production panel bundle is missing/empty, or if the ZIP layout is not rooted at the BindHome integration as HACS expects.
+
+### Compatibility
+
+- No BindHome runtime behavior, Representation platform, Registry schema, backup format, CSV format or minimum Home Assistant version changes from 1.4.1. Registry schema remains v2, the backup envelope remains v1 and CSV remains v1.
+
+### Distribution
+
+- Version synchronized to `1.4.2` across Home Assistant, Python and frontend package metadata.
+- Pull-request Release Metadata validation builds and inspects the same integration package contract used by publication; the publisher attaches `bindhome.zip` plus its SHA-256 checksum to the exact green release commit and verifies the published target/assets.
+
+---
+
 ## [1.4.1] - 2026-09-06
 
 Completes the panel workflows for capabilities shipped in 1.4.0 and earlier: logical lights, model health, CSV maintenance and Registry backup/recovery. Also improves navigation and per-user preferences.
@@ -277,7 +299,8 @@ First public BindHome release.
 
 ---
 
-[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.4.1...HEAD
+[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.4.2...HEAD
+[1.4.2]: https://github.com/alessbarb/bindhome/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/alessbarb/bindhome/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/alessbarb/bindhome/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/alessbarb/bindhome/compare/v1.2.0...v1.3.0

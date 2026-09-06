@@ -8,7 +8,7 @@ Administrators can open **Advanced → Maintenance → Backup and restore**. Dow
 
 To restore, select a backup file, inspect the object counts, acknowledge that the whole Registry will be replaced and confirm. During normal operation the panel submits the reviewed Registry revision and rejects stale restores. In recovery mode the existing recovery API can validate and restore storage even when the normal Registry manager cannot load. A stored restore followed by a failed integration reload is reported separately; use Repairs and reload the integration.
 
-Backups preserve Assets, Relations, Bindings and Representations. CSV export covers Asset inventory only and is not a substitute for a complete Registry backup. Both 1.4.0 and 1.4.1 use backup format v1 and Registry schema v2.
+Backups preserve Assets, Relations, Bindings and Representations. CSV export covers Asset inventory only and is not a substitute for a complete Registry backup. Versions 1.4.0, 1.4.1 and 1.4.2 use backup format v1 and Registry schema v2.
 
 ## Backup envelope
 
