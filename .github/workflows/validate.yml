@@ -57,9 +57,18 @@ jobs:
                   f'Invalid HACS Home Assistant minimum: {minimum_ha!r}'
               )
 
+          if hacs.get('zip_release') is not True:
+              raise SystemExit('hacs.json must enable zip_release for stable installs')
+          if hacs.get('filename') != 'bindhome.zip':
+              raise SystemExit('hacs.json filename must be bindhome.zip')
+
           print(f'BindHome version: {version}')
           print(f'Minimum Home Assistant: {minimum_ha}')
+          print('HACS release asset: bindhome.zip')
           PY
+
+      - name: Build and validate HACS release package
+        run: python scripts/build_release_package.py --output /tmp/bindhome.zip
 
   pytest:
     name: Pytest

@@ -1,6 +1,6 @@
 # BindHome
 
-**Current stable release: `1.4.1` · Home Assistant `2026.8.0+`**
+**Current stable release: `1.4.2` · Home Assistant `2026.8.0+`**
 
 **Model the home, not the hardware.**
 
@@ -288,6 +288,18 @@ Existing installations that already contain Assets do not receive the first-run 
 
 ---
 
+## BindHome 1.4.2
+
+Version 1.4.2 is a distribution reliability hotfix. It keeps the 1.4.1 runtime, Registry schema and panel behavior, while changing stable HACS delivery to a dedicated, validated `bindhome.zip` GitHub Release asset.
+
+The release package is built directly from `custom_components/bindhome`, places `manifest.json` at the ZIP root as HACS expects, and fails publication if the manifest, integration entry point or production panel bundle is missing or empty. This specifically hardens recovery from incomplete/truncated installation payloads without changing stored BindHome data.
+
+No Registry migration is required. Registry schema remains v2, backup and CSV formats remain v1, and the minimum Home Assistant version remains `2026.8.0`.
+
+See the [1.4.2 changelog](CHANGELOG.md#142---2026-09-06) for the complete hotfix notes.
+
+---
+
 ## BindHome 1.4.1
 
 Version 1.4.1 completes the panel experience over the capabilities already shipped in 1.4.0 and earlier.
@@ -325,7 +337,7 @@ BindHome is a local custom integration. It does not require a cloud account and 
 
 ### Install with HACS
 
-BindHome is distributed as a standard HACS integration repository.
+BindHome is distributed as a standard HACS integration repository. Stable tagged releases use the validated `bindhome.zip` release asset selected by `hacs.json`, rather than relying only on GitHub's generic source archive.
 
 1. Open **HACS** in Home Assistant.
 2. Open **Custom repositories**.
@@ -356,11 +368,11 @@ HACS update
   -> verify System Health / Registry state
 ```
 
-For the 1.4.0 → 1.4.1 update, export a Registry backup, install 1.4.1 through HACS and restart Home Assistant. No new Registry migration is required. Then open an element detail and Advanced → Maintenance to verify the new surfaces. Back up the BindHome Registry before an important upgrade. See [Backup and restore](docs/backup-restore.md).
+For the 1.4.1 → 1.4.2 update, no Registry migration is required. Install 1.4.2 through HACS and restart Home Assistant; HACS will use the dedicated `bindhome.zip` asset. For the earlier 1.4.0 → 1.4.1 feature update, export a Registry backup first, then verify element detail and Advanced → Maintenance after restart. Back up the BindHome Registry before an important upgrade. See [Backup and restore](docs/backup-restore.md).
 
 ### Downgrade
 
-Only select a release that can read the current Registry schema. Both 1.4.0 and 1.4.1 use schema v2; releases before 1.3.0 require a compatible historical backup rather than an in-place downgrade.
+Only select a release that can read the current Registry schema. Versions 1.4.0, 1.4.1 and 1.4.2 use schema v2; releases before 1.3.0 require a compatible historical backup rather than an in-place downgrade.
 
 If a release causes a problem:
 

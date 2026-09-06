@@ -60,7 +60,9 @@ Every future Registry schema bump must include the corresponding stepwise migrat
 
 ## Distribution layout
 
-HACS installs the runtime integration from `custom_components/bindhome`. Development-only frontend source, tests and Node.js tooling therefore live separately under the repository-root `frontend/` directory.
+Stable HACS installs use a dedicated GitHub Release asset named `bindhome.zip`. `hacs.json` declares `zip_release: true` and `filename: bindhome.zip`, so tagged installations consume that validated artifact instead of relying only on GitHub's generic repository archive. The ZIP is built from `custom_components/bindhome` and is rooted at the integration itself: `manifest.json`, `__init__.py`, `panel/`, translations and the remaining runtime files live directly at archive root.
+
+Development-only frontend source, tests and Node.js tooling remain separately under the repository-root `frontend/` directory.
 
 The frontend build writes the only runtime artifact it needs into:
 
@@ -81,7 +83,9 @@ When a merge to `main` changes release metadata, the changelog, or the release w
 3. waits for the exact merged `main` commit to pass `Release Metadata`, `Pytest`, `Ruff Lint & Format`, `Hassfest`, `Frontend`, `HACS Validation`, `HA 2026.8.0`, and `HA 2026.9.0`;
 4. fails closed if any required gate fails or the gate does not complete within the bounded wait;
 5. extracts the release notes from the matching `CHANGELOG.md` section;
-6. creates the immutable `v<version>` tag and stable GitHub Release on that exact commit.
+6. builds `bindhome.zip` from the runtime integration and validates required files, JSON manifest content, non-empty panel bundle, safe paths and HACS-rooted ZIP layout;
+7. creates the immutable `v<version>` tag and stable GitHub Release on that exact commit with `bindhome.zip` and `bindhome.zip.sha256` attached;
+8. verifies that the published release targets the exact green commit and contains both required assets.
 
 Publication therefore cannot race ahead of the protected release gate. Re-running the workflow is idempotent for an already published version.
 
@@ -95,12 +99,13 @@ Publication therefore cannot race ahead of the protected release gate. Re-runnin
 6. Confirm the README, changelog and release notes describe the supported Home Assistant range and any migrations.
 7. For a public release, confirm the repository itself satisfies HACS publication metadata requirements.
 8. Confirm `custom_components/bindhome` contains runtime files only and no local development workspace/tool artifacts.
-9. Merge the release PR into `main`.
-10. Let the publication workflow wait for all required checks on the exact merged `main` commit and create `v<version>` plus the GitHub Release.
-11. Verify that the published release targets that exact green commit and that its notes match the finalized changelog section.
-12. Install or upgrade the release through HACS in a development Home Assistant instance.
-13. Restart Home Assistant and verify BindHome loads, the Registry is intact, logical entities reconcile, and the panel opens.
-14. Keep the previous release available for controlled downgrade when one exists.
+9. Build the release archive with `python scripts/build_release_package.py --output dist/bindhome.zip` and confirm `manifest.json`, `__init__.py` and `panel/static/bindhome-panel.js` are present and non-empty at the expected integration-root paths.
+10. Merge the release PR into `main`.
+11. Let the publication workflow wait for all required checks on the exact merged `main` commit and create `v<version>` plus the GitHub Release.
+12. Verify that the published release targets that exact green commit and that its notes match the finalized changelog section.
+13. Install or upgrade the release through HACS in a development Home Assistant instance.
+14. Restart Home Assistant and verify BindHome loads, the Registry is intact, logical entities reconcile, and the panel opens.
+15. Keep the previous release available for controlled downgrade when one exists.
 
 For the first public release, the repository must be public before the final HACS publication validation. `v1.0.0` is published only after the release-preparation changes are on protected `main` and the exact resulting commit passes every required gate.
 
@@ -129,6 +134,14 @@ If installation succeeds but post-restart validation fails:
 5. restore a compatible BindHome Registry backup only through the supported recovery path if required.
 
 A failed release must never be repaired by changing Home Assistant `.storage` directly.
+
+## 1.4.2 distribution hotfix baseline
+
+Version 1.4.2 intentionally preserves the 1.4.1 runtime and data contracts. Its release-specific change is the HACS distribution boundary: tagged installs must use the validated `bindhome.zip` asset, and publication must fail before tagging if the archive cannot be built or validated. Registry schema stays v2, backup format v1, CSV format v1 and the Home Assistant minimum stays at 2026.8.0 with compatibility coverage for 2026.8.0 and 2026.9.0.
+
+The incident motivating this hotfix was a local installation whose `/config/custom_components/bindhome/manifest.json` had been truncated to zero bytes even though the immutable v1.4.1 tag contains a valid manifest. Release checks therefore validate not only repository metadata but the exact archive layout and critical file contents that HACS will extract.
+
+Keep all release metadata, README current-release guidance, changelog comparison links and HACS package metadata coherent. Validate every release PR on its final SHA, inspect comments/reviews/threads and mergeability, then merge with an expected head SHA. A new SHA invalidates previous validation evidence.
 
 ## 1.4.1 release baseline
 

@@ -9,7 +9,9 @@ on:
       - "pyproject.toml"
       - "frontend/package.json"
       - "frontend/package-lock.json"
+      - "hacs.json"
       - "CHANGELOG.md"
+      - "scripts/build_release_package.py"
       - ".github/workflows/release.yml"
   workflow_dispatch:
 
@@ -47,6 +49,7 @@ jobs:
           )
           package = json.loads((root / 'frontend/package.json').read_text())
           package_lock = json.loads((root / 'frontend/package-lock.json').read_text())
+          hacs = json.loads((root / 'hacs.json').read_text())
 
           versions = {
               'pyproject.toml': pyproject['project']['version'],
@@ -62,6 +65,11 @@ jobs:
           version = next(iter(versions.values()))
           if not re.fullmatch(r'\d+\.\d+\.\d+', version):
               raise SystemExit(f'Version is not SemVer-compatible: {version}')
+
+          if hacs.get('zip_release') is not True or hacs.get('filename') != 'bindhome.zip':
+              raise SystemExit(
+                  'HACS release metadata must select the bindhome.zip release asset'
+              )
 
           changelog = (root / 'CHANGELOG.md').read_text()
           if not re.search(rf'^## \[{re.escape(version)}\] - \d{{4}}-\d{{2}}-\d{{2}}$', changelog, re.MULTILINE):
@@ -194,6 +202,13 @@ jobs:
           print(notes)
           PY
 
+      - name: Build and validate HACS release asset
+        if: steps.existing.outputs.exists != 'true'
+        run: |
+          python scripts/build_release_package.py --output dist/bindhome.zip
+          sha256sum dist/bindhome.zip > dist/bindhome.zip.sha256
+          unzip -t dist/bindhome.zip
+
       - name: Publish stable GitHub Release
         if: steps.existing.outputs.exists != 'true'
         env:
@@ -202,8 +217,37 @@ jobs:
           VERSION: ${{ steps.metadata.outputs.version }}
         run: |
           gh release create "$TAG" \
+            dist/bindhome.zip \
+            dist/bindhome.zip.sha256 \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "BindHome $VERSION" \
             --notes-file /tmp/release-notes.md \
             --latest
+
+      - name: Verify published release asset and target
+        if: steps.existing.outputs.exists != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.metadata.outputs.tag }}
+          TARGET_SHA: ${{ github.sha }}
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --json targetCommitish,assets > /tmp/release.json
+          python - <<'PY'
+          import json
+          import os
+
+          release = json.load(open('/tmp/release.json'))
+          if release.get('targetCommitish') != os.environ['TARGET_SHA']:
+              raise SystemExit(
+                  f"Release target mismatch: {release.get('targetCommitish')} != "
+                  f"{os.environ['TARGET_SHA']}"
+              )
+          assets = {asset['name'] for asset in release.get('assets', [])}
+          required = {'bindhome.zip', 'bindhome.zip.sha256'}
+          missing = sorted(required - assets)
+          if missing:
+              raise SystemExit(f'Missing release assets: {missing}')
+          print('Published release target and HACS assets verified.')
+          PY
