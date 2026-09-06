@@ -5,6 +5,7 @@ import { tokens } from "../styles/shared-styles.js";
 import "../inventory/inventory-section.js";
 import "../infrastructure/infrastructure-inspector.js";
 import "./csv-inventory-tool.js";
+import "./backup-restore-tool.js";
 export class BindHomeAdvancedView extends LitElement {
   static properties = {
     hass: { attribute: false },
@@ -154,6 +155,12 @@ export class BindHomeAdvancedView extends LitElement {
           .areas=${this.areas}
           @assets-refreshed=${(event) => this.dispatchEvent(new CustomEvent("assets-refreshed", { detail: event.detail, bubbles: true, composed: true }))}
         ></bindhome-csv-inventory-tool>
+        <bindhome-backup-restore-tool
+          .hass=${this.hass}
+          .t=${this.t}
+          .revision=${this.registry?.revision ?? null}
+          @assets-refreshed=${(event) => this.dispatchEvent(new CustomEvent("assets-refreshed", { detail: event.detail, bubbles: true, composed: true }))}
+        ></bindhome-backup-restore-tool>
       </section>`;
   }
 }

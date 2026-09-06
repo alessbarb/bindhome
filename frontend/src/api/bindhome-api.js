@@ -240,5 +240,22 @@ export function createBindHomeApi(hass) {
         revision,
       );
     },
+
+    async exportRegistryBackup() {
+      return hass.callWS({ type: "bindhome/backup/export" });
+    },
+
+    async getBackupRecoveryStatus() {
+      return hass.callWS({ type: "bindhome/backup/recovery_status" });
+    },
+
+    async restoreRegistryBackup({ backup, revision = null }) {
+      if (Number.isInteger(revision)) {
+        return mutateAtRevision(hass, state, { type: "bindhome/backup/restore", backup }, revision);
+      }
+      const response = await hass.callWS({ type: "bindhome/backup/restore", backup });
+      acceptRevision(state, response?.revision);
+      return response;
+    },
   };
 }
