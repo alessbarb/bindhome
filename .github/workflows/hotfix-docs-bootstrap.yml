@@ -1,0 +1,103 @@
+name: Hotfix Docs Bootstrap
+
+on:
+  push:
+    branches:
+      - hotfix/release-zip-1.4.2
+
+permissions:
+  contents: write
+
+jobs:
+  update-release-docs:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: hotfix/release-zip-1.4.2
+
+      - name: Update 1.4.2 release documentation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path: str, old: str, new: str, *, count: int = -1) -> None:
+              file = Path(path)
+              text = file.read_text()
+              if old not in text:
+                  raise SystemExit(f'Expected text not found in {path}: {old[:80]!r}')
+              updated = text.replace(old, new, count)
+              file.write_text(updated)
+
+          replace(
+              'README.md',
+              '**Current stable release: `1.4.1` · Home Assistant `2026.8.0+`**',
+              '**Current stable release: `1.4.2` · Home Assistant `2026.8.0+`**',
+          )
+
+          release_intro = '''## BindHome 1.4.1\n'''
+          hotfix_intro = '''## BindHome 1.4.2\n\nVersion 1.4.2 is a distribution reliability hotfix. It keeps the 1.4.1 runtime, Registry schema and panel behavior, while changing stable HACS delivery to a dedicated, validated `bindhome.zip` GitHub Release asset.\n\nThe release package is built directly from `custom_components/bindhome`, places `manifest.json` at the ZIP root as HACS expects, and fails publication if the manifest, integration entry point or production panel bundle is missing or empty. This specifically hardens recovery from incomplete/truncated installation payloads without changing stored BindHome data.\n\nNo Registry migration is required. Registry schema remains v2, backup and CSV formats remain v1, and the minimum Home Assistant version remains `2026.8.0`.\n\nSee the [1.4.2 changelog](CHANGELOG.md#142---2026-09-06) for the complete hotfix notes.\n\n---\n\n## BindHome 1.4.1\n'''
+          replace('README.md', release_intro, hotfix_intro, count=1)
+
+          replace(
+              'README.md',
+              'BindHome is distributed as a standard HACS integration repository.',
+              'BindHome is distributed as a standard HACS integration repository. Stable tagged releases use the validated `bindhome.zip` release asset selected by `hacs.json`, rather than relying only on GitHub\'s generic source archive.',
+          )
+
+          old_upgrade = '''For the 1.4.0 → 1.4.1 update, export a Registry backup, install 1.4.1 through HACS and restart Home Assistant. No new Registry migration is required. Then open an element detail and Advanced → Maintenance to verify the new surfaces. Back up the BindHome Registry before an important upgrade. See [Backup and restore](docs/backup-restore.md).'''
+          new_upgrade = '''For the 1.4.1 → 1.4.2 update, no Registry migration is required. Install 1.4.2 through HACS and restart Home Assistant; HACS will use the dedicated `bindhome.zip` asset. For the earlier 1.4.0 → 1.4.1 feature update, export a Registry backup first, then verify element detail and Advanced → Maintenance after restart. Back up the BindHome Registry before an important upgrade. See [Backup and restore](docs/backup-restore.md).'''
+          replace('README.md', old_upgrade, new_upgrade)
+          replace(
+              'README.md',
+              'Both 1.4.0 and 1.4.1 use schema v2;',
+              'Versions 1.4.0, 1.4.1 and 1.4.2 use schema v2;',
+          )
+
+          changelog_marker = '''## [Unreleased]\n\n---\n\n## [1.4.1] - 2026-09-06'''
+          changelog_hotfix = '''## [Unreleased]\n\n---\n\n## [1.4.2] - 2026-09-06\n\nDistribution reliability hotfix after an incomplete local HACS installation was observed with a zero-byte BindHome `manifest.json`. The published 1.4.1 tag itself contains a valid manifest; 1.4.2 hardens the delivery boundary so tagged installs use a package that BindHome builds and validates explicitly.\n\n**Minimum Home Assistant:** `2026.8.0`. Compatibility tested against `2026.8.0` and `2026.9.0`.\n\n### Fixed\n\n- Stable releases now publish a dedicated `bindhome.zip` integration asset and `hacs.json` explicitly selects that asset for tagged HACS installs instead of relying only on GitHub's generic source archive.\n- Release packaging fails closed if `manifest.json` is missing, empty or invalid, if the integration entry point or production panel bundle is missing/empty, or if the ZIP layout is not rooted at the BindHome integration as HACS expects.\n\n### Compatibility\n\n- No BindHome runtime behavior, Representation platform, Registry schema, backup format, CSV format or minimum Home Assistant version changes from 1.4.1. Registry schema remains v2, the backup envelope remains v1 and CSV remains v1.\n\n### Distribution\n\n- Version synchronized to `1.4.2` across Home Assistant, Python and frontend package metadata.\n- Pull-request Release Metadata validation builds and inspects the same integration package contract used by publication; the publisher attaches `bindhome.zip` plus its SHA-256 checksum to the exact green release commit and verifies the published target/assets.\n\n---\n\n## [1.4.1] - 2026-09-06'''
+          replace('CHANGELOG.md', changelog_marker, changelog_hotfix)
+          replace(
+              'CHANGELOG.md',
+              '[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.4.1...HEAD\n[1.4.1]:',
+              '[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.4.2...HEAD\n[1.4.2]: https://github.com/alessbarb/bindhome/compare/v1.4.1...v1.4.2\n[1.4.1]:',
+          )
+
+          distribution_old = '''HACS installs the runtime integration from `custom_components/bindhome`. Development-only frontend source, tests and Node.js tooling therefore live separately under the repository-root `frontend/` directory.'''
+          distribution_new = '''Stable HACS installs use a dedicated GitHub Release asset named `bindhome.zip`. `hacs.json` declares `zip_release: true` and `filename: bindhome.zip`, so tagged installations consume that validated artifact instead of relying only on GitHub's generic repository archive. The ZIP is built from `custom_components/bindhome` and is rooted at the integration itself: `manifest.json`, `__init__.py`, `panel/`, translations and the remaining runtime files live directly at archive root.\n\nDevelopment-only frontend source, tests and Node.js tooling remain separately under the repository-root `frontend/` directory.'''
+          replace('docs/release.md', distribution_old, distribution_new)
+
+          publication_old = '''5. extracts the release notes from the matching `CHANGELOG.md` section;\n6. creates the immutable `v<version>` tag and stable GitHub Release on that exact commit.'''
+          publication_new = '''5. extracts the release notes from the matching `CHANGELOG.md` section;\n6. builds `bindhome.zip` from the runtime integration and validates required files, JSON manifest content, non-empty panel bundle, safe paths and HACS-rooted ZIP layout;\n7. creates the immutable `v<version>` tag and stable GitHub Release on that exact commit with `bindhome.zip` and `bindhome.zip.sha256` attached;\n8. verifies that the published release targets the exact green commit and contains both required assets.'''
+          replace('docs/release.md', publication_old, publication_new)
+
+          checklist_old = '''8. Confirm `custom_components/bindhome` contains runtime files only and no local development workspace/tool artifacts.\n9. Merge the release PR into `main`.'''
+          checklist_new = '''8. Confirm `custom_components/bindhome` contains runtime files only and no local development workspace/tool artifacts.\n9. Build the release archive with `python scripts/build_release_package.py --output dist/bindhome.zip` and confirm `manifest.json`, `__init__.py` and `panel/static/bindhome-panel.js` are present and non-empty at the expected integration-root paths.\n10. Merge the release PR into `main`.'''
+          replace('docs/release.md', checklist_old, checklist_new)
+          replace('docs/release.md', '10. Let the publication workflow', '11. Let the publication workflow')
+          replace('docs/release.md', '11. Verify that the published release', '12. Verify that the published release')
+          replace('docs/release.md', '12. Install or upgrade the release', '13. Install or upgrade the release')
+          replace('docs/release.md', '13. Restart Home Assistant', '14. Restart Home Assistant')
+          replace('docs/release.md', '14. Keep the previous release', '15. Keep the previous release')
+
+          baseline_marker = '''## 1.4.1 release baseline\n'''
+          baseline_hotfix = '''## 1.4.2 distribution hotfix baseline\n\nVersion 1.4.2 intentionally preserves the 1.4.1 runtime and data contracts. Its release-specific change is the HACS distribution boundary: tagged installs must use the validated `bindhome.zip` asset, and publication must fail before tagging if the archive cannot be built or validated. Registry schema stays v2, backup format v1, CSV format v1 and the Home Assistant minimum stays at 2026.8.0 with compatibility coverage for 2026.8.0 and 2026.9.0.\n\nThe incident motivating this hotfix was a local installation whose `/config/custom_components/bindhome/manifest.json` had been truncated to zero bytes even though the immutable v1.4.1 tag contains a valid manifest. Release checks therefore validate not only repository metadata but the exact archive layout and critical file contents that HACS will extract.\n\nKeep all release metadata, README current-release guidance, changelog comparison links and HACS package metadata coherent. Validate every release PR on its final SHA, inspect comments/reviews/threads and mergeability, then merge with an expected head SHA. A new SHA invalidates previous validation evidence.\n\n## 1.4.1 release baseline\n'''
+          replace('docs/release.md', baseline_marker, baseline_hotfix, count=1)
+
+          replace(
+              'docs/backup-restore.md',
+              'Both 1.4.0 and 1.4.1 use backup format v1 and Registry schema v2.',
+              'Versions 1.4.0, 1.4.1 and 1.4.2 use backup format v1 and Registry schema v2.',
+          )
+          PY
+
+      - name: Remove one-shot workflow and commit
+        run: |
+          rm .github/workflows/hotfix-docs-bootstrap.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md CHANGELOG.md docs/release.md docs/backup-restore.md .github/workflows/hotfix-docs-bootstrap.yml
+          git diff --cached --exit-code && exit 0
+          git commit -m "docs: prepare the 1.4.2 distribution hotfix"
+          git push origin HEAD:hotfix/release-zip-1.4.2
