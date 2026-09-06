@@ -27,6 +27,8 @@ export class BindHomeHealthTool extends LitElement {
     _recovery: { state: true },
     _drift: { state: true },
     _referenceAudit: { state: true },
+    _adoptionStatus: { state: true },
+    _confirmRevertAll: { state: true },
     _loading: { state: true },
     _error: { state: true },
   };
@@ -42,6 +44,8 @@ export class BindHomeHealthTool extends LitElement {
     this._recovery = null;
     this._drift = [];
     this._referenceAudit = null;
+    this._adoptionStatus = null;
+    this._confirmRevertAll = false;
     this._loading = false;
     this._error = null;
   }
@@ -82,6 +86,9 @@ export class BindHomeHealthTool extends LitElement {
       .reference { padding: 8px 10px; border-radius: 8px; background: var(--secondary-background-color); }
       .reference code { overflow-wrap: anywhere; }
       .action { flex: none; border: 0; border-radius: 8px; padding: 9px 12px; background: var(--primary-color); color: var(--text-primary-color, white); }
+      .secondary-action { flex: none; border: 1px solid var(--divider-color); border-radius: 8px; padding: 9px 12px; background: transparent; color: var(--primary-text-color); }
+      .confirm { padding: 12px; border: 1px solid var(--warning-color); border-radius: 8px; margin-top: 10px; }
+      .confirm-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
       .ok { color: var(--success-color, var(--primary-color)); }
       .warning { color: var(--warning-color); }
       .error { color: var(--error-color); }
@@ -93,7 +100,7 @@ export class BindHomeHealthTool extends LitElement {
         :host { padding: 0 12px; }
         .summary { grid-template-columns: 1fr; }
         .item { align-items: flex-start; flex-direction: column; }
-        .action { width: 100%; }
+        .action, .secondary-action { width: 100%; }
       }
     `,
   ];
@@ -142,13 +149,15 @@ export class BindHomeHealthTool extends LitElement {
     this._error = null;
     try {
       const api = createBindHomeApi(this.hass);
-      const [recovery, discovery, referenceAudit] = await Promise.all([
+      const [recovery, discovery, referenceAudit, adoptionStatus] = await Promise.all([
         api.getBackupRecoveryStatus(),
         api.discoverImport(),
         api.auditDirectReferences(),
+        api.getAdoptionStatus(),
       ]);
       this._recovery = recovery;
       this._referenceAudit = referenceAudit;
+      this._adoptionStatus = adoptionStatus;
       const grouped = new Map();
       for (const proposal of discovery?.proposals ?? []) {
         if (proposal?.duplicate_status === DOCUMENTED_IMPORT_STATUS) continue;
@@ -159,6 +168,20 @@ export class BindHomeHealthTool extends LitElement {
       this._drift = [...grouped.entries()]
         .map(([areaId, count]) => ({ areaId, count }))
         .sort((a, b) => this._areaName(a.areaId).localeCompare(this._areaName(b.areaId)));
+    } catch (error) {
+      this._error = error instanceof Error ? error.message : String(error);
+    } finally {
+      this._loading = false;
+    }
+  }
+
+  async _revertAllAdoptions() {
+    if (!this.hass || this._loading) return;
+    this._loading = true;
+    this._error = null;
+    try {
+      this._adoptionStatus = await createBindHomeApi(this.hass).revertAllHardwareAdoptions();
+      this._confirmRevertAll = false;
     } catch (error) {
       this._error = error instanceof Error ? error.message : String(error);
     } finally {
@@ -178,6 +201,36 @@ export class BindHomeHealthTool extends LitElement {
             <button class="action" @click=${() => this._openAsset(record.asset_id)}>${this.t("health.open_asset")}</button>
           </div>`)
         : html`<p class="empty">${this.t("health.none")}</p>`}
+    </div>`;
+  }
+
+  _renderSurfaceSummary() {
+    const summary = this._adoptionStatus?.summary ?? {};
+    return html`<div class="section">
+      <h3>${this.t("health.surface_summary")}</h3>
+      <p class="muted">${this.t("health.surface_summary_intro")}</p>
+      <div class="summary">
+        <div class="metric"><strong>${summary.logical_entities ?? 0}</strong><span>${this.t("health.logical_entities")}</span></div>
+        <div class="metric"><strong>${summary.adopted_hardware ?? 0}</strong><span>${this.t("health.adopted_hardware")}</span></div>
+        <div class="metric"><strong>${summary.bound_hardware_visible ?? 0}</strong><span>${this.t("health.bound_hardware_visible")}</span></div>
+        <div class="metric"><strong>${summary.direct_reference_debt ?? 0}</strong><span>${this.t("health.direct_reference_debt")}</span></div>
+      </div>
+      ${summary.incomplete_reference_sources
+        ? html`<p class="warning">${this.t("health.reference_sources_incomplete", { count: summary.incomplete_reference_sources })}</p>`
+        : nothing}
+      ${summary.adopted_hardware
+        ? html`<button class="secondary-action" ?disabled=${this._loading} @click=${() => (this._confirmRevertAll = true)}>${this.t("health.revert_all_adoptions")}</button>`
+        : nothing}
+      ${this._confirmRevertAll
+        ? html`<div class="confirm">
+            <strong>${this.t("health.revert_all_title")}</strong>
+            <p>${this.t("health.revert_all_confirm")}</p>
+            <div class="confirm-actions">
+              <button class="action" ?disabled=${this._loading} @click=${() => this._revertAllAdoptions()}>${this.t("common.confirm")}</button>
+              <button class="secondary-action" ?disabled=${this._loading} @click=${() => (this._confirmRevertAll = false)}>${this.t("common.cancel")}</button>
+            </div>
+          </div>`
+        : nothing}
     </div>`;
   }
 
@@ -240,6 +293,8 @@ export class BindHomeHealthTool extends LitElement {
         ${Object.entries(byStatus).map(([status, count]) => html`<span class="pill">${this.t(`health.status.${status}`)}: ${count}</span>`)}
       </div>
       <p class=${actionableCount ? "warning" : "ok"}>${this.t(actionableCount ? "health.actionable_count" : "health.all_clear", { count: actionableCount })}</p>
+
+      ${this._renderSurfaceSummary()}
 
       ${this._recovery?.recovery_required
         ? html`<div class="section">
