@@ -41,17 +41,39 @@ test("health surface uses backend binding summary and keeps transient unavailabi
   const element = healthElement();
   element._recovery = { recovery_required: false };
   element._drift = [];
+  element._referenceAudit = {
+    summary: { references: 1, incomplete_sources: 0 },
+    groups: [
+      {
+        entity_id: "light.kitchen",
+        reference_count: 1,
+        references: [
+          {
+            consumer_type: "automation",
+            consumer_id: "automation.arrival",
+            consumer_name: "Arrival",
+            path: "automation.arrival",
+            classification: "manual_review",
+            replacement_entity_id: "light.bindhome_a1",
+          },
+        ],
+      },
+    ],
+  };
   document.body.append(element);
   await element.updateComplete;
   const text = element.shadowRoot.textContent;
   assert.match(text, /health.bindings_total/);
   assert.match(text, /health.status.runtime_unavailable/);
+  assert.match(text, /health.direct_reference_debt/);
+  assert.match(text, /automation\.arrival/);
+  assert.match(text, /health.reference_manual/);
   assert.equal(element._actionableBindings().length, 1);
   assert.equal(element._staleAreas().length, 1);
   element.remove();
 });
 
-test("supplemental health reuses recovery and assisted-import discovery", async () => {
+test("supplemental health reuses recovery, import discovery and reference audit", async () => {
   const calls = [];
   const element = healthElement();
   element.hass = {
@@ -65,13 +87,23 @@ test("supplemental health reuses recovery and assisted-import discovery", async 
           { duplicate_status: "already_bound", asset: { area_id: "kitchen" }, source: { entity_ids: ["light.bound"] }, bindings: [] },
         ],
       };
+      if (message.type === "bindhome/references/audit") return {
+        summary: { references: 2, incomplete_sources: 1 },
+        groups: [],
+        sources: [{ source: "dashboard", status: "unreadable", consumer_id: "wall" }],
+      };
       throw new Error(`Unexpected ${message.type}`);
     },
   };
   await element._refreshSupplementalHealth();
   assert.equal(element._recovery.recovery_required, true);
   assert.deepEqual(element._drift, [{ areaId: "kitchen", count: 2 }]);
-  assert.deepEqual(calls.sort(), ["bindhome/backup/recovery_status", "bindhome/import/discover"]);
+  assert.equal(element._referenceAudit.summary.references, 2);
+  assert.deepEqual(calls.sort(), [
+    "bindhome/backup/recovery_status",
+    "bindhome/import/discover",
+    "bindhome/references/audit",
+  ]);
 });
 
 test("health actions route to existing remediation workflows", async () => {

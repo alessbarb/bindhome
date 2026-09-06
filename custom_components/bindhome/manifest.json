@@ -2,6 +2,7 @@
   "domain": "bindhome",
   "name": "BindHome",
   "after_dependencies": [
+    "lovelace",
     "panel_custom"
   ],
   "codeowners": [
