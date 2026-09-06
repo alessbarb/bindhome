@@ -30,6 +30,10 @@ from custom_components.bindhome.import_websocket import (
     ws_import_commit,
     ws_import_discover,
 )
+from custom_components.bindhome.replacement_websocket import (
+    ws_replacement_candidates,
+    ws_replacement_commit,
+)
 from custom_components.bindhome.websocket import (
     ws_asset_create,
     ws_asset_create_bulk,
@@ -109,6 +113,7 @@ def test_every_bindhome_websocket_has_an_explicit_access_class() -> None:
         ws_csv_validate,
         ws_asset_delete_impact,
         ws_import_discover,
+        ws_replacement_candidates,
     }
     admin_writes = {
         ws_asset_create,
@@ -125,6 +130,7 @@ def test_every_bindhome_websocket_has_an_explicit_access_class() -> None:
         ws_csv_import,
         ws_asset_delete_with_dependencies,
         ws_import_commit,
+        ws_replacement_commit,
     }
 
     assert all(
@@ -136,4 +142,4 @@ def test_every_bindhome_websocket_has_an_explicit_access_class() -> None:
     assert all(
         access_level(handler) is AccessLevel.ADMIN_WRITE for handler in admin_writes
     )
-    assert len(household | admin_reads | admin_writes) == 29
+    assert len(household | admin_reads | admin_writes) == 31

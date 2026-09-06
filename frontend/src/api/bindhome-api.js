@@ -111,6 +111,32 @@ export function createBindHomeApi(hass) {
       });
     },
 
+    async getReplacementCandidates({ assetId, capability, role = "primary" }) {
+      const response = await hass.callWS({
+        type: "bindhome/replacement/candidates",
+        asset_id: assetId,
+        capability,
+        role,
+      });
+      acceptRevision(state, response?.revision);
+      return response;
+    },
+
+    async commitReplacement({ assetId, capability, entityId, revision, role = "primary" }) {
+      return mutateAtRevision(
+        hass,
+        state,
+        {
+          type: "bindhome/replacement/commit",
+          asset_id: assetId,
+          capability,
+          entity_id: entityId,
+          role,
+        },
+        revision,
+      );
+    },
+
     async deleteBinding(bindingId) {
       return mutate(hass, state, {
         type: "bindhome/bindings/delete",

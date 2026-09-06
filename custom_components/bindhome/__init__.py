@@ -19,6 +19,7 @@ from .integrity_repairs import IntegrityRepairTracker
 from .manager import BindHomeManager
 from .panel import async_register_panel, async_unregister_panel
 from .recovery import async_clear_recovery_state, async_set_recovery_state
+from .replacement_websocket import async_register_replacement_websocket_commands
 from .representation import implemented_platforms
 from .services import async_register_services
 from .store import BindHomeStoreError
@@ -38,6 +39,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async_register_csv_websocket_commands(hass)
     async_register_import_websocket_commands(hass)
     async_register_deletion_websocket_commands(hass)
+    async_register_replacement_websocket_commands(hass)
     return True
 
 

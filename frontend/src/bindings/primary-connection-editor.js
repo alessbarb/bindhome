@@ -25,6 +25,8 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
     refreshBindingData: { attribute: false }, _editing: { state: true }, _search: { state: true },
     _selectedEntityId: { state: true }, _saving: { state: true }, _error: { state: true },
     _confirmDisconnect: { state: true }, _selectionMode: { state: true },
+    _replacementPlan: { state: true }, _replacementLoading: { state: true },
+    _confirmReplacement: { state: true }, _replacementSuccess: { state: true },
   };
 
   constructor() {
@@ -47,6 +49,10 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
     this._error = null;
     this._confirmDisconnect = false;
     this._selectionMode = "search";
+    this._replacementPlan = null;
+    this._replacementLoading = false;
+    this._confirmReplacement = false;
+    this._replacementSuccess = null;
     this._bindingIdentity = null;
     this._operation = 0;
     this._committedDisconnectId = null;
@@ -75,7 +81,33 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
     .error { color: var(--error-color); line-height: 19px; }
   `;
 
+  _replacementMode() {
+    return Boolean(this.status?.binding && this.status?.status !== "binding_not_found");
+  }
+
+  _replacementCandidates() {
+    if (!this._replacementPlan) return null;
+    const areas = new Map((this.areas ?? []).map((area) => [area.area_id, area.name]));
+    const devices = new Map((this.deviceRegistry ?? []).map((device) => [device.id, device.name_by_user || device.name]));
+    return (this._replacementPlan.candidates ?? []).map((candidate) => ({
+      entityId: candidate.entity_id,
+      entityRegistryId: candidate.entity_registry_id,
+      name: candidate.name,
+      domain: candidate.domain,
+      areaId: candidate.area_id,
+      areaName: areas.get(candidate.area_id) ?? null,
+      deviceId: candidate.device_id,
+      deviceName: devices.get(candidate.device_id) ?? null,
+      state: candidate.state,
+      disabled: false,
+      hidden: false,
+      reasons: candidate.reasons ?? [],
+    }));
+  }
+
   _candidates() {
+    const replacements = this._replacementCandidates();
+    if (replacements) return replacements;
     return normalizeEntityCandidates({
       entityRegistry: this.entityRegistry,
       deviceRegistry: this.deviceRegistry,
@@ -96,6 +128,10 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
       this._confirmDisconnect = false;
       this._saving = false;
       this._selectionMode = "search";
+      this._replacementPlan = null;
+      this._replacementLoading = false;
+      this._confirmReplacement = false;
+      this._replacementSuccess = null;
       this._committedDisconnectId = null;
       this._operation += 1;
     }
@@ -108,7 +144,12 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
 
   _currentCandidate() {
     const entityId = this._currentEntityId();
-    return this._candidates().find((candidate) => candidate.entityId === entityId) ?? null;
+    return normalizeEntityCandidates({
+      entityRegistry: this.entityRegistry,
+      deviceRegistry: this.deviceRegistry,
+      states: this.hass?.states,
+      areas: this.areas,
+    }).find((candidate) => candidate.entityId === entityId) ?? null;
   }
 
   _runtimeLabel(candidate) {
@@ -147,14 +188,34 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
     ].filter(Boolean).join(" · ");
   }
 
-  _beginEdit() {
-    if (this._saving) return;
+  async _beginEdit() {
+    if (this._saving || this._replacementLoading) return;
     this._editing = true;
-    this._selectedEntityId = this._currentEntityId();
+    this._selectedEntityId = this._replacementMode() ? null : this._currentEntityId();
     this._search = "";
     this._error = null;
     this._confirmDisconnect = false;
+    this._confirmReplacement = false;
+    this._replacementSuccess = null;
     this._selectionMode = "search";
+
+    if (!this._replacementMode()) return;
+    const operation = ++this._operation;
+    this._replacementLoading = true;
+    try {
+      const plan = await createBindHomeApi(this.hass).getReplacementCandidates({
+        assetId: this.asset.id,
+        capability: this.capability,
+        role: "primary",
+      });
+      if (operation !== this._operation) return;
+      this._replacementPlan = plan;
+    } catch (error) {
+      if (operation !== this._operation) return;
+      this._error = normalizeWsError(error, this.t("connection.replacement_load_error")).message;
+    } finally {
+      if (operation === this._operation) this._replacementLoading = false;
+    }
   }
 
   _cancelEdit() {
@@ -164,6 +225,9 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
     this._search = "";
     this._error = null;
     this._confirmDisconnect = false;
+    this._confirmReplacement = false;
+    this._replacementPlan = null;
+    this._replacementLoading = false;
     this._selectionMode = "search";
   }
 
@@ -171,31 +235,56 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
     if (this._saving) return;
     this._selectedEntityId = entityId;
     this._error = null;
+    this._confirmReplacement = false;
     this._selectionMode = "selected";
   }
 
   _changeSelection() {
     if (this._saving) return;
     this._selectionMode = "search";
+    this._confirmReplacement = false;
   }
 
   async _save() {
     if (this._saving || !this._selectedEntityId || !this.asset) return;
+    if (this._replacementMode() && !this._confirmReplacement) {
+      this._confirmReplacement = true;
+      return;
+    }
     this._saving = true;
     this._error = null;
     const operation = ++this._operation;
     const selectedEntityId = this._selectedEntityId;
     try {
-      await createBindHomeApi(this.hass).setBinding({
-        assetId: this.asset.id,
-        capability: this.capability,
-        entityId: selectedEntityId,
-        role: "primary",
-      });
+      let response;
+      if (this._replacementMode()) {
+        if (!this._replacementPlan || !Number.isInteger(this._replacementPlan.revision)) {
+          throw new Error(this.t("connection.replacement_load_error"));
+        }
+        response = await createBindHomeApi(this.hass).commitReplacement({
+          assetId: this.asset.id,
+          capability: this.capability,
+          entityId: selectedEntityId,
+          revision: this._replacementPlan.revision,
+          role: "primary",
+        });
+      } else {
+        response = await createBindHomeApi(this.hass).setBinding({
+          assetId: this.asset.id,
+          capability: this.capability,
+          entityId: selectedEntityId,
+          role: "primary",
+        });
+      }
       if (operation !== this._operation) return;
+      this._replacementSuccess = this._replacementMode()
+        ? response?.resolution?.entity_id ?? selectedEntityId
+        : null;
       this._editing = false;
       this._selectedEntityId = null;
       this._search = "";
+      this._confirmReplacement = false;
+      this._replacementPlan = null;
       try {
         if (this.refreshBindingData) await this.refreshBindingData();
       } catch {
@@ -251,7 +340,7 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
       ${candidate?.areaName || candidate?.deviceName ? html`<div class="summary">${[candidate.areaName, candidate.deviceName].filter(Boolean).join(" · ")}</div>` : nothing}
       <div class="summary">${this._configurationLabel()} · ${this.status?.status === "entity_not_found" ? this.t("connection.stale") : this._runtimeLabel(candidate)}</div>
       <div class="actions">
-        <button class="primary" @click=${this._beginEdit}>${this.t("connection.change")}</button>
+        <button class="primary" @click=${this._beginEdit}>${this.t("connection.replace_hardware")}</button>
         <button class="danger" @click=${() => (this._confirmDisconnect = true)} ?disabled=${this._saving}>${this.t("connection.disconnect")}</button>
       </div>
       ${this._confirmDisconnect ? html`<div class="confirm" role="alertdialog" aria-label=${this.t("connection.confirm_disconnect")}><span>${this.t("connection.confirm_disconnect")}</span><button @click=${() => (this._confirmDisconnect = false)} ?disabled=${this._saving}>${this.t("editor.cancel")}</button><button class="danger" @click=${this._disconnect} ?disabled=${this._saving}>${this.t("connection.disconnect")}</button></div>` : nothing}
@@ -259,6 +348,9 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
   }
 
   _renderEditor() {
+    if (this._replacementLoading) {
+      return html`<div class="picker"><div class="muted">${this.t("connection.replacement_loading")}</div><div class="actions"><button @click=${this._cancelEdit}>${this.t("editor.cancel")}</button></div></div>`;
+    }
     const allMatches = searchEntityCandidates(this._candidates(), this._search, this.asset?.area_id);
     const limitedCandidates = allMatches.slice(0, this._search ? RESULT_LIMIT : SUGGESTION_LIMIT);
     const currentEntityId = this._currentEntityId();
@@ -273,14 +365,22 @@ export class BindHomePrimaryConnectionEditor extends LitElement {
           ${limitedCandidates.length ? limitedCandidates.map((candidate) => html`<button class="candidate ${candidate.entityId === this._selectedEntityId ? "selected" : ""}" aria-pressed=${candidate.entityId === this._selectedEntityId} @click=${() => this._select(candidate.entityId)}><span class="entity">${this._displayName(candidate, candidate.entityId)}</span><span class="candidate-meta">${this._candidateMeta(candidate)}${candidate.disabled ? ` · ${this.t("connection.disabled")}` : ""}${candidate.hidden ? ` · ${this.t("connection.hidden")}` : ""}</span></button>`) : html`<div class="muted">${this.t("connection.no_matches")}</div>`}
           ${allMatches.length > limitedCandidates.length ? html`<div class="muted result-count">${this.t("connection.showing_results", { shown: limitedCandidates.length, total: allMatches.length })}</div>` : nothing}
         `}
-        <div class="actions"><button @click=${this._cancelEdit} ?disabled=${this._saving}>${this.t("editor.cancel")}</button><button class="primary" @click=${this._save} ?disabled=${this._saving || !this._selectedEntityId || unchanged}>${this._saving ? this.t("connection.saving") : this.t("common.save")}</button></div>
+        ${this._confirmReplacement && selectedCandidate ? html`
+          <div class="current" role="alertdialog" aria-label=${this.t("connection.confirm_replacement")}>
+            <strong>${this.t("connection.confirm_replacement")}</strong>
+            <div class="summary">${this.t("connection.current")}: ${this._displayName(this._currentCandidate(), currentEntityId)}</div>
+            <div class="summary">${this.t("connection.replacement_new")}: ${this._displayName(selectedCandidate, this._selectedEntityId)}</div>
+            <div class="summary">${this.t("connection.replacement_identity_preserved")}</div>
+          </div>
+        ` : nothing}
+        <div class="actions"><button @click=${this._cancelEdit} ?disabled=${this._saving}>${this.t("editor.cancel")}</button><button class="primary" @click=${this._save} ?disabled=${this._saving || !this._selectedEntityId || unchanged}>${this._saving ? this.t("connection.saving") : this._replacementMode() ? (this._confirmReplacement ? this.t("connection.confirm_replacement_action") : this.t("connection.review_replacement")) : this.t("common.save")}</button></div>
       </div>
     `;
   }
 
   render() {
     if (!this.asset) return nothing;
-    return html`<article class="row"><strong>${capabilityLabel(this.t, this.capability)}</strong>${this._editing ? this._renderEditor() : this._renderSummary()}${this._error ? html`<div class="error" role="alert">${this._error}</div>` : nothing}</article>`;
+    return html`<article class="row"><strong>${capabilityLabel(this.t, this.capability)}</strong>${this._replacementSuccess ? html`<div class="summary" role="status">${this.t("connection.replacement_success", { entity: this._replacementSuccess })}</div>` : nothing}${this._editing ? this._renderEditor() : this._renderSummary()}${this._error ? html`<div class="error" role="alert">${this._error}</div>` : nothing}</article>`;
   }
 }
 

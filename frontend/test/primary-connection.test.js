@@ -89,36 +89,46 @@ test("primary connection Save uses one primary Binding request and narrow refres
   assert.equal(editor._editing, false);
 });
 
-test("changing a primary connection replaces it with one set request", async () => {
+test("changing a primary connection uses guided replacement and explicit confirmation", async () => {
   const calls = [];
-  const editor = createEditor(async (message) => { calls.push(message); return {}; });
+  const editor = createEditor(async (message) => {
+    calls.push(message);
+    if (message.type === "bindhome/replacement/candidates") {
+      return {
+        revision: 4,
+        candidates: [{ entity_id: "light.new", name: "New light", domain: "light", area_id: "living", state: "off" }],
+      };
+    }
+    if (message.type === "bindhome/replacement/commit") {
+      return { revision: 5, resolution: { entity_id: "light.new" } };
+    }
+    throw new Error(`Unexpected ${message.type}`);
+  });
   editor.status = {
     status: "resolved",
     entity_id: "switch.relay",
     binding: { id: "binding-old", role: "primary", entity_id: "switch.relay" },
   };
-  editor.entityRegistry = [
-    { entity_id: "switch.relay", name: "Relay" },
-    { entity_id: "light.new", name: "New light" },
-  ];
   await settle(editor);
-  editor._beginEdit();
+  await editor._beginEdit();
   editor._select("light.new");
   await editor._save();
-  assert.deepEqual(calls, [{
-    type: "bindhome/bindings/set",
-    asset_id: "asset-a",
-    capability: "on_off",
-    entity_id: "light.new",
-    role: "primary",
-  }]);
+  assert.deepEqual(calls.map((call) => call.type), ["bindhome/replacement/candidates"]);
+  assert.equal(editor._confirmReplacement, true);
+  await editor._save();
+  assert.deepEqual(calls, [
+    { type: "bindhome/replacement/candidates", asset_id: "asset-a", capability: "on_off", role: "primary" },
+    { type: "bindhome/replacement/commit", asset_id: "asset-a", capability: "on_off", entity_id: "light.new", role: "primary", based_on_revision: 4 },
+  ]);
 });
 
-test("primary connection Cancel does not write and Disconnect uses only binding id", async () => {
+test("primary connection Cancel performs no mutation and Disconnect uses only binding id", async () => {
   const calls = [];
   const editor = createEditor(async (message) => {
     calls.push(message);
-    return { deleted: true };
+    if (message.type === "bindhome/replacement/candidates") return { candidates: [] };
+    if (message.type === "bindhome/bindings/delete") return { deleted: true };
+    throw new Error(`Unexpected ${message.type}`);
   });
   editor.status = {
     status: "resolved",
@@ -128,12 +138,12 @@ test("primary connection Cancel does not write and Disconnect uses only binding 
   let refreshes = 0;
   editor.refreshBindingData = async () => { refreshes += 1; };
   await settle(editor);
-  editor._beginEdit();
+  await editor._beginEdit();
   editor._cancelEdit();
-  assert.deepEqual(calls, []);
+  assert.deepEqual(calls.map((call) => call.type), ["bindhome/replacement/candidates"]);
   editor._confirmDisconnect = true;
   await editor._disconnect();
-  assert.deepEqual(calls, [{ type: "bindhome/bindings/delete", binding_id: "binding-1" }]);
+  assert.deepEqual(calls.at(-1), { type: "bindhome/bindings/delete", binding_id: "binding-1" });
   assert.equal(refreshes, 1);
 });
 
@@ -356,25 +366,30 @@ test("rendered picker consumes mixed candidates without filtering", async () => 
   assert.match(editor.shadowRoot.textContent, /connection.no_matches/);
 });
 
-test("Connect and Change buttons open the rendered picker", async () => {
+test("Connect and Replace hardware buttons open the appropriate picker", async () => {
   const unbound = createEditor(async () => ({}));
   await settle(unbound);
   unbound.shadowRoot.querySelector("button.primary").click();
   await settle(unbound);
   assert.ok(unbound.shadowRoot.querySelector("input"));
 
-  const bound = createEditor(async () => ({}));
+  const bound = createEditor(async (message) => {
+    if (message.type === "bindhome/replacement/candidates") {
+      return { revision: 2, candidates: [{ entity_id: "switch.new", name: "New relay", domain: "switch", area_id: "living" }] };
+    }
+    return {};
+  });
   bound.status = { status: "resolved", entity_id: "switch.relay", binding: { id: "binding-1", role: "primary", entity_id: "switch.relay" } };
   await settle(bound);
-  const change = [...bound.shadowRoot.querySelectorAll("button")].find((button) => button.textContent.includes("connection.change"));
-  assert.ok(change);
-  change.click();
+  const replace = [...bound.shadowRoot.querySelectorAll("button")].find((button) => button.textContent.includes("connection.replace_hardware"));
+  assert.ok(replace);
+  replace.click();
   await settle(bound);
-  assert.equal(bound._selectedEntityId, "switch.relay");
+  assert.equal(bound._selectedEntityId, null);
   assert.ok(bound.shadowRoot.querySelector("input"));
 });
 
-test("stale summaries retain recovery actions", async () => {
+test("stale summaries retain replacement and disconnect recovery actions", async () => {
   const editor = createEditor(async () => ({}));
   editor.status = { status: "entity_not_found", config_valid: false, entity_id: "switch.stale", binding: { id: "binding-stale", role: "primary", entity_id: "switch.stale" } };
   await settle(editor);
@@ -382,7 +397,7 @@ test("stale summaries retain recovery actions", async () => {
   assert.match(text, /switch.stale/);
   assert.match(text, /connection.stale/);
   const buttons = [...editor.shadowRoot.querySelectorAll("button")];
-  assert.ok(buttons.find((button) => button.textContent.includes("connection.change"))?.disabled === false);
+  assert.ok(buttons.find((button) => button.textContent.includes("connection.replace_hardware"))?.disabled === false);
   assert.ok(buttons.find((button) => button.textContent.includes("connection.disconnect"))?.disabled === false);
 });
 
@@ -454,76 +469,79 @@ test("picker is search-first, bounded, and collapses results after selection", a
   assert.ok(editor.shadowRoot.querySelectorAll("button.candidate").length > 0);
 });
 
-test("selected draft remains visible when a same-identity catalogue refresh removes it", async () => {
+test("replacement draft remains visible when the local HA catalogue refreshes", async () => {
   const calls = [];
-  const editor = createEditor(async (message) => { calls.push(message); return {}; });
+  const editor = createEditor(async (message) => {
+    calls.push(message);
+    if (message.type === "bindhome/replacement/candidates") {
+      return { revision: 8, candidates: [{ entity_id: "switch.candidate", name: "Backend A", domain: "switch" }] };
+    }
+    return {};
+  });
   editor.status = { status: "resolved", entity_id: "switch.persisted", binding: { id: "binding-b", role: "primary", entity_id: "switch.persisted" } };
   editor.entityRegistry = [
     { entity_id: "switch.persisted", name: "Backend B" },
     { entity_id: "switch.candidate", name: "Backend A" },
   ];
   await settle(editor);
-  editor._beginEdit();
+  await editor._beginEdit();
   editor._select("switch.candidate");
   await settle(editor);
-  assert.match(editor.shadowRoot.textContent, /switch.candidate/);
   editor.entityRegistry = [{ entity_id: "switch.persisted", name: "Backend B" }];
   await settle(editor);
   assert.equal(editor._selectionMode, "selected");
   assert.equal(editor._selectedEntityId, "switch.candidate");
   assert.match(editor.shadowRoot.textContent, /Backend B/);
-  assert.match(editor.shadowRoot.textContent, /switch.candidate/);
-  assert.ok([...editor.shadowRoot.querySelectorAll("button")].some((button) => button.textContent.includes("connection.change_selection")));
-  assert.ok([...editor.shadowRoot.querySelectorAll("button")].some((button) => button.textContent.includes("editor.cancel")));
-  assert.equal(calls.length, 0);
-  editor._changeSelection();
-  await settle(editor);
-  assert.ok(editor.shadowRoot.querySelectorAll("button.candidate").length > 0);
+  assert.match(editor.shadowRoot.textContent, /Backend A/);
+  assert.deepEqual(calls.map((call) => call.type), ["bindhome/replacement/candidates"]);
 });
 
-test("selecting the persisted entity again disables Save", async () => {
-  const editor = createEditor(async () => ({}));
+test("replacement candidates never offer the persisted target again", async () => {
+  const editor = createEditor(async (message) => {
+    if (message.type === "bindhome/replacement/candidates") {
+      return { revision: 3, candidates: [{ entity_id: "switch.other", name: "Backend A", domain: "switch" }] };
+    }
+    return {};
+  });
   editor.status = { status: "resolved", entity_id: "switch.persisted", binding: { id: "binding-b", role: "primary", entity_id: "switch.persisted" } };
   editor.entityRegistry = [
     { entity_id: "switch.persisted", name: "Backend B" },
     { entity_id: "switch.other", name: "Backend A" },
   ];
   await settle(editor);
-  editor._beginEdit();
+  await editor._beginEdit();
   await settle(editor);
-  const rows = () => [...editor.shadowRoot.querySelectorAll("button.candidate")];
-  rows().find((button) => button.textContent.includes("Backend A")).click();
-  await settle(editor);
-  assert.equal([...editor.shadowRoot.querySelectorAll("button")].find((button) => button.textContent.includes("common.save")).disabled, false);
-  editor.shadowRoot.querySelector("button:not(.primary)").click();
-  await settle(editor);
-  rows().find((button) => button.textContent.includes("Backend B")).click();
-  await settle(editor);
-  assert.equal(editor._selectedEntityId, "switch.persisted");
-  assert.equal([...editor.shadowRoot.querySelectorAll("button")].find((button) => button.textContent.includes("common.save")).disabled, true);
+  const rows = [...editor.shadowRoot.querySelectorAll("button.candidate")];
+  assert.equal(rows.some((button) => button.textContent.includes("Backend B")), false);
+  assert.equal(rows.some((button) => button.textContent.includes("Backend A")), true);
 });
 
-test("only the final B-to-A-to-C selection is submitted", async () => {
+test("only the final reviewed replacement target is committed", async () => {
   const calls = [];
-  const editor = createEditor(async (message) => { calls.push(message); return {}; });
+  const editor = createEditor(async (message) => {
+    calls.push(message);
+    if (message.type === "bindhome/replacement/candidates") {
+      return {
+        revision: 9,
+        candidates: [
+          { entity_id: "switch.a", name: "Backend A", domain: "switch" },
+          { entity_id: "switch.c", name: "Backend C", domain: "switch" },
+        ],
+      };
+    }
+    if (message.type === "bindhome/replacement/commit") return { revision: 10, resolution: { entity_id: message.entity_id } };
+    return {};
+  });
   editor.status = { status: "resolved", entity_id: "switch.persisted", binding: { id: "binding-b", role: "primary", entity_id: "switch.persisted" } };
-  editor.entityRegistry = [
-    { entity_id: "switch.persisted", name: "Backend B" },
-    { entity_id: "switch.a", name: "Backend A" },
-    { entity_id: "switch.c", name: "Backend C" },
-  ];
   await settle(editor);
-  editor._beginEdit();
-  await settle(editor);
-  const rows = () => [...editor.shadowRoot.querySelectorAll("button.candidate")];
-  rows().find((button) => button.textContent.includes("Backend A")).click();
-  await settle(editor);
-  editor.shadowRoot.querySelector("button:not(.primary)").click();
-  await settle(editor);
-  rows().find((button) => button.textContent.includes("Backend C")).click();
-  await settle(editor);
+  await editor._beginEdit();
+  editor._select("switch.a");
+  editor._changeSelection();
+  editor._select("switch.c");
   await editor._save();
-  assert.deepEqual(calls, [{ type: "bindhome/bindings/set", asset_id: "asset-a", capability: "on_off", entity_id: "switch.c", role: "primary" }]);
+  assert.equal(editor._confirmReplacement, true);
+  await editor._save();
+  assert.deepEqual(calls.at(-1), { type: "bindhome/replacement/commit", asset_id: "asset-a", capability: "on_off", entity_id: "switch.c", role: "primary", based_on_revision: 9 });
 });
 
 test("result truncation is omitted when all matches fit", async () => {
@@ -542,14 +560,20 @@ test("result truncation is omitted when all matches fit", async () => {
   assert.doesNotMatch(editor.shadowRoot.textContent, /Showing 10 of 10/);
 });
 
-test("Save is disabled for an unchanged persisted selection", async () => {
-  const editor = createEditor(async () => ({}));
+test("replacement review is disabled until a new target is selected", async () => {
+  const editor = createEditor(async (message) => {
+    if (message.type === "bindhome/replacement/candidates") {
+      return { revision: 6, candidates: [{ entity_id: "switch.new", name: "New relay", domain: "switch" }] };
+    }
+    return {};
+  });
   editor.status = { status: "resolved", entity_id: "switch.relay", binding: { id: "binding-1", role: "primary", entity_id: "switch.relay" } };
   await settle(editor);
-  editor._beginEdit();
+  await editor._beginEdit();
   await settle(editor);
-  const save = [...editor.shadowRoot.querySelectorAll("button")].find((button) => button.textContent.includes("common.save"));
-  assert.equal(save.disabled, true);
+  const review = [...editor.shadowRoot.querySelectorAll("button")].find((button) => button.textContent.includes("connection.review_replacement"));
+  assert.ok(review);
+  assert.equal(review.disabled, true);
 });
 
 test("picker Cancel uses the established Spanish translation key", async () => {
