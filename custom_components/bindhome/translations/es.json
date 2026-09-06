@@ -666,14 +666,6 @@
     "panel_representation_removed": "Luz lógica eliminada.",
     "panel_representation_error": "No se ha podido actualizar la luz lógica.",
     "panel_representation_conflict": "El modelo ha cambiado desde tu revisión. Actualiza y vuelve a confirmar.",
-    "panel_representation_saved_refresh_failed": "El cambio se ha guardado, pero no se ha podido actualizar la vista. Actualiza el estado antes de hacer otro cambio.",
-    "panel_health_direct_reference_debt": "Deuda de referencias directas",
-    "panel_health_direct_references": "Referencias directas al hardware vinculado",
-    "panel_health_direct_references_intro": "Auditoría de solo lectura de automatizaciones, scripts, escenas y paneles que todavía apuntan directamente a entidades físicas de respaldo.",
-    "panel_health_reference_sources_incomplete": "No se pudieron auditar por completo {count} fuentes de configuración. Las fuentes ausentes o ilegibles se muestran como tales, no como limpias.",
-    "panel_health_direct_reference_count": "Referencias encontradas: {count}",
-    "panel_health_reference_deterministic": "Referencia exacta con un único reemplazo lógico demostrable",
-    "panel_health_reference_manual": "Requiere revisión manual",
-    "panel_health_no_direct_references": "No se encontraron referencias directas a las entidades físicas actualmente vinculadas en las fuentes legibles."
+    "panel_representation_saved_refresh_failed": "El cambio se ha guardado, pero no se ha podido actualizar la vista. Actualiza el estado antes de hacer otro cambio."
   }
 }
