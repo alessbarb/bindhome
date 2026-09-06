@@ -4,6 +4,7 @@ import { LitElement, css, html } from "lit";
 import { tokens } from "../styles/shared-styles.js";
 import "../inventory/inventory-section.js";
 import "../infrastructure/infrastructure-inspector.js";
+import "./csv-inventory-tool.js";
 export class BindHomeAdvancedView extends LitElement {
   static properties = {
     hass: { attribute: false },
@@ -104,6 +105,12 @@ export class BindHomeAdvancedView extends LitElement {
             @click=${() => (this._tab = "infrastructure")}
           >
             ${this.t("nav.infrastructure")}
+          </button><button
+            class=${this._tab === "maintenance" ? "active" : ""}
+            aria-current=${this._tab === "maintenance" ? "page" : "false"}
+            @click=${() => (this._tab = "maintenance")}
+          >
+            ${this.t("advanced.maintenance")}
           </button>
         </nav>
       </div>
@@ -138,6 +145,15 @@ export class BindHomeAdvancedView extends LitElement {
           .registry=${this.registry}
           .areas=${this.areas}
         ></bindhome-infrastructure-inspector>
+      </section>
+      <section class="view" ?hidden=${this._tab !== "maintenance"}>
+        <bindhome-csv-inventory-tool
+          .hass=${this.hass}
+          .t=${this.t}
+          .floors=${this.floors}
+          .areas=${this.areas}
+          @assets-refreshed=${(event) => this.dispatchEvent(new CustomEvent("assets-refreshed", { detail: event.detail, bubbles: true, composed: true }))}
+        ></bindhome-csv-inventory-tool>
       </section>`;
   }
 }

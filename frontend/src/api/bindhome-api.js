@@ -221,5 +221,24 @@ export function createBindHomeApi(hass) {
         revision,
       );
     },
+
+    async exportInventoryCsv() {
+      return hass.callWS({ type: "bindhome/csv/export" });
+    },
+
+    async validateInventoryCsv(csv) {
+      const response = await hass.callWS({ type: "bindhome/csv/validate", csv });
+      acceptRevision(state, response?.revision);
+      return response;
+    },
+
+    async importInventoryCsv({ csv, revision }) {
+      return mutateAtRevision(
+        hass,
+        state,
+        { type: "bindhome/csv/import", csv },
+        revision,
+      );
+    },
   };
 }
