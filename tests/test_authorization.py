@@ -5,6 +5,12 @@ from types import SimpleNamespace
 import pytest
 from homeassistant.exceptions import Unauthorized
 
+from custom_components.bindhome.adoption_websocket import (
+    ws_adoption_adopt,
+    ws_adoption_revert,
+    ws_adoption_revert_all,
+    ws_adoption_status,
+)
 from custom_components.bindhome.authorization import (
     AccessLevel,
     access_level,
@@ -116,6 +122,7 @@ def test_every_bindhome_websocket_has_an_explicit_access_class() -> None:
         ws_import_discover,
         ws_replacement_candidates,
         ws_reference_audit,
+        ws_adoption_status,
     }
     admin_writes = {
         ws_asset_create,
@@ -133,6 +140,9 @@ def test_every_bindhome_websocket_has_an_explicit_access_class() -> None:
         ws_asset_delete_with_dependencies,
         ws_import_commit,
         ws_replacement_commit,
+        ws_adoption_adopt,
+        ws_adoption_revert,
+        ws_adoption_revert_all,
     }
 
     assert all(
@@ -144,4 +154,4 @@ def test_every_bindhome_websocket_has_an_explicit_access_class() -> None:
     assert all(
         access_level(handler) is AccessLevel.ADMIN_WRITE for handler in admin_writes
     )
-    assert len(household | admin_reads | admin_writes) == 32
+    assert len(household | admin_reads | admin_writes) == 36
