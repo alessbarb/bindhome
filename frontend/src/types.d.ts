@@ -80,7 +80,7 @@ export interface Registry {
 export interface HomeAssistant {
   callWS(message: Record<string, unknown>): Promise<any>;
   language?: string;
-  user?: { id?: string };
+  user?: { id?: string; is_admin?: boolean };
   states?: Record<
     string,
     { state: string; attributes?: Record<string, unknown> }
@@ -95,4 +95,12 @@ export interface NavigationState {
   view: TopLevelView;
   areaId: string | null;
   assetId: string | null;
+}
+export interface PanelRouteState {
+  view: TopLevelView;
+  areaId: string | null;
+  assetId: string | null;
+  query: string;
+  contextAreaId: string | null;
+  advancedAssetId: string | null;
 }
