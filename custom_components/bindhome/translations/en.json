@@ -535,6 +535,15 @@
     "panel_import_success": "Import completed",
     "panel_import_success_detail": "Created: {created} · merged: {merged} · skipped: {skipped}.",
     "panel_import_run_again": "Run import again",
-    "read_only": "Read only"
+    "read_only": "Read only",
+    "panel_connection_replace_hardware": "Replace hardware",
+    "panel_connection_replacement_loading": "Finding compatible replacement entities…",
+    "panel_connection_replacement_load_error": "Compatible replacement entities could not be loaded.",
+    "panel_connection_review_replacement": "Review replacement",
+    "panel_connection_confirm_replacement": "Confirm hardware replacement",
+    "panel_connection_confirm_replacement_action": "Confirm replacement",
+    "panel_connection_replacement_new": "New hardware",
+    "panel_connection_replacement_identity_preserved": "The Asset, topology and logical Representation keep their existing identity.",
+    "panel_connection_replacement_success": "Hardware replaced. Current target: {entity}"
   }
 }

@@ -24,11 +24,13 @@ The classification decorators are part of the runtime authorization boundary and
 | Backup export/recovery status | admin-read | Complete machine backup and recovery diagnostics |
 | CSV export/validate | admin-read | Administrative bulk-maintenance surface |
 | Assisted-import discovery | admin-read | Exposes installation-wide Device/Entity metadata for an admin workflow |
+| Hardware-replacement candidates | admin-read | Administrative rebinding workflow over installation Entity metadata |
 | Delete-impact preview | admin-read | Administrative/destructive planning data |
 | Asset/Relation/Binding/Representation mutation | admin-write | Changes the BindHome Registry |
 | Backup restore | admin-write | Replaces persisted Registry state |
 | CSV import | admin-write | Bulk Registry mutation |
 | Assisted-import commit | admin-write | Bulk Registry mutation |
+| Hardware-replacement commit | admin-write | Atomically replaces a Binding target |
 | Delete with dependencies | admin-write | Destructive Registry mutation |
 
 Home Assistant remains authoritative for Floor, Area, Device and Entity metadata. BindHome consumes their read-only registry APIs; it does not widen Home Assistant's own authorization for those APIs.

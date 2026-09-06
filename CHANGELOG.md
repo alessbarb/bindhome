@@ -20,6 +20,7 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ### Changed
 
+- Guided hardware replacement now lets administrators review compatible Home Assistant targets and atomically rebind existing Assets without changing stable Asset, topology or Representation identity. ([#39](https://github.com/alessbarb/bindhome/issues/39))
 - Logical Representation metadata ownership is now explicit: BindHome keeps the integration-provided original name and physical Area aligned with the Asset while preserving Home Assistant user overrides such as the custom entity name, `entity_id` and icon across reconciliation and restart. ([#44](https://github.com/alessbarb/bindhome/issues/44))
 
 ---

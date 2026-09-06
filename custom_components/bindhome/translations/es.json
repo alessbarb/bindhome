@@ -535,6 +535,15 @@
     "panel_import_success": "Importación completada",
     "panel_import_success_detail": "Creados: {created} · fusionados: {merged} · omitidos: {skipped}.",
     "panel_import_run_again": "Volver a importar",
-    "read_only": "Solo lectura"
+    "read_only": "Solo lectura",
+    "panel_connection_replace_hardware": "Sustituir hardware",
+    "panel_connection_replacement_loading": "Buscando entidades de sustitución compatibles…",
+    "panel_connection_replacement_load_error": "No se pudieron cargar las entidades de sustitución compatibles.",
+    "panel_connection_review_replacement": "Revisar sustitución",
+    "panel_connection_confirm_replacement": "Confirmar sustitución de hardware",
+    "panel_connection_confirm_replacement_action": "Confirmar sustitución",
+    "panel_connection_replacement_new": "Hardware nuevo",
+    "panel_connection_replacement_identity_preserved": "El Asset, la topología y la Representación lógica conservan su identidad actual.",
+    "panel_connection_replacement_success": "Hardware sustituido. Target actual: {entity}"
   }
 }
