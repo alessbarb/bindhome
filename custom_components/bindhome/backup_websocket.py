@@ -11,11 +11,11 @@ from homeassistant.components.websocket_api.connection import ActiveConnection
 from homeassistant.components.websocket_api.const import ERR_INVALID_FORMAT
 from homeassistant.components.websocket_api.decorators import (
     async_response,
-    require_admin,
     websocket_command,
 )
 from homeassistant.core import HomeAssistant
 
+from .authorization import admin_read, admin_write
 from .backup import (
     BackupValidationError,
     async_restore_registry_backup,
@@ -73,7 +73,7 @@ async def _async_restore_recovery_registry(
     return registry, bool(reloaded)
 
 
-@require_admin
+@admin_read
 @websocket_command({vol.Required("type"): WS_BACKUP_EXPORT})
 @async_response
 async def ws_backup_export(
@@ -91,7 +91,7 @@ async def ws_backup_export(
     connection.send_result(msg["id"], {"backup": backup})
 
 
-@require_admin
+@admin_read
 @websocket_command({vol.Required("type"): WS_BACKUP_RECOVERY_STATUS})
 def ws_backup_recovery_status(
     hass: HomeAssistant,
@@ -116,7 +116,7 @@ def ws_backup_recovery_status(
     )
 
 
-@require_admin
+@admin_write
 @websocket_command(
     {
         vol.Required("type"): WS_BACKUP_RESTORE,

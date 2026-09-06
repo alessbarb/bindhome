@@ -78,8 +78,11 @@ def hass_for(manager: FakeManager) -> SimpleNamespace:
 
 
 def call(handler, hass, connection, msg):
-    """Call through the async handler decorator layers."""
-    return handler.__wrapped__.__wrapped__(hass, connection, msg)
+    """Call the underlying async handler regardless of authorization wrappers."""
+    target = handler
+    while hasattr(target, "__wrapped__"):
+        target = target.__wrapped__
+    return target(hass, connection, msg)
 
 
 @pytest.mark.asyncio

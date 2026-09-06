@@ -26,6 +26,7 @@ export class BindHomeElementDetail extends LitElement {
     entityRegistry: { attribute: false },
     deviceRegistry: { attribute: false },
     advancedEnabled: { type: Boolean, attribute: false },
+    readOnly: { type: Boolean, attribute: false },
     refreshBindingData: { attribute: false },
     refreshTopologyData: { attribute: false },
     refreshAssets: { attribute: false },
@@ -47,6 +48,7 @@ export class BindHomeElementDetail extends LitElement {
     this.entityRegistry = [];
     this.deviceRegistry = [];
     this.advancedEnabled = false;
+    this.readOnly = false;
     this.refreshBindingData = null;
     this.refreshTopologyData = null;
     this.refreshAssets = null;
@@ -162,7 +164,7 @@ export class BindHomeElementDetail extends LitElement {
             <p class="location">${area?.name ?? (this.asset.area_id ? this.t("home.stale_area") : this.t("home.unassigned"))}</p>
             <p class="type"><ha-icon icon=${type.icon}></ha-icon>${type.label}</p>
           </div>
-          <button class="text-button" @click=${() => (this._editingAsset = true)}>${this.t("common.edit")}</button>
+          ${this.readOnly ? nothing : html`<button class="text-button" @click=${() => (this._editingAsset = true)}>${this.t("common.edit")}</button>`}
         </header>
         <section class="section">
           <h3>${this.t("detail.connections")}</h3>
@@ -174,10 +176,10 @@ export class BindHomeElementDetail extends LitElement {
                   : html`<strong>${this.t("detail.missing_element")}</strong>`}</div></div>`;
               })}</div>`
             : html`<p class="passive">${this.t("detail.no_connections")}</p>`}
-          ${actions.length
+          ${!this.readOnly && actions.length
             ? html`<div class="actions">${actions.map((action) => html`<button class="secondary" ?disabled=${Boolean(this._action)} @click=${() => (this._action = action)}>${this.t(action.labelKey)}</button>`)}</div>`
             : nothing}
-          ${this._action
+          ${!this.readOnly && this._action
             ? html`<bindhome-contextual-relation-editor .hass=${this.hass} .t=${this.t} .asset=${this.asset} .assets=${this.assets} .areas=${this.areas} .action=${this._action} .onRefresh=${this.refreshTopologyData} @cancel=${() => (this._action = null)} @done=${() => (this._action = null)} @sync-warning=${(event) => (this._sync = event.detail)}></bindhome-contextual-relation-editor>`
             : nothing}
           ${this._sync ? html`<div class="error" role="alert">${this._sync}</div>` : nothing}
@@ -185,7 +187,9 @@ export class BindHomeElementDetail extends LitElement {
         <section class="section">
           <h3>${this.t(this.asset.asset_type === "radiator" ? "detail.control" : "detail.device")}</h3>
           ${devices.length
-            ? devices.map((device) => html`<div class="device"><bindhome-primary-connection-editor .hass=${this.hass} .t=${this.t} .asset=${this.asset} .capability=${device.capability} .status=${device.status} .areas=${this.areas} .entityRegistry=${this.entityRegistry} .deviceRegistry=${this.deviceRegistry} .refreshBindingData=${this.refreshBindingData} .showEntityId=${false}></bindhome-primary-connection-editor></div>`)
+            ? devices.map((device) => html`<div class="device">${this.readOnly
+                ? html`<strong>${device.capability}</strong><p class="raw">${device.status?.entity_id || this.t("common.not_set")}</p>${device.status?.status ? html`<p class="passive">${device.status.status}</p>` : nothing}`
+                : html`<bindhome-primary-connection-editor .hass=${this.hass} .t=${this.t} .asset=${this.asset} .capability=${device.capability} .status=${device.status} .areas=${this.areas} .entityRegistry=${this.entityRegistry} .deviceRegistry=${this.deviceRegistry} .refreshBindingData=${this.refreshBindingData} .showEntityId=${false}></bindhome-primary-connection-editor>`}</div>`)
             : html`<p class="passive">${this.t("detail.passive")}</p>`}
         </section>
         <section class="section">
@@ -198,22 +202,24 @@ export class BindHomeElementDetail extends LitElement {
               <dt>${this.t("fields.capabilities")}</dt><dd class="raw">${this.asset.capabilities?.join(", ") || this.t("common.none")}</dd>
               <dt>${this.t("detail.representations")}</dt><dd class="raw">${representations.length ? representations.map((r) => r.platform).join(", ") : this.t("common.none")}</dd>
             </dl>
-            ${this.advancedEnabled
+            ${!this.readOnly && this.advancedEnabled
               ? html`<button class="secondary open-advanced" @click=${() => this.dispatchEvent(new CustomEvent("open-advanced", { detail: this.asset.id, bubbles: true, composed: true }))}>${this.t("detail.open_advanced")}</button>`
               : nothing}
           </details>
         </section>
-        <section class="section">
-          <bindhome-asset-delete-control
-            .hass=${this.hass}
-            .t=${this.t}
-            .asset=${this.asset}
-            .refreshBindingData=${this.refreshBindingData}
-            .refreshTopologyData=${this.refreshTopologyData}
-            .refreshAssets=${this.refreshAssets}
-            @asset-deleted=${this._forwardDeleted}
-          ></bindhome-asset-delete-control>
-        </section>
+        ${this.readOnly
+          ? nothing
+          : html`<section class="section">
+              <bindhome-asset-delete-control
+                .hass=${this.hass}
+                .t=${this.t}
+                .asset=${this.asset}
+                .refreshBindingData=${this.refreshBindingData}
+                .refreshTopologyData=${this.refreshTopologyData}
+                .refreshAssets=${this.refreshAssets}
+                @asset-deleted=${this._forwardDeleted}
+              ></bindhome-asset-delete-control>
+            </section>`}
       </article>`;
   }
 }
