@@ -101,6 +101,12 @@ export function createBindHomeApi(hass) {
       });
     },
 
+    async auditDirectReferences() {
+      return hass.callWS({
+        type: "bindhome/references/audit",
+      });
+    },
+
     async setBinding({ assetId, capability, entityId, role = "primary" }) {
       return mutate(hass, state, {
         type: "bindhome/bindings/set",
