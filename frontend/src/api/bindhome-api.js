@@ -107,6 +107,36 @@ export function createBindHomeApi(hass) {
       });
     },
 
+    async getAdoptionStatus(assetId = null) {
+      return hass.callWS({
+        type: "bindhome/adoption/status",
+        ...(assetId ? { asset_id: assetId } : {}),
+      });
+    },
+
+    async adoptHardware(assetId) {
+      return hass.callWS({
+        type: "bindhome/adoption/adopt",
+        asset_id: assetId,
+        confirm: true,
+      });
+    },
+
+    async revertHardwareAdoption(assetId) {
+      return hass.callWS({
+        type: "bindhome/adoption/revert",
+        asset_id: assetId,
+        confirm: true,
+      });
+    },
+
+    async revertAllHardwareAdoptions() {
+      return hass.callWS({
+        type: "bindhome/adoption/revert_all",
+        confirm: true,
+      });
+    },
+
     async setBinding({ assetId, capability, entityId, role = "primary" }) {
       return mutate(hass, state, {
         type: "bindhome/bindings/set",
