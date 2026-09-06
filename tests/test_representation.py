@@ -257,3 +257,27 @@ async def test_manager_representation_lifecycle_persists_and_notifies(
     assert reloaded.registry.get_representation(asset.id) is None
 
     unsubscribe()
+
+
+async def test_representation_entity_lookup_uses_registry_identity(hass):
+    """User renames survive lookup; missing/deleted identities are never guessed."""
+    from homeassistant.helpers import entity_registry as er
+
+    from custom_components.bindhome.representation import representation_entity_ids
+
+    registry = er.async_get(hass)
+    representation = Representation.create(asset_id="a1", platform="light")
+    representations = {"a1": representation}
+    assert representation_entity_ids(hass, representations) == {"a1": None}
+    entry = registry.async_get_or_create(
+        "light", "bindhome", "bindhome_a1", suggested_object_id="ceiling"
+    )
+    registry.async_update_entity(entry.entity_id, new_entity_id="light.user_renamed")
+    assert representation_entity_ids(hass, representations) == {
+        "a1": "light.user_renamed"
+    }
+    registry.async_remove("light.user_renamed")
+    registry.async_get_or_create(
+        "light", "other", "bindhome_a1", suggested_object_id="user_renamed"
+    )
+    assert representation_entity_ids(hass, representations) == {"a1": None}

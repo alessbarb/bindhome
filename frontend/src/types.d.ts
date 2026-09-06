@@ -72,6 +72,8 @@ export interface HaDeviceRegistryEntry {
   area_id?: string | null;
 }
 export interface Registry {
+  revision?: number;
+  representation_entities?: Record<string, string | null>;
   assets: Asset[];
   relations: Relation[];
   bindings: Binding[];

@@ -65,6 +65,24 @@ def binding_key(binding: Binding) -> BindingKey:
     return (binding.asset_id, binding.capability, binding.role)
 
 
+def representation_entity_ids(
+    hass: HomeAssistant, representations: dict[str, Representation]
+) -> dict[str, str | None]:
+    """Resolve current logical entity IDs without persisting HA runtime metadata."""
+    entity_registry = er.async_get(hass)
+    result = {}
+    for asset_id, representation in representations.items():
+        contract = runtime_contract(representation, asset_id)
+        result[asset_id] = (
+            entity_registry.async_get_entity_id(
+                contract.domain, DOMAIN, contract.unique_id
+            )
+            if contract is not None
+            else None
+        )
+    return result
+
+
 def implemented_platforms() -> frozenset[str]:
     """Return platforms with a BindHome runtime contract."""
     return frozenset({"light"})
