@@ -20,6 +20,7 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ### Added
 
+- Asset detail now manages the existing logical Representation contract directly: administrators can expose or withdraw the stable light entity, see its public Home Assistant entity identity, understand the required on/off Binding and capability fidelity, and are warned when non-light hardware can carry only safe ON/OFF semantics. ([#101](https://github.com/alessbarb/bindhome/issues/101))
 - Advanced Maintenance now includes a first-class model health surface for Binding status, stale Areas, declared capabilities without Bindings, Registry recovery and undocumented Home Assistant hardware discovered through the existing assisted-import engine; actionable findings route into the supported remediation workflows. ([#100](https://github.com/alessbarb/bindhome/issues/100))
 
 ### Changed

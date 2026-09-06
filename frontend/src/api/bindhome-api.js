@@ -144,6 +144,21 @@ export function createBindHomeApi(hass) {
       });
     },
 
+    async setRepresentation({ assetId, platform }) {
+      return mutate(hass, state, {
+        type: "bindhome/representations/set",
+        asset_id: assetId,
+        platform,
+      });
+    },
+
+    async deleteRepresentation(assetId) {
+      return mutate(hass, state, {
+        type: "bindhome/representations/delete",
+        asset_id: assetId,
+      });
+    },
+
     async createRelation({ sourceAssetId, relationType, targetAssetId }) {
       return mutate(hass, state, {
         type: "bindhome/relations/create",

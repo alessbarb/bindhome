@@ -12,6 +12,7 @@ import "../bindings/primary-connection-editor.js";
 import "./contextual-relation-editor.js";
 import "./human-asset-editor.js";
 import "./asset-delete-control.js";
+import "./representation-manager.js";
 
 export class BindHomeElementDetail extends LitElement {
   static properties = {
@@ -191,6 +192,19 @@ export class BindHomeElementDetail extends LitElement {
                 ? html`<strong>${device.capability}</strong><p class="raw">${device.status?.entity_id || this.t("common.not_set")}</p>${device.status?.status ? html`<p class="passive">${device.status.status}</p>` : nothing}`
                 : html`<bindhome-primary-connection-editor .hass=${this.hass} .t=${this.t} .asset=${this.asset} .capability=${device.capability} .status=${device.status} .areas=${this.areas} .entityRegistry=${this.entityRegistry} .deviceRegistry=${this.deviceRegistry} .refreshBindingData=${this.refreshBindingData} .showEntityId=${false}></bindhome-primary-connection-editor>`}</div>`)
             : html`<p class="passive">${this.t("detail.passive")}</p>`}
+        </section>
+        <section class="section">
+          <h3>${this.t("representation.section_title")}</h3>
+          <bindhome-representation-manager
+            .hass=${this.hass}
+            .t=${this.t}
+            .asset=${this.asset}
+            .registry=${this.registry}
+            .bindingStatuses=${this.bindingStatuses}
+            .entityRegistry=${this.entityRegistry}
+            .readOnly=${this.readOnly}
+            .refreshBindingData=${this.refreshBindingData}
+          ></bindhome-representation-manager>
         </section>
         <section class="section">
           <details>

@@ -640,6 +640,22 @@
     "panel_health_status_runtime_unavailable": "No disponible",
     "panel_health_status_runtime_unknown": "Estado de ejecución desconocido",
     "panel_health_status_asset_not_found": "Asset inexistente",
-    "panel_health_status_capability_not_declared": "Capacidad no declarada"
+    "panel_health_status_capability_not_declared": "Capacidad no declarada",
+    "panel_representation_section_title": "Entidad lógica estable",
+    "panel_representation_title": "Representation",
+    "panel_representation_not_exposed": "Este Asset no está expuesto actualmente como entidad lógica de BindHome.",
+    "panel_representation_exposed_as": "Expuesto como {platform} estable de Home Assistant.",
+    "panel_representation_entity_pending": "Luz lógica de {name}; Home Assistant está reconciliando la identidad de su entidad.",
+    "panel_representation_contract_title": "Contrato de capacidades",
+    "panel_representation_contract_light": "Una Representation light requiere el Binding primario on/off. Mantiene estable la identidad del Asset aunque se sustituya el hardware.",
+    "panel_representation_light_fidelity": "Cuando la entidad física es una luz de Home Assistant, BindHome replica de forma segura sus modos de color, brillo y funciones compatibles de efecto/flash/transición y no anuncia funciones no soportadas.",
+    "panel_representation_onoff_only_warning": "La entidad física actual no es una luz de Home Assistant. La luz lógica solo puede trasladar un comportamiento ON/OFF seguro; las capacidades específicas de iluminación del hardware no se pueden exponer.",
+    "panel_representation_stale_binding_warning": "El Binding on/off requerido existe, pero su destino está obsoleto. La entidad lógica puede crearse, pero permanecerá no disponible hasta reparar el Binding.",
+    "panel_representation_binding_required": "Conecta un Binding primario on/off antes de crear esta luz lógica.",
+    "panel_representation_create": "Exponer como luz estable",
+    "panel_representation_remove": "Retirar entidad lógica",
+    "panel_representation_confirm_remove": "Confirmar retirada",
+    "panel_representation_sync_warning": "El cambio de Representation se confirmó, pero el panel no pudo actualizar todas las vistas de Home Assistant. Recarga para confirmar la identidad de entidad más reciente.",
+    "panel_representation_write_error": "No se pudo cambiar la Representation: {error}"
   }
 }

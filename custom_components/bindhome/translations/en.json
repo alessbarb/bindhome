@@ -640,6 +640,22 @@
     "panel_health_status_runtime_unavailable": "Unavailable",
     "panel_health_status_runtime_unknown": "Runtime unknown",
     "panel_health_status_asset_not_found": "Missing Asset",
-    "panel_health_status_capability_not_declared": "Capability not declared"
+    "panel_health_status_capability_not_declared": "Capability not declared",
+    "panel_representation_section_title": "Stable logical entity",
+    "panel_representation_title": "Representation",
+    "panel_representation_not_exposed": "This Asset is not currently exposed as a BindHome logical entity.",
+    "panel_representation_exposed_as": "Exposed as a stable Home Assistant {platform}.",
+    "panel_representation_entity_pending": "Logical light for {name}; Home Assistant is reconciling its entity identity.",
+    "panel_representation_contract_title": "Capability contract",
+    "panel_representation_contract_light": "A light Representation requires the primary on/off Binding. It keeps the Asset identity stable while the hardware can be rebound.",
+    "panel_representation_light_fidelity": "When the backing entity is a Home Assistant light, BindHome mirrors its safe color modes, brightness and supported effect/flash/transition features and does not advertise unsupported features.",
+    "panel_representation_onoff_only_warning": "The current backing entity is not a Home Assistant light. The logical light therefore carries safe ON/OFF behavior only; hardware-specific light capabilities cannot be exposed.",
+    "panel_representation_stale_binding_warning": "The required on/off Binding exists but its target is stale. The logical entity can be created, but it will remain unavailable until the Binding is repaired.",
+    "panel_representation_binding_required": "Connect a primary on/off Binding before creating this logical light.",
+    "panel_representation_create": "Expose as stable light",
+    "panel_representation_remove": "Withdraw logical entity",
+    "panel_representation_confirm_remove": "Confirm withdrawal",
+    "panel_representation_sync_warning": "The Representation change was committed, but the panel could not refresh every Home Assistant view. Reload to confirm the latest entity identity.",
+    "panel_representation_write_error": "Could not change the Representation: {error}"
   }
 }

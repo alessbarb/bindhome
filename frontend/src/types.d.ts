@@ -64,6 +64,8 @@ export interface HaEntityRegistryEntry {
   area_id?: string | null;
   disabled_by?: string | null;
   hidden_by?: string | null;
+  platform?: string | null;
+  unique_id?: string | null;
 }
 export interface HaDeviceRegistryEntry {
   id: string;
