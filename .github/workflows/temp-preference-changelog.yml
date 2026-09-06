@@ -1,0 +1,39 @@
+name: Temporary preference changelog sync
+
+on:
+  push:
+    branches:
+      - temp/ha-user-preferences-changelog
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: temp/ha-user-preferences-changelog
+      - name: Update changelog
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("CHANGELOG.md")
+          text = path.read_text()
+          marker = "### Changed\n\n"
+          entry = "- Panel preferences for Advanced pinning, onboarding dismissal and collapsed Floors now persist in Home Assistant per-user frontend data so they follow the authenticated user across browsers and devices; existing browser-local values migrate once when the server preference is unset, and explicit user changes cannot be overwritten by a late asynchronous restore. ([#113](https://github.com/alessbarb/bindhome/issues/113))\n"
+          if text.count(marker) < 1:
+              raise SystemExit("Unreleased Changed marker not found")
+          text = text.replace(marker, marker + entry, 1)
+          path.write_text(text)
+          PY
+      - name: Commit updated changelog
+        run: |
+          rm .github/workflows/temp-preference-changelog.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md .github/workflows/temp-preference-changelog.yml
+          git commit -m "docs: record HA user preference persistence"
+          git push origin HEAD:temp/ha-user-preferences-changelog
