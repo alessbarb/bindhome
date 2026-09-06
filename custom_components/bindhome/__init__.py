@@ -12,6 +12,7 @@ from homeassistant.helpers.typing import ConfigType
 from .backup_websocket import async_register_backup_websocket_commands
 from .binding_events import BindingTargetEventTracker
 from .const import DOMAIN
+from .csv_websocket import async_register_csv_websocket_commands
 from .deletion_websocket import async_register_deletion_websocket_commands
 from .integrity_repairs import IntegrityRepairTracker
 from .manager import BindHomeManager
@@ -33,6 +34,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async_register_services(hass)
     async_register_websocket_commands(hass)
     async_register_backup_websocket_commands(hass)
+    async_register_csv_websocket_commands(hass)
     async_register_deletion_websocket_commands(hass)
     return True
 
