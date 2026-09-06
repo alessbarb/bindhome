@@ -18,10 +18,17 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ## [Unreleased]
 
+---
+
+## [1.4.1] - 2026-09-06
+
+Completes the panel workflows for capabilities shipped in 1.4.0 and earlier: logical lights, model health, CSV maintenance and Registry backup/recovery. Also improves navigation and per-user preferences.
+
+**Minimum Home Assistant:** `2026.8.0`. Compatibility tested against `2026.8.0` and `2026.9.0`.
+
 ### Added
 
 - Element detail now lets administrators create and remove the existing logical light Representation with revision-bound confirmation, stable Home Assistant entity lookup, availability and capability-limit guidance; household readers see status without mutation controls. ([#101](https://github.com/alessbarb/bindhome/issues/101))
-
 - Advanced Maintenance now includes a first-class model health surface for Binding status, stale Areas, declared capabilities without Bindings, Registry recovery and undocumented Home Assistant hardware discovered through the existing assisted-import engine; actionable findings route into the supported remediation workflows. ([#100](https://github.com/alessbarb/bindhome/issues/100))
 
 ### Changed
@@ -31,6 +38,20 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 - The BindHome header now exposes Home Assistant's native sidebar menu control, letting phone/narrow layouts and desktop setups with an always-hidden docked sidebar open HA navigation using the platform's own context, kiosk and notification semantics. ([#115](https://github.com/alessbarb/bindhome/issues/115))
 - Panel preferences for Advanced pinning, onboarding dismissal and collapsed Floors now persist in Home Assistant per-user frontend data so they follow the authenticated user across browsers and devices; existing browser-local values migrate once when the server preference is unset, and explicit user changes cannot be overwritten by a late asynchronous restore. ([#113](https://github.com/alessbarb/bindhome/issues/113))
 - BindHome panel views now have canonical URLs with deep-linkable Home/Area/Asset, Add, Search and Advanced routes; browser history and search query state stay synchronized without remounting active workflows. ([#109](https://github.com/alessbarb/bindhome/issues/109))
+
+### Fixed
+
+- Reconciled the already-published 1.4.0 baseline into `main` so release metadata and changelog history no longer lag the public tag. ([#122](https://github.com/alessbarb/bindhome/pull/122))
+- Updated installation, maintenance, Representation and release documentation for the shipped panel workflows, and corrected the 1.4.0/1.4.1 changelog comparison links.
+
+### Compatibility
+
+- No new Representation platforms, Registry schema migration or minimum Home Assistant change. Registry schema remains v2, the backup envelope remains v1, and the CSV format remains v1.
+- Upgrading from 1.4.0 preserves Assets, Bindings and logical identities. Export a Registry backup, update through HACS and restart Home Assistant. A return to 1.4.0 can read schema v2 but removes the new panel workflows; pre-1.3 releases cannot read schema v2 in place.
+
+### Distribution
+
+- Version synchronized to `1.4.1` in Home Assistant, Python and frontend package metadata. The publication workflow creates the tag and release only on the exact merged `main` commit after its release gates succeed.
 
 ---
 
@@ -256,7 +277,9 @@ First public BindHome release.
 
 ---
 
-[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/alessbarb/bindhome/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/alessbarb/bindhome/compare/v1.4.0...v1.4.1
+[1.4.0]: https://github.com/alessbarb/bindhome/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/alessbarb/bindhome/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/alessbarb/bindhome/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/alessbarb/bindhome/compare/v1.1.0...v1.1.1

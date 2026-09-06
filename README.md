@@ -1,6 +1,6 @@
 # BindHome
 
-**Current stable release: `1.4.0` · Home Assistant `2026.8.0+`**
+**Current stable release: `1.4.1` · Home Assistant `2026.8.0+`**
 
 **Model the home, not the hardware.**
 
@@ -220,6 +220,10 @@ Not every Asset needs to become a Home Assistant entity.
 
 Represent only the Assets where a stable logical entity provides value to dashboards, scripts or automations.
 
+From **Home → room → element**, use **Logical light in Home Assistant → Create logical light** and confirm. The element needs `on_off` and a valid primary Binding. The current platform is exclusively `light`: backing lights retain the existing safely mirrored lighting capabilities; other domains expose ON/OFF only. The detail shows the actual logical entity resolved by Home Assistant, including user renames, and its current availability. Example entity IDs in this README are illustrative, not a naming contract.
+
+Removing the logical light requires confirmation and preserves the physical element, its Bindings and hardware. Dashboards, automations or other connections referencing that logical entity may need adjustment. Read-only household users can inspect status but cannot create or remove it.
+
 ---
 
 ## A complete example
@@ -284,7 +288,24 @@ Existing installations that already contain Assets do not receive the first-run 
 
 ---
 
-## BindHome 1.4.0
+## BindHome 1.4.1
+
+Version 1.4.1 completes the panel experience over the capabilities already shipped in 1.4.0 and earlier.
+
+| Workflow | Where to find it | What you can do |
+| --- | --- | --- |
+| Logical light | Home → room → element | Create/remove the existing Light Representation with confirmation; inspect its actual HA entity and availability. |
+| Model health | Advanced → Maintenance | Review broken Bindings, missing connections, stale Areas, recovery and undocumented HA hardware; open the relevant repair workflow. |
+| CSV inventory | Advanced → Maintenance | Export all Assets or one Floor/Area; validate a file, review row errors and preview changes before one transactional import. |
+| Registry backup | Advanced → Maintenance | Download a complete backup, see the last export recorded for your HA user, inspect a restore and explicitly confirm full replacement. |
+| Navigation | Panel header and URLs | Open the native HA sidebar, share direct links to views/elements and use browser Back/Forward. |
+| Preferences | Authenticated HA user | Keep Advanced pinning, onboarding dismissal and collapsed Floors across browsers and devices. |
+
+Enable **Advanced** to access administrative maintenance. Household readers retain Home/Search and status without mutation controls. Registry schema remains v2; the backup and CSV formats remain v1. The minimum HA version remains `2026.8.0`, with CI coverage for `2026.8.0` and `2026.9.0`.
+
+See the [1.4.1 changelog](CHANGELOG.md#141---2026-09-06) for the complete release history and upgrade notes.
+
+### Foundation shipped in 1.4.0
 
 BindHome 1.4.0 makes the stable physical model substantially easier to maintain as a real Home Assistant installation evolves. Authenticated non-admin users can browse the intended household inventory in read-only mode, while mutations, recovery and administrative surfaces remain protected. Administrators gain assisted import from Home Assistant metadata, guided hardware replacement that preserves stable Asset/Representation identity, actionable integrity Repairs, and a deterministic CSV inventory round-trip contract.
 
@@ -335,9 +356,11 @@ HACS update
   -> verify System Health / Registry state
 ```
 
-Back up the BindHome Registry before an important upgrade. See [Backup and restore](docs/backup-restore.md).
+For the 1.4.0 → 1.4.1 update, export a Registry backup, install 1.4.1 through HACS and restart Home Assistant. No new Registry migration is required. Then open an element detail and Advanced → Maintenance to verify the new surfaces. Back up the BindHome Registry before an important upgrade. See [Backup and restore](docs/backup-restore.md).
 
 ### Downgrade
+
+Only select a release that can read the current Registry schema. Both 1.4.0 and 1.4.1 use schema v2; releases before 1.3.0 require a compatible historical backup rather than an in-place downgrade.
 
 If a release causes a problem:
 
@@ -370,7 +393,7 @@ BindHome may use Home Assistant internal APIs that are appropriate for custom in
 
 BindHome Registry state is persistent and is deliberately treated as infrastructure data.
 
-The integration supports deterministic Registry backup/export and transactional restore through administrator-only WebSocket commands. A restore validates the complete backup before it replaces live state.
+Administrators can use **Advanced → Maintenance → Backup and restore** to download a deterministic full Registry backup and review a restore before confirming complete replacement. The panel uses the existing administrator-only WebSocket contract; a restore validates the full backup before replacing live state. CSV inventory export is separate and does not back up Bindings, Relations or Representations.
 
 See [docs/backup-restore.md](docs/backup-restore.md) for the exact format and recovery procedure.
 

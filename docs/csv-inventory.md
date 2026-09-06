@@ -50,3 +50,11 @@ A typical safe workflow is therefore:
 4. Review row-level errors and the create/update preview.
 5. Import using the validated Registry revision.
 6. Export again if a canonical post-import spreadsheet is required.
+
+## Panel workflow — available in 1.4.1
+
+Administrators can open **Advanced → Maintenance → CSV inventory** and export all Assets or restrict the exported rows to one current Home Assistant Floor or Area. The panel filters the canonical export; the CSV schema and backend contract are unchanged from 1.4.0.
+
+Select an edited UTF-8 file, validate it and review the complete create/update preview and row/field errors. Commit only the validated file against its reviewed Registry revision. A conflict requires another validation; the panel does not silently apply stale changes. Import scope comes from the file contents, not the current export filter.
+
+CSV never exports or imports Bindings, Relations or Representations and never deletes Assets omitted from the file. Use a Registry backup for complete recovery.

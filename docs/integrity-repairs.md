@@ -44,3 +44,9 @@ Integrity Repairs are reconciled without polling. The tracker refreshes on:
 - Home Assistant Area Registry updates.
 
 This means Repairs appear and disappear as the underlying authoritative state changes, without a separate persistent BindHome issue database.
+
+## Panel health — available in 1.4.1
+
+**Advanced → Maintenance → Model health** presents the existing Binding summary, configuration faults and runtime availability separately. It also surfaces declared capabilities without Bindings, stale Home Assistant Areas, Registry recovery and hardware not yet documented in BindHome, using the existing assisted-import discovery contract.
+
+Actions open the relevant element, import review or backup/recovery workflow. An undocumented device or a deliberately unconnected capability is a review finding, not automatically a Home Assistant Repair. Temporary hardware unavailability remains runtime status. The panel reuses authoritative data and explicit refresh; it does not add polling or a persistent issue store.

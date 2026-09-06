@@ -2,6 +2,14 @@
 
 BindHome exposes an administrator-only WebSocket contract for exporting and restoring the complete logical Registry without reading or editing Home Assistant `.storage` files directly.
 
+## Panel workflow — available in 1.4.1
+
+Administrators can open **Advanced → Maintenance → Backup and restore**. Download a complete JSON backup before a significant change. The last-export indication is stored per Home Assistant user; it records a successful download, not an automatic backup schedule or proof that an external copy still exists.
+
+To restore, select a backup file, inspect the object counts, acknowledge that the whole Registry will be replaced and confirm. During normal operation the panel submits the reviewed Registry revision and rejects stale restores. In recovery mode the existing recovery API can validate and restore storage even when the normal Registry manager cannot load. A stored restore followed by a failed integration reload is reported separately; use Repairs and reload the integration.
+
+Backups preserve Assets, Relations, Bindings and Representations. CSV export covers Asset inventory only and is not a substitute for a complete Registry backup. Both 1.4.0 and 1.4.1 use backup format v1 and Registry schema v2.
+
 ## Backup envelope
 
 `bindhome/backup/export` returns a versioned envelope:
@@ -49,4 +57,4 @@ Both commands require a Home Assistant administrator.
 
 A backup may contain Home Assistant entity references that have since become stale. Schema-v2 Bindings preserve both the last-known `entity_id` and, when available, the stable Home Assistant `entity_registry_id`. Historical backups are upgraded to stable Entity Registry identity only when an exact current Registry entry proves that identity; otherwise the original `entity_id` remains an explicit compatibility fallback. Runtime lookup of the current entity id is handled separately from backup migration.
 
-Do not manipulate Home Assistant `.storage` files to create or restore a BindHome backup. Use this API or a future UX built on top of it.
+Do not manipulate Home Assistant `.storage` files to create or restore a BindHome backup. Use the panel workflow or this API.
