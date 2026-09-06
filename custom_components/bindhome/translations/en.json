@@ -16,63 +16,125 @@
       "name": "Create asset",
       "description": "Create a stable infrastructure asset.",
       "fields": {
-        "name": { "name": "Name", "description": "Human-readable asset name." },
-        "asset_type": { "name": "Asset type", "description": "Generic lower_snake_case infrastructure type." },
-        "code": { "name": "Code", "description": "Optional human-facing asset code." },
-        "area_id": { "name": "Area", "description": "Optional Home Assistant area containing the asset." },
-        "capabilities": { "name": "Capabilities", "description": "List of lower_snake_case logical capabilities." }
+        "name": {
+          "name": "Name",
+          "description": "Human-readable asset name."
+        },
+        "asset_type": {
+          "name": "Asset type",
+          "description": "Generic lower_snake_case infrastructure type."
+        },
+        "code": {
+          "name": "Code",
+          "description": "Optional human-facing asset code."
+        },
+        "area_id": {
+          "name": "Area",
+          "description": "Optional Home Assistant area containing the asset."
+        },
+        "capabilities": {
+          "name": "Capabilities",
+          "description": "List of lower_snake_case logical capabilities."
+        }
       }
     },
     "delete_asset": {
       "name": "Delete asset",
       "description": "Delete an asset that has no relations or active bindings.",
-      "fields": { "asset_id": { "name": "Asset ID", "description": "Immutable BindHome asset ID." } }
+      "fields": {
+        "asset_id": {
+          "name": "Asset ID",
+          "description": "Immutable BindHome asset ID."
+        }
+      }
     },
     "add_relation": {
       "name": "Add relation",
       "description": "Create a directed topology relation between two assets.",
       "fields": {
-        "source_asset_id": { "name": "Source asset ID", "description": "Source BindHome asset." },
-        "relation_type": { "name": "Relation type", "description": "Generic lower_snake_case relation type." },
-        "target_asset_id": { "name": "Target asset ID", "description": "Target BindHome asset." }
+        "source_asset_id": {
+          "name": "Source asset ID",
+          "description": "Source BindHome asset."
+        },
+        "relation_type": {
+          "name": "Relation type",
+          "description": "Generic lower_snake_case relation type."
+        },
+        "target_asset_id": {
+          "name": "Target asset ID",
+          "description": "Target BindHome asset."
+        }
       }
     },
     "remove_relation": {
       "name": "Remove relation",
       "description": "Remove a topology relation.",
-      "fields": { "relation_id": { "name": "Relation ID", "description": "BindHome relation ID." } }
+      "fields": {
+        "relation_id": {
+          "name": "Relation ID",
+          "description": "BindHome relation ID."
+        }
+      }
     },
     "set_binding": {
       "name": "Set binding",
       "description": "Bind an asset capability and role to the Home Assistant entity that currently implements it.",
       "fields": {
-        "asset_id": { "name": "Asset ID", "description": "BindHome asset ID." },
-        "capability": { "name": "Capability", "description": "Capability provided by the asset." },
-        "entity_id": { "name": "Entity", "description": "Current Home Assistant implementation." },
-        "role": { "name": "Role", "description": "Binding role, defaulting to primary." }
+        "asset_id": {
+          "name": "Asset ID",
+          "description": "BindHome asset ID."
+        },
+        "capability": {
+          "name": "Capability",
+          "description": "Capability provided by the asset."
+        },
+        "entity_id": {
+          "name": "Entity",
+          "description": "Current Home Assistant implementation."
+        },
+        "role": {
+          "name": "Role",
+          "description": "Binding role, defaulting to primary."
+        }
       }
     },
     "remove_binding": {
       "name": "Remove binding",
       "description": "Remove a capability binding without deleting the infrastructure asset.",
-      "fields": { "binding_id": { "name": "Binding ID", "description": "BindHome binding ID." } }
+      "fields": {
+        "binding_id": {
+          "name": "Binding ID",
+          "description": "BindHome binding ID."
+        }
+      }
     },
-    "get_registry": { "name": "Get registry", "description": "Return the complete BindHome registry without modifying it." }
+    "get_registry": {
+      "name": "Get registry",
+      "description": "Return the complete BindHome registry without modifying it."
+    }
   },
-  "system_health": { "info": { "loaded": "Loaded", "assets": "Assets", "relations": "Relations", "bindings": "Bindings", "representations": "Representations" } },
+  "system_health": {
+    "info": {
+      "loaded": "Loaded",
+      "assets": "Assets",
+      "relations": "Relations",
+      "bindings": "Bindings",
+      "representations": "Representations"
+    }
+  },
   "issues": {
     "registry_recovery": {
       "title": "BindHome needs Registry recovery",
       "description": "BindHome could not safely load its Registry ({reason}): {message}. Normal BindHome operation remains disabled to protect stored infrastructure data. Restore a valid BindHome backup through the administrator recovery API, then reload the integration."
     },
     "stale_areas": {
-    "title": "BindHome has elements assigned to missing Areas",
-    "description": "{count} BindHome elements reference Home Assistant Areas that no longer exist: {assets}. Open BindHome, edit the affected elements and assign an existing room or choose no room. This Repair clears automatically when every stale Area reference is fixed."
-  },
-  "stale_bindings": {
-    "title": "BindHome has connections to missing entities",
-    "description": "{count} BindHome connections point to Home Assistant entities that no longer exist: {bindings}. Open the affected element in BindHome and change or disconnect the connection. Temporarily unavailable hardware does not create this Repair. This Repair clears automatically when every broken connection is fixed."
-  }
+      "title": "BindHome has elements assigned to missing Areas",
+      "description": "{count} BindHome elements reference Home Assistant Areas that no longer exist: {assets}. Open BindHome, edit the affected elements and assign an existing room or choose no room. This Repair clears automatically when every stale Area reference is fixed."
+    },
+    "stale_bindings": {
+      "title": "BindHome has connections to missing entities",
+      "description": "{count} BindHome connections point to Home Assistant entities that no longer exist: {bindings}. Open the affected element in BindHome and change or disconnect the connection. Temporarily unavailable hardware does not create this Repair. This Repair clears automatically when every broken connection is fixed."
+    }
   },
   "common": {
     "panel_common_floor": "Floor",
@@ -432,6 +494,46 @@
     "panel_onboarding_back": "Back",
     "panel_onboarding_next": "Next",
     "panel_onboarding_start_inventory": "Inventory my first room",
-    "panel_onboarding_skip": "Skip introduction"
+    "panel_onboarding_skip": "Skip introduction",
+    "panel_add_import_mode": "From Home Assistant",
+    "panel_import_title": "Import from Home Assistant",
+    "panel_import_intro": "Review suggestions from existing Home Assistant Areas, Devices and Entities. Nothing is created until you confirm the complete batch.",
+    "panel_import_scope": "Import scope",
+    "panel_import_scope_all": "Whole installation",
+    "panel_import_scope_area": "One Area",
+    "panel_import_choose_area": "Choose an Area",
+    "panel_import_discover": "Find suggestions",
+    "panel_import_discovering": "Finding suggestions…",
+    "panel_import_discover_error": "BindHome could not discover import suggestions.",
+    "panel_import_review_title": "Review {count} suggestions",
+    "panel_import_review_intro": "Choose create, merge or skip for every suggestion. Names, types, Areas, Capabilities and proposed Bindings remain under your control.",
+    "panel_import_change_scope": "Change scope",
+    "panel_import_empty": "No import suggestions were found in this scope.",
+    "panel_import_source_entities": "Source entities",
+    "panel_import_source_device": "Source Device",
+    "panel_import_proposed_area": "Proposed Area",
+    "panel_import_candidate_bindings": "Candidate Bindings",
+    "panel_import_status_new": "New suggestion",
+    "panel_import_status_already_bound": "Already bound",
+    "panel_import_status_possible_asset_match": "Possible existing Asset",
+    "panel_import_status_ambiguous": "Ambiguous match",
+    "panel_import_status_help_already_bound": "At least one proposed target is already bound in BindHome. Review carefully instead of creating a duplicate physical Asset.",
+    "panel_import_status_help_possible_asset_match": "BindHome found one Asset with matching display metadata. This is only a merge suggestion; physical identity remains your decision.",
+    "panel_import_status_help_ambiguous": "Several Assets match the display metadata. Choose the physical target explicitly or skip this suggestion.",
+    "panel_import_action_label": "Import decision",
+    "panel_import_action_create": "Create",
+    "panel_import_action_merge": "Merge",
+    "panel_import_action_skip": "Skip",
+    "panel_import_merge_target": "Existing BindHome Asset",
+    "panel_import_choose_asset": "Choose an Asset",
+    "panel_import_bindings": "Bindings to apply",
+    "panel_import_atomic": "Every reviewed decision is committed together or nothing is saved.",
+    "panel_import_committing": "Importing…",
+    "panel_import_commit": "Confirm import",
+    "panel_import_commit_error": "The reviewed import could not be committed.",
+    "panel_import_review_preserved": "Your complete review has been preserved so you can correct it or rerun discovery.",
+    "panel_import_success": "Import completed",
+    "panel_import_success_detail": "Created: {created} · merged: {merged} · skipped: {skipped}.",
+    "panel_import_run_again": "Run import again"
   }
 }
