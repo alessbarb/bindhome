@@ -544,6 +544,10 @@
     "panel_connection_confirm_replacement_action": "Confirm replacement",
     "panel_connection_replacement_new": "New hardware",
     "panel_connection_replacement_identity_preserved": "The Asset, topology and logical Representation keep their existing identity.",
-    "panel_connection_replacement_success": "Hardware replaced. Current target: {entity}"
+    "panel_connection_replacement_success": "Hardware replaced. Current target: {entity}",
+    "panel_home_room_count_one": "{count} room",
+    "panel_home_room_count_other": "{count} rooms",
+    "panel_home_add_first_element": "Add first element",
+    "panel_shell_refreshing_label": "Refreshing BindHome data"
   }
 }

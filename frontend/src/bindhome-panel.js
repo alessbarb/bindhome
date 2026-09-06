@@ -21,6 +21,7 @@ export class BindHomePanel extends LitElement {
     panel: { attribute: false },
     _view: { state: true },
     _loading: { state: true },
+    _refreshing: { state: true },
     _error: { state: true },
     _presets: { state: true },
     _floors: { state: true },
@@ -49,6 +50,7 @@ export class BindHomePanel extends LitElement {
     this.panel = null;
     this._view = "home";
     this._loading = true;
+    this._refreshing = false;
     this._error = null;
     this._refreshError = null;
     this._presets = [];
@@ -243,6 +245,8 @@ export class BindHomePanel extends LitElement {
       background: transparent;
       color: var(--primary-color);
     }
+    .refresh[disabled] { opacity: .55; cursor: progress; }
+    .refresh ha-icon.spinning { animation: spin 0.8s linear infinite; }
     main { flex: 1; min-width: 0; }
     .onboarding-overlay {
       position: fixed;
@@ -351,6 +355,7 @@ export class BindHomePanel extends LitElement {
     if (!this.hass || this._loadPromise) return this._loadPromise;
     const generation = ++this._dataGeneration;
     if (initial) this._loading = true;
+    else this._refreshing = true;
     this._error = null;
     this._refreshError = null;
     const currentHass = this.hass,
@@ -401,6 +406,7 @@ export class BindHomePanel extends LitElement {
       this._initialized = true;
       this._syncOnboardingVisibility();
       this._loading = false;
+      this._refreshing = false;
       this._loadPromise = null;
     }
   }
@@ -670,10 +676,12 @@ export class BindHomePanel extends LitElement {
         </nav>
         <button
           class="refresh"
-          aria-label=${this._t("shell.refresh_label")}
+          aria-label=${this._t(this._refreshing ? "shell.refreshing_label" : "shell.refresh_label")}
+          aria-busy=${this._refreshing ? "true" : "false"}
+          title=${this._t(this._refreshing ? "shell.refreshing_label" : "shell.refresh_label")}
           @click=${() => this._load(false)}
-          ?disabled=${this._loading || Boolean(this._loadPromise)}
-        ><ha-icon icon="mdi:refresh"></ha-icon></button>
+          ?disabled=${this._loading || this._refreshing || Boolean(this._loadPromise)}
+        ><ha-icon class=${this._refreshing ? "spinning" : ""} icon="mdi:refresh"></ha-icon></button>
       </header>
       ${this._registryConflict
         ? html`<div class="refresh-error registry-conflict" role="alert">

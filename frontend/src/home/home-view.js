@@ -54,6 +54,7 @@ export class BindHomeHomeView extends LitElement {
     this.selectedAssetId = null;
     this.selectedAreaId = null;
     this._collapsedFloorIds = new Set();
+    this._collapsedPreferenceIdentity = null;
   }
   static styles = [
     tokens,
@@ -64,9 +65,9 @@ export class BindHomeHomeView extends LitElement {
       .floor-title ha-icon, .category-title ha-icon { color: var(--primary-color); }
       .floor-title .collapse-icon { color:var(--secondary-text-color); }
       .area-row:hover, .asset-row:hover { background: var(--secondary-background-color); }
-      .area-row.selected { border-left: 3px solid var(--primary-color); background: var(--secondary-background-color); }
+      .area-row.selected { border-left: 3px solid var(--primary-color); background: var(--secondary-background-color); font-weight: 500; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary-color) 18%, transparent); }
       .grow { min-width: 0; flex: 1; overflow-wrap: anywhere; }
-      .count { color: var(--secondary-text-color); font-size: 12px; }
+      .count { color: var(--secondary-text-color); font-size: 12px; white-space: nowrap; }
       .room-head { display: flex; align-items: center; gap: 14px; padding: 16px; border-bottom: 1px solid var(--divider-color); }
       .room-head > ha-icon { color: var(--primary-color); --mdc-icon-size: 30px; }
       .room-head .primary { margin-left: auto; display: flex; align-items: center; gap: 8px; }
@@ -82,6 +83,8 @@ export class BindHomeHomeView extends LitElement {
       .back { display: none; }
       .intro { margin-top: 4px; }
       .layout > .room.hidden-mobile { display: none; }
+      .empty-room { display: grid; justify-items: center; gap: 12px; }
+      .empty-room .primary { min-height: 42px; display: inline-flex; align-items: center; gap: 8px; }
       @media (max-width: 760px) {
         .layout { display: block; }
         .tree.hidden-mobile, .room.hidden-mobile { display: none; }
@@ -93,6 +96,33 @@ export class BindHomeHomeView extends LitElement {
       }
     `,
   ];
+  updated(changed) {
+    if (changed.has("hass")) this._restoreCollapsedFloors();
+  }
+  _collapsedPreferenceKey() {
+    return `bindhome.home-collapsed-floors.${this.hass?.user?.id ?? "browser"}`;
+  }
+  _restoreCollapsedFloors() {
+    const identity = this._collapsedPreferenceKey();
+    if (identity === this._collapsedPreferenceIdentity) return;
+    this._collapsedPreferenceIdentity = identity;
+    try {
+      const value = JSON.parse(window.localStorage.getItem(identity) ?? "[]");
+      this._collapsedFloorIds = new Set(Array.isArray(value) ? value.filter((id) => typeof id === "string") : []);
+    } catch {
+      this._collapsedFloorIds = new Set();
+    }
+  }
+  _persistCollapsedFloors() {
+    try {
+      window.localStorage.setItem(
+        this._collapsedPreferenceKey(),
+        JSON.stringify([...this._collapsedFloorIds].sort()),
+      );
+    } catch {
+      /* Browser storage may be unavailable. */
+    }
+  }
   _areaAssets(id) {
     if (id === NO_AREA) return this.assets.filter((asset) => !asset.area_id);
     if (id === STALE_AREA)
@@ -133,13 +163,39 @@ export class BindHomeHomeView extends LitElement {
     if (next.has(id)) next.delete(id);
     else next.add(id);
     this._collapsedFloorIds = next;
+    this._persistCollapsedFloors();
+  }
+  _floorIcon(group) {
+    if (group.icon) return group.icon;
+    if (group.level === -1) return "mdi:home-floor-negative-1";
+    if (Number.isInteger(group.level) && group.level >= 0 && group.level <= 3)
+      return `mdi:home-floor-${group.level}`;
+    return "mdi:floor-plan";
+  }
+  _roomCountLabel(count) {
+    return this.t(count === 1 ? "home.room_count_one" : "home.room_count_other", { count });
+  }
+  _selectedArea() {
+    return this.areas.find((area) => area.area_id === this.selectedAreaId) ?? null;
   }
   _areaName() {
     if (this.selectedAreaId === NO_AREA) return this.t("home.unassigned");
     if (this.selectedAreaId === STALE_AREA) return this.t("home.stale_area");
-    return (
-      this.areas.find((a) => a.area_id === this.selectedAreaId)?.name ??
-      this.t("home.choose_room")
+    return this._selectedArea()?.name ?? this.t("home.choose_room");
+  }
+  _areaIcon() {
+    if (this.selectedAreaId === NO_AREA) return "mdi:map-marker-off-outline";
+    if (this.selectedAreaId === STALE_AREA) return "mdi:map-marker-alert-outline";
+    return this._selectedArea()?.icon || "mdi:floor-plan";
+  }
+  _addInSelectedArea() {
+    if (!this.selectedAreaId || [NO_AREA, STALE_AREA].includes(this.selectedAreaId)) return;
+    this.dispatchEvent(
+      new CustomEvent("add-in-area", {
+        detail: this.selectedAreaId,
+        bubbles: true,
+        composed: true,
+      }),
     );
   }
   _renderTree() {
@@ -152,18 +208,20 @@ export class BindHomeHomeView extends LitElement {
         const collapsed = this._collapsedFloorIds.has(group.id);
         return html`<div>
           <button class="floor-title" aria-expanded=${!collapsed} @click=${() => this._toggleFloor(group.id)}>
-            <ha-icon icon=${group.icon || "mdi:layers-outline"}></ha-icon>
+            <ha-icon icon=${this._floorIcon(group)}></ha-icon>
             <span class="grow">${group.name ?? this.t("common.no_floor")}</span>
-            <span class="count">${group.areas.length}</span>
+            <span class="count">${this._roomCountLabel(group.areas.length)}</span>
             <ha-icon class="collapse-icon" icon=${collapsed ? "mdi:chevron-down" : "mdi:chevron-up"}></ha-icon>
           </button>
           ${collapsed
             ? nothing
             : group.areas.map((area) => {
                 const count = projection.assetsByArea.get(area.area_id)?.length ?? 0;
+                const selected = this.selectedAreaId === area.area_id;
                 return html`<button
-                  class="area-row ${this.selectedAreaId === area.area_id ? "selected" : ""}"
-                  aria-current=${this.selectedAreaId === area.area_id ? "location" : "false"}
+                  class="area-row ${selected ? "selected" : ""}"
+                  aria-current=${selected ? "location" : "false"}
+                  aria-pressed=${selected ? "true" : "false"}
                   @click=${() => this._selectArea(area.area_id)}
                 >
                   <ha-icon icon=${area.icon || "mdi:floor-plan"}></ha-icon>
@@ -177,12 +235,12 @@ export class BindHomeHomeView extends LitElement {
       ${projection.unassigned.length || projection.stale.length
         ? html`<div class="specials">
             ${projection.unassigned.length
-              ? html`<button class="area-row special ${this.selectedAreaId === NO_AREA ? "selected" : ""}" @click=${() => this._selectArea(NO_AREA)}>
+              ? html`<button class="area-row special ${this.selectedAreaId === NO_AREA ? "selected" : ""}" aria-current=${this.selectedAreaId === NO_AREA ? "location" : "false"} @click=${() => this._selectArea(NO_AREA)}>
                   <ha-icon icon="mdi:map-marker-off-outline"></ha-icon><span class="grow">${this.t("home.unassigned")}</span><span class="count">${projection.unassigned.length}</span>
                 </button>`
               : nothing}
             ${projection.stale.length
-              ? html`<button class="area-row special ${this.selectedAreaId === STALE_AREA ? "selected" : ""}" @click=${() => this._selectArea(STALE_AREA)}>
+              ? html`<button class="area-row special ${this.selectedAreaId === STALE_AREA ? "selected" : ""}" aria-current=${this.selectedAreaId === STALE_AREA ? "location" : "false"} @click=${() => this._selectArea(STALE_AREA)}>
                   <ha-icon icon="mdi:map-marker-alert-outline"></ha-icon><span class="grow">${this.t("home.stale_area")}</span><span class="count">${projection.stale.length}</span>
                 </button>`
               : nothing}
@@ -195,13 +253,14 @@ export class BindHomeHomeView extends LitElement {
       return html`<div class="empty room">${this.t("home.choose_room")}</div>`;
     const items = this._areaAssets(this.selectedAreaId);
     const groups = groupRoomAssets(this.t, items);
+    const canAdd = !this.readOnly && ![NO_AREA, STALE_AREA].includes(this.selectedAreaId);
     return html`<section class="room surface ${this.selectedAssetId ? "hidden-mobile" : ""}">
       <button class="back text-button" @click=${() => this._selectArea(null)}><ha-icon icon="mdi:arrow-left"></ha-icon>${this.t("home.back_floors")}</button>
       <header class="room-head">
-        <ha-icon icon="mdi:floor-plan"></ha-icon>
+        <ha-icon icon=${this._areaIcon()}></ha-icon>
         <div class="grow"><h2>${this._areaName()}</h2><span class="muted">${this.t("home.element_count", { count: items.length })}</span></div>
-        ${!this.readOnly && ![NO_AREA, STALE_AREA].includes(this.selectedAreaId)
-          ? html`<button class="primary" @click=${() => this.dispatchEvent(new CustomEvent("add-in-area", { detail: this.selectedAreaId, bubbles: true, composed: true }))}>
+        ${canAdd
+          ? html`<button class="primary" @click=${this._addInSelectedArea}>
               <ha-icon icon="mdi:plus"></ha-icon><span>${this.t("home.add_element")}</span>
             </button>`
           : nothing}
@@ -219,7 +278,12 @@ export class BindHomeHomeView extends LitElement {
               })}
             </section>`;
           })
-        : html`<div class="empty">${this.t("home.room_empty")}</div>`}
+        : html`<div class="empty empty-room">
+            <span>${this.t("home.room_empty")}</span>
+            ${canAdd
+              ? html`<button class="primary" @click=${this._addInSelectedArea}><ha-icon icon="mdi:plus"></ha-icon>${this.t("home.add_first_element")}</button>`
+              : nothing}
+          </div>`}
     </section>`;
   }
   render() {
