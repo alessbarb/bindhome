@@ -3,6 +3,7 @@
 export const ADVANCED_PINNED_PREFERENCE = "bindhome.advanced-pinned";
 export const ONBOARDING_DISMISSED_PREFERENCE = "bindhome.onboarding.v1";
 export const COLLAPSED_FLOORS_PREFERENCE = "bindhome.home-collapsed-floors";
+export const LAST_BACKUP_PREFERENCE = "bindhome.backup.last-exported-at";
 
 function preferenceConnection(hass) {
   const connection = hass?.connection;
