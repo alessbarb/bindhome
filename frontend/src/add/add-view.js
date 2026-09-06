@@ -9,6 +9,7 @@ import { createBindHomeApi } from "../api/bindhome-api.js";
 import { normalizeWsError } from "../api/normalize-ws-error.js";
 import { buildPresetCatalogue } from "./preset-catalogue.js";
 import "../inventory/inventory-workflow.js";
+import "./assisted-import-workflow.js";
 
 export class BindHomeAddView extends LitElement {
   static properties = {
@@ -86,9 +87,9 @@ export class BindHomeAddView extends LitElement {
       input, select { width: 100%; min-height: 46px; margin-top: 7px; padding: 9px 11px; border: 1px solid var(--divider-color); border-radius: 8px; background: var(--card-background-color); }
       .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 22px; }
       .success { margin-top: 16px; color: var(--success-color, var(--primary-color)); }
-      @media (max-width: 600px) {
+      @media (max-width: 700px) {
         .mode-switch { width:100%; }
-        .mode-switch button { flex:1; padding-inline:8px; }
+        .mode-switch button { flex:1; padding-inline:7px; font-size:13px; }
         .presets { grid-template-columns:1fr; }
         .preset { min-height:56px; flex-direction:row; align-items:center; justify-content:flex-start; }
         .catalogue-section, .catalogue { margin-top:20px; }
@@ -176,6 +177,7 @@ export class BindHomeAddView extends LitElement {
       <div class="mode-switch" role="tablist" aria-label=${this.t("add.mode_label")}>
         <button class=${this._mode === "single" ? "active" : ""} role="tab" aria-selected=${this._mode === "single"} @click=${() => (this._mode = "single")}>${this.t("add.single_mode")}</button>
         <button class=${this._mode === "bulk" ? "active" : ""} role="tab" aria-selected=${this._mode === "bulk"} @click=${() => { this._mode = "bulk"; this._preset = null; }}>${this.t("add.bulk_mode")}</button>
+        <button class=${this._mode === "import" ? "active" : ""} role="tab" aria-selected=${this._mode === "import"} @click=${() => { this._mode = "import"; this._preset = null; }}>${this.t("add.import_mode")}</button>
       </div>
       ${this._mode === "bulk"
         ? html`<bindhome-inventory-workflow
@@ -188,32 +190,41 @@ export class BindHomeAddView extends LitElement {
             @assets-refreshed=${this._forwardAssetsRefreshed}
             @view-infrastructure=${this._goHome}
           ></bindhome-inventory-workflow>`
-        : !this._preset
-          ? html`<section class="picker">
-            <h2>${this.t("add.what")}</h2>
-            <label class="search">${this.t("add.search_label")}<input type="search" .value=${this._search} placeholder=${this.t("add.search_placeholder")} @input=${(e) => (this._search = e.target.value)}></label>
-            ${catalogue.featured.length ? html`<section class="catalogue-section"><h3>${this.t("add.frequent")}</h3><div class="presets">${catalogue.featured.map((item) => this._renderPreset(item))}</div></section>` : nothing}
-            <section class="catalogue"><h3>${this.t("add.all_types")}</h3>
-              ${catalogue.groups.length ? catalogue.groups.map((group) => { const category = categoryPresentation(this.t, group.category); return html`<details class="category" ?open=${Boolean(this._search)}><summary><ha-icon icon=${category.icon}></ha-icon><span>${category.label}</span><span class="count">${group.items.length}</span></summary><div class="presets">${group.items.map((item) => this._renderPreset(item))}</div></details>`; }) : html`<div class="empty">${this.t("add.no_matches")}</div>`}
-            </section>
-          </section>`
-          : html`<form class="form surface" @submit=${this._submit}>
-            <div class="form-head"><ha-icon icon=${assetPresentation(this.t, this._preset.asset_type).icon}></ha-icon><h2>${presetDisplayName(this.t, this._preset)}</h2></div>
-            <div class="fields">
-              <label>${this.t("fields.name")}<input .value=${this._name} @input=${(e) => (this._name = e.target.value)} required /></label>
-              <label>${this.t("fields.code_optional")}<input .value=${this._code} @input=${(e) => (this._code = e.target.value)} /></label>
-              <label>${this.t("add.room")}<select .value=${this._areaId} @change=${(e) => (this._areaId = e.target.value)}>
-                <option value="" ?selected=${!this._areaId}>${this.t("add.no_room")}</option>
-                ${this.areas.map((area) => html`<option value=${area.area_id} ?selected=${area.area_id === this._areaId}>${area.name}</option>`)}
-              </select></label>
-            </div>
-            ${this._error ? html`<div class="error" role="alert">${this._error}</div>` : nothing}
-            ${this._sync ? html`<div class="success" role="status">${this._sync}</div>` : nothing}
-            <div class="actions">
-              <button type="button" class="secondary" ?disabled=${this._saving} @click=${() => { this._preset = null; this._error = null; this._sync = null; this._committed = false; }}>${this.t("common.cancel")}</button>
-              <button class="primary" ?disabled=${this._saving || this._committed || !this._name.trim()}>${this._saving ? this.t("add.saving") : this.t("common.add")}</button>
-            </div>
-          </form>`}
+        : this._mode === "import"
+          ? html`<bindhome-assisted-import-workflow
+              .hass=${this.hass}
+              .t=${this.t}
+              .areas=${this.areas}
+              .assets=${this.assets}
+              .contextAreaId=${this.contextAreaId}
+              @assets-refreshed=${this._forwardAssetsRefreshed}
+            ></bindhome-assisted-import-workflow>`
+          : !this._preset
+            ? html`<section class="picker">
+              <h2>${this.t("add.what")}</h2>
+              <label class="search">${this.t("add.search_label")}<input type="search" .value=${this._search} placeholder=${this.t("add.search_placeholder")} @input=${(e) => (this._search = e.target.value)}></label>
+              ${catalogue.featured.length ? html`<section class="catalogue-section"><h3>${this.t("add.frequent")}</h3><div class="presets">${catalogue.featured.map((item) => this._renderPreset(item))}</div></section>` : nothing}
+              <section class="catalogue"><h3>${this.t("add.all_types")}</h3>
+                ${catalogue.groups.length ? catalogue.groups.map((group) => { const category = categoryPresentation(this.t, group.category); return html`<details class="category" ?open=${Boolean(this._search)}><summary><ha-icon icon=${category.icon}></ha-icon><span>${category.label}</span><span class="count">${group.items.length}</span></summary><div class="presets">${group.items.map((item) => this._renderPreset(item))}</div></details>`; }) : html`<div class="empty">${this.t("add.no_matches")}</div>`}
+              </section>
+            </section>`
+            : html`<form class="form surface" @submit=${this._submit}>
+              <div class="form-head"><ha-icon icon=${assetPresentation(this.t, this._preset.asset_type).icon}></ha-icon><h2>${presetDisplayName(this.t, this._preset)}</h2></div>
+              <div class="fields">
+                <label>${this.t("fields.name")}<input .value=${this._name} @input=${(e) => (this._name = e.target.value)} required /></label>
+                <label>${this.t("fields.code_optional")}<input .value=${this._code} @input=${(e) => (this._code = e.target.value)} /></label>
+                <label>${this.t("add.room")}<select .value=${this._areaId} @change=${(e) => (this._areaId = e.target.value)}>
+                  <option value="" ?selected=${!this._areaId}>${this.t("add.no_room")}</option>
+                  ${this.areas.map((area) => html`<option value=${area.area_id} ?selected=${area.area_id === this._areaId}>${area.name}</option>`)}
+                </select></label>
+              </div>
+              ${this._error ? html`<div class="error" role="alert">${this._error}</div>` : nothing}
+              ${this._sync ? html`<div class="success" role="status">${this._sync}</div>` : nothing}
+              <div class="actions">
+                <button type="button" class="secondary" ?disabled=${this._saving} @click=${() => { this._preset = null; this._error = null; this._sync = null; this._committed = false; }}>${this.t("common.cancel")}</button>
+                <button class="primary" ?disabled=${this._saving || this._committed || !this._name.trim()}>${this._saving ? this.t("add.saving") : this.t("common.add")}</button>
+              </div>
+            </form>`}
     </div>`;
   }
 

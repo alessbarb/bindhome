@@ -19,12 +19,12 @@ function acceptRevision(state, revision) {
 }
 
 function errorCode(error) {
-  return (
-    error?.code ??
-    error?.body?.code ??
-    error?.data?.code ??
-    null
-  );
+  return error?.code ?? error?.body?.code ?? error?.data?.code ?? null;
+}
+
+function notifyConflict(state, error) {
+  if (errorCode(error) !== "conflict") return;
+  for (const listener of state.conflictListeners) listener(error);
 }
 
 async function mutate(hass, state, message) {
@@ -36,9 +36,21 @@ async function mutate(hass, state, message) {
     acceptRevision(state, response?.revision);
     return response;
   } catch (error) {
-    if (errorCode(error) === "conflict") {
-      for (const listener of state.conflictListeners) listener(error);
-    }
+    notifyConflict(state, error);
+    throw error;
+  }
+}
+
+async function mutateAtRevision(hass, state, message, revision) {
+  try {
+    const response = await hass.callWS({
+      ...message,
+      based_on_revision: revision,
+    });
+    acceptRevision(state, response?.revision);
+    return response;
+  } catch (error) {
+    notifyConflict(state, error);
     throw error;
   }
 }
@@ -160,6 +172,28 @@ export function createBindHomeApi(hass) {
         type: "bindhome/assets/delete_with_dependencies",
         asset_id: assetId,
       });
+    },
+
+    async discoverImport(areaId = null) {
+      const response = await hass.callWS({
+        type: "bindhome/import/discover",
+        ...(areaId ? { area_id: areaId } : {}),
+      });
+      acceptRevision(state, response?.revision);
+      return response;
+    },
+
+    async commitImport({ areaId = null, revision, decisions }) {
+      return mutateAtRevision(
+        hass,
+        state,
+        {
+          type: "bindhome/import/commit",
+          decisions,
+          ...(areaId ? { area_id: areaId } : {}),
+        },
+        revision,
+      );
     },
   };
 }
