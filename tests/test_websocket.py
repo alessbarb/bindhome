@@ -908,3 +908,21 @@ async def test_binding_status_read_model_is_json_serializable() -> None:
     json.dumps(result)
     assert result["summary"]["total"] == 1
     assert result["records"][0]["status"] == "binding_not_found"
+
+
+async def test_registry_read_adds_transient_representation_identity(monkeypatch):
+    """Household response enriches runtime identity without changing storage."""
+    manager = FakeManager()
+    payload = manager.registry.to_dict.return_value
+    payload["representations"] = [{"asset_id": "a1", "platform": "light"}]
+    monkeypatch.setattr(
+        websocket,
+        "representation_entity_ids",
+        lambda hass, reps: {"a1": "light.renamed"},
+    )
+    connection = FakeConnection()
+    await call(websocket.ws_registry_get, hass_for(manager), connection, {"id": "1"})
+    assert connection.results[0][1]["representation_entities"] == {
+        "a1": "light.renamed"
+    }
+    assert "representation_entities" not in payload

@@ -101,6 +101,10 @@ The current BindHome 1.x contract supports zero or one Representation per Asset.
 
 Removing a Representation removes the logical entity while preserving the Asset. Re-adding the same Representation preserves the stable logical identity derived from the Asset.
 
+The normal element detail exposes creation and removal of the existing logical Light with explicit confirmation against the reviewed Registry revision. Creation requires a configuration-valid primary `on_off` Binding; temporary hardware unavailability does not make a valid connection broken. Removal preserves the Asset, its Bindings and hardware, and warns about consumers of the logical entity.
+
+The household-readable Registry response includes a transient `representation_entities` map when Representations exist. IDs are resolved through the runtime contract and Home Assistant Entity Registry, never inferred from Asset names or persisted in the BindHome Registry. Refresh resolves renames or newly reconciled entities; displayed runtime availability comes from Home Assistant state. A backing `light` mirrors the existing safe light contract; other domains deliberately expose ON/OFF only. Read-only users have status and refresh but no mutation controls.
+
 #### Logical entity metadata ownership
 
 A logical Representation spans two ownership domains: BindHome supplies the integration-owned defaults that describe the physical Asset, while Home Assistant retains the normal Entity Registry customization surface for the user.

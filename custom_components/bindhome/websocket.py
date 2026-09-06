@@ -40,6 +40,7 @@ from .registry import (
     RegistryNotFoundError,
     RegistryValidationError,
 )
+from .representation import representation_entity_ids
 from .validation import validate_area
 
 WS_REGISTRY_GET = f"{DOMAIN}/registry/get"
@@ -154,6 +155,10 @@ async def ws_registry_get(
     try:
         manager = _get_manager(hass)
         result = {**manager.registry.to_dict(), "revision": manager.revision}
+        if result["representations"]:
+            result["representation_entities"] = representation_entity_ids(
+                hass, manager.registry.representations
+            )
     except RegistryError as err:
         _send_error(connection, msg, err)
         return

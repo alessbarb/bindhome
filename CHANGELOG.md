@@ -20,6 +20,8 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ### Added
 
+- Element detail now lets administrators create and remove the existing logical light Representation with revision-bound confirmation, stable Home Assistant entity lookup, availability and capability-limit guidance; household readers see status without mutation controls. ([#101](https://github.com/alessbarb/bindhome/issues/101))
+
 - Advanced Maintenance now includes a first-class model health surface for Binding status, stale Areas, declared capabilities without Bindings, Registry recovery and undocumented Home Assistant hardware discovered through the existing assisted-import engine; actionable findings route into the supported remediation workflows. ([#100](https://github.com/alessbarb/bindhome/issues/100))
 
 ### Changed
