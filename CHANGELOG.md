@@ -20,6 +20,7 @@ The preferred categories are **Added**, **Changed**, **Fixed**, **Reliability**,
 
 ### Changed
 
+- The BindHome header now exposes Home Assistant's native sidebar menu control, letting phone/narrow layouts and desktop setups with an always-hidden docked sidebar open HA navigation using the platform's own context, kiosk and notification semantics. ([#115](https://github.com/alessbarb/bindhome/issues/115))
 - Panel preferences for Advanced pinning, onboarding dismissal and collapsed Floors now persist in Home Assistant per-user frontend data so they follow the authenticated user across browsers and devices; existing browser-local values migrate once when the server preference is unset, and explicit user changes cannot be overwritten by a late asynchronous restore. ([#113](https://github.com/alessbarb/bindhome/issues/113))
 - BindHome panel views now have canonical URLs with deep-linkable Home/Area/Asset, Add, Search and Advanced routes; browser history and search query state stay synchronized without remounting active workflows. ([#109](https://github.com/alessbarb/bindhome/issues/109))
 - Home navigation now follows Home Assistant Floor/Area icons more closely, persists collapsed floors per HA user/browser, provides an empty-room first action and exposes an accessible refresh-in-progress state. ([#46](https://github.com/alessbarb/bindhome/issues/46))

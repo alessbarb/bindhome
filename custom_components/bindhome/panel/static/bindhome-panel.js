@@ -3211,7 +3211,7 @@
         </div>
       </div>`:t=this._renderViews(),a`<div class="shell">
       <header class="top">
-        <div class="brand"><ha-icon icon="mdi:home-switch"></ha-icon><h1>BindHome</h1>${this._isAdmin()?c:a`<span class="read-only-badge">${this._t("common.read_only")}</span>`}</div>
+        <div class="leading"><ha-menu-button></ha-menu-button><div class="brand"><ha-icon icon="mdi:home-switch"></ha-icon><h1>BindHome</h1>${this._isAdmin()?c:a`<span class="read-only-badge">${this._t("common.read_only")}</span>`}</div></div>
         <nav class="tabs" aria-label=${this._t("shell.sections_label")}>
           ${["home",...this._isAdmin()?["add"]:[],"search"].map(e=>a`<button
               class=${this._view===e?"active":""}
@@ -3283,6 +3283,8 @@
       border-bottom: 1px solid var(--divider-color, #e0e0e0);
       background: var(--card-background-color, #fff);
     }
+    .leading { display: flex; align-items: center; min-width: 0; }
+    .leading > ha-menu-button { flex: none; }
     .brand { display: flex; align-items: center; gap: 9px; margin-right: 30px; }
     .brand ha-icon { color: var(--primary-color); --mdc-icon-size: 28px; }
     .brand h1 { margin: 0; font-size: 20px; font-weight: 500; }
