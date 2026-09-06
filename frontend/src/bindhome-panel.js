@@ -724,6 +724,7 @@ export class BindHomePanel extends LitElement {
           .refreshTopologyData=${common.refreshTopologyData}
           .selectedAssetId=${this._advancedAssetId}
           @assets-refreshed=${this._assetsRefreshed}
+          @review-import=${(event) => this._openAdd(event.detail)}
         ></bindhome-advanced-view>
       </section>`;
   }
