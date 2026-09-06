@@ -27,6 +27,7 @@ export function buildHomeProjection(floors, areas, assets) {
     id: floor.floor_id,
     name: floor.name,
     icon: floor.icon,
+    level: floor.level,
     areas: areas
       .filter((area) => area.floor_id === floor.floor_id)
       .sort(byName),
@@ -37,6 +38,7 @@ export function buildHomeProjection(floors, areas, assets) {
       id: "__no_floor__",
       name: null,
       icon: null,
+      level: null,
       areas: noFloorAreas,
     });
   return {
