@@ -119,3 +119,34 @@ The commit step must not modify Home Assistant Areas, Devices or Entities.
 Proposal IDs are deterministic workflow identifiers derived from Home Assistant source identities plus a discovery-provided candidate key. They are not persistent infrastructure identity and must not be used as Asset IDs.
 
 The Python contract in `custom_components/bindhome/import_proposals.py` is the canonical shape for implementation work under #38. Backend discovery and frontend review should serialize that contract rather than defining parallel structures.
+
+## Discovery implementation in v1.4
+
+`bindhome/import/discover` implements the read-only discovery slice. It is administrator-only until the household-read authorization matrix explicitly classifies assisted-import metadata. It accepts an optional Home Assistant `area_id`; without one it scans the whole installation.
+
+Discovery reads current Area, Device, Entity Registry and state-machine metadata and serializes the canonical proposal contract above. It never writes the BindHome Registry or Home Assistant registries.
+
+### Conservative metadata mapping
+
+The first implementation proposes capabilities only where Home Assistant metadata provides a reasonably stable meaning:
+
+- `light`, `switch`, `fan` -> `on_off`;
+- `cover`, `valve` -> `open_close`;
+- `climate` -> `setpoint`;
+- temperature sensors -> `temperature`;
+- power sensors -> `power_measurement`;
+- door/window/opening binary sensors -> `open_close`.
+
+Unsupported metadata is not translated into an invented capability. Every mapping remains a proposal that the review step may rename, reclassify, merge or skip.
+
+### Device grouping
+
+Device-backed entities are grouped only while proposed `(capability, role)` keys remain non-conflicting. A Device exposing two switch channels therefore becomes two reviewable proposals instead of one Asset with two competing primary `on_off` Bindings. Non-conflicting functions can remain together. The human review step may explicitly merge proposals when that reflects the real physical installation.
+
+### Stable identity and fallbacks
+
+Entity Registry entry IDs are retained as the strong target identity. A Home Assistant entity rename updates the current `entity_id` without changing the stable proposal identity where Registry identity exists.
+
+State-machine-only entities are included only during whole-installation discovery and use the explicit `entity_id` fallback defined by the contract. Discovery does not guess an Area for them.
+
+The discovery response also includes the current BindHome Registry revision so the later reviewed commit can reject stale decisions through optimistic concurrency.
