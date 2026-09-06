@@ -3,6 +3,11 @@ import { defineBindHomeElement } from "../custom-elements.js";
 import { LitElement, css, html, nothing } from "lit";
 import { tokens } from "../styles/shared-styles.js";
 import {
+  COLLAPSED_FLOORS_PREFERENCE,
+  loadStringArrayPreference,
+  saveUserPreference,
+} from "../api/user-preferences.js";
+import {
   buildHomeProjection,
   groupRoomAssets,
   NO_AREA,
@@ -55,6 +60,7 @@ export class BindHomeHomeView extends LitElement {
     this.selectedAreaId = null;
     this._collapsedFloorIds = new Set();
     this._collapsedPreferenceIdentity = null;
+    this._collapsedPreferenceGeneration = 0;
   }
   static styles = [
     tokens,
@@ -99,29 +105,34 @@ export class BindHomeHomeView extends LitElement {
   updated(changed) {
     if (changed.has("hass")) this._restoreCollapsedFloors();
   }
-  _collapsedPreferenceKey() {
+  _legacyCollapsedPreferenceKey() {
     return `bindhome.home-collapsed-floors.${this.hass?.user?.id ?? "browser"}`;
   }
-  _restoreCollapsedFloors() {
-    const identity = this._collapsedPreferenceKey();
+  async _restoreCollapsedFloors() {
+    const identity = this.hass?.user?.id ?? "browser";
     if (identity === this._collapsedPreferenceIdentity) return;
     this._collapsedPreferenceIdentity = identity;
-    try {
-      const value = JSON.parse(window.localStorage.getItem(identity) ?? "[]");
-      this._collapsedFloorIds = new Set(Array.isArray(value) ? value.filter((id) => typeof id === "string") : []);
-    } catch {
-      this._collapsedFloorIds = new Set();
-    }
+    const generation = ++this._collapsedPreferenceGeneration;
+    const collapsed = await loadStringArrayPreference(
+      this.hass,
+      COLLAPSED_FLOORS_PREFERENCE,
+      this._legacyCollapsedPreferenceKey(),
+    );
+    if (
+      generation !== this._collapsedPreferenceGeneration ||
+      identity !== this._collapsedPreferenceIdentity
+    )
+      return;
+    this._collapsedFloorIds = new Set(collapsed);
   }
   _persistCollapsedFloors() {
-    try {
-      window.localStorage.setItem(
-        this._collapsedPreferenceKey(),
-        JSON.stringify([...this._collapsedFloorIds].sort()),
-      );
-    } catch {
-      /* Browser storage may be unavailable. */
-    }
+    this._collapsedPreferenceIdentity = this.hass?.user?.id ?? "browser";
+    this._collapsedPreferenceGeneration += 1;
+    void saveUserPreference(
+      this.hass,
+      COLLAPSED_FLOORS_PREFERENCE,
+      [...this._collapsedFloorIds].sort(),
+    );
   }
   _areaAssets(id) {
     if (id === NO_AREA) return this.assets.filter((asset) => !asset.area_id);
