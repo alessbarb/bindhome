@@ -16,7 +16,7 @@ The classification decorators are part of the runtime authorization boundary and
 
 | Surface | Access | Reason |
 | --- | --- | --- |
-| Registry get/subscribe | household-read | Canonical household inventory and live revision updates |
+| Registry get/subscribe | household-read | Canonical household inventory, transient logical entity lookup and live revision updates |
 | Preset list | household-read | Static presentation metadata |
 | Asset get/list | household-read | Physical household inventory |
 | Relation list and graph traverse/path | household-read | Household topology |
@@ -37,6 +37,6 @@ Home Assistant remains authoritative for Floor, Area, Device and Entity metadata
 
 ## Panel behavior
 
-The sidebar panel is visible to authenticated non-admin users. In household-read mode it exposes Home and Search, inventory/topology/status details and live refreshes. Add, Advanced, edit/relation/rebind/delete actions and onboarding creation flows are hidden or disabled. Backend authorization remains authoritative even if a frontend client is modified.
+The sidebar panel is visible to authenticated non-admin users. In household-read mode it exposes Home and Search, inventory/topology/status details and live refreshes. Add, Advanced, edit/relation/rebind/delete and Representation mutation actions and onboarding creation flows are hidden or disabled. Backend authorization remains authoritative even if a frontend client is modified.
 
 This pattern is intended to be reused by future topology analysis (#41) and report/export surfaces (#42): each new handler must choose household-read, admin-read or admin-write rather than duplicating ad-hoc role checks.

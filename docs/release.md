@@ -129,3 +129,11 @@ If installation succeeds but post-restart validation fails:
 5. restore a compatible BindHome Registry backup only through the supported recovery path if required.
 
 A failed release must never be repaired by changing Home Assistant `.storage` directly.
+
+## 1.4.1 release baseline
+
+The 1.4.0 tag remains immutable release history. Version 1.4.1 completes panel surfaces over existing contracts, uses Registry schema v2 / backup format v1 / CSV format v1, and keeps the Home Assistant 2026.8.0 minimum with compatibility coverage for 2026.8.0 and 2026.9.0.
+
+Keep README current-release and workflow descriptions, all five version values, the finalized changelog and its 1.4.0/1.4.1 comparison links coherent. Historical 1.4.0 notes must remain under 1.4.0 rather than being relabeled. Validate every feature and release PR on its final SHA, inspect comments/reviews/threads and mergeability, then merge with an expected head SHA. A new SHA invalidates previous validation evidence.
+
+The release branch must ultimately target current `main`. Let the existing publisher create `v1.4.1` and its stable release on the exact green merged `main` commit, then verify tag identity, published version and notes. Do not publish directly from the release branch or move an existing tag.
