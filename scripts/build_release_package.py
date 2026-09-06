@@ -72,7 +72,8 @@ def _validate_archive(output: Path, expected_version: str) -> None:
                 raise SystemExit(f"Unsafe archive path: {name}")
             if name.startswith("custom_components/"):
                 raise SystemExit(
-                    "Release archive must be rooted at the integration, not custom_components/"
+                    "Release archive must be rooted at the integration, "
+                    "not custom_components/"
                 )
 
         for relative in REQUIRED_RUNTIME_FILES:
