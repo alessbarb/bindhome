@@ -8,6 +8,12 @@ import {
 import { createHomeAssistantApi } from "./api/home-assistant-api.js";
 import { createLocalizer, loadPanelTranslations } from "./i18n/localize.js";
 import { NO_AREA, STALE_AREA } from "./state/home-selectors.js";
+import {
+  buildPanelUrl,
+  emptyPanelRoute,
+  navigatePanelUrl,
+  parsePanelRoute,
+} from "./routing/panel-route.js";
 import "./home/home-view.js";
 import "./add/add-view.js";
 import "./search/search-view.js";
@@ -37,6 +43,7 @@ export class BindHomePanel extends LitElement {
     _selectedAssetId: { state: true },
     _selectedAreaId: { state: true },
     _advancedAssetId: { state: true },
+    _searchQuery: { state: true },
     _addSessionId: { state: true },
     _advancedPinned: { state: true },
     _onboardingVisible: { state: true },
@@ -70,6 +77,7 @@ export class BindHomePanel extends LitElement {
     this._selectedAssetId = null;
     this._selectedAreaId = null;
     this._advancedAssetId = null;
+    this._searchQuery = "";
     this._addSessionId = 0;
     this._advancedPinned = false;
     this._advancedPreferenceIdentity = null;
@@ -87,6 +95,8 @@ export class BindHomePanel extends LitElement {
     this._refreshBindingDataHandler = () => this._refreshBindingData();
     this._refreshTopologyDataHandler = () => this._refreshTopologyData();
     this._refreshAssetsHandler = () => this._refreshAssets();
+    this._searchQueryChangedHandler = (event) =>
+      this._searchQueryChanged(event);
     this._addCreatedHandler = async (created) => {
       const assets = await this._refreshAssets();
       const asset = created ?? assets?.at(-1);
@@ -321,6 +331,9 @@ export class BindHomePanel extends LitElement {
     @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
   `;
   updated(changed) {
+    if ((changed.has("route") || changed.has("hass")) && this.route) {
+      this._applyRoute(this.route);
+    }
     if (changed.has("hass")) {
       this._restoreAdvancedPreference();
       this._restoreOnboardingPreference();
@@ -450,6 +463,43 @@ export class BindHomePanel extends LitElement {
   _isAdmin() {
     return this.hass?.user?.is_admin !== false;
   }
+  _routePrefix() {
+    if (typeof this.route?.prefix === "string" && this.route.prefix)
+      return this.route.prefix;
+    const panelPath = this.panel?.url_path;
+    return panelPath ? `/${panelPath}` : "/bindhome";
+  }
+  /** @returns {import('./types.js').PanelRouteState} */
+  _routeState() {
+    return {
+      view: /** @type {import('./types.js').TopLevelView} */ (this._view),
+      areaId: this._selectedAreaId,
+      assetId: this._selectedAssetId,
+      query: this._searchQuery,
+      contextAreaId: this._contextAreaId,
+      advancedAssetId: this._advancedAssetId,
+    };
+  }
+  _commitRoute({ replace = false } = {}) {
+    const url = buildPanelUrl(this._routeState(), this._routePrefix());
+    navigatePanelUrl(url, { replace });
+  }
+  _applyRoute(route) {
+    let next = parsePanelRoute(route, window.location.search);
+    if (!this._isAdmin() && (next.view === "add" || next.view === "advanced"))
+      next = emptyPanelRoute();
+
+    this._view = next.view;
+    this._selectedAreaId = next.areaId;
+    this._selectedAssetId = next.assetId;
+    this._searchQuery = next.query;
+    this._contextAreaId = next.contextAreaId;
+    this._advancedAssetId = next.advancedAssetId;
+
+    const canonical = buildPanelUrl(next, this._routePrefix());
+    const current = `${window.location.pathname}${window.location.search}`;
+    if (canonical !== current) navigatePanelUrl(canonical, { replace: true });
+  }
   _navigate(view) {
     if (!this._isAdmin() && (view === "add" || view === "advanced")) return;
     if (this._onboardingVisible) this._dismissOnboarding();
@@ -461,12 +511,18 @@ export class BindHomePanel extends LitElement {
     if (this._view === "advanced" && view !== "advanced") this._advancedAssetId = null;
     this._view = view;
     if (view !== "add") this._contextAreaId = null;
+    this._commitRoute();
   }
   _openAdd(contextAreaId = null) {
     if (!this._isAdmin()) return;
     this._addSessionId += 1;
     this._contextAreaId = contextAreaId;
     this._view = "add";
+    this._commitRoute();
+  }
+  _searchQueryChanged(event) {
+    this._searchQuery = typeof event.detail === "string" ? event.detail : "";
+    if (this._view === "search") this._commitRoute({ replace: true });
   }
   _advancedPreferenceKey() {
     return `bindhome.advanced-pinned.${this.hass?.user?.id ?? "browser"}`;
@@ -519,10 +575,13 @@ export class BindHomePanel extends LitElement {
     this._dismissOnboarding();
     this._contextAreaId = null;
     this._view = "home";
+    this._commitRoute();
   }
   _homeNavigate(event) {
+    this._view = "home";
     this._selectedAreaId = event.detail.areaId;
     this._selectedAssetId = event.detail.assetId;
+    this._commitRoute();
   }
   _openAsset(id) {
     const asset = this._assets.find((item) => item.id === id);
@@ -533,11 +592,13 @@ export class BindHomePanel extends LitElement {
         ? asset.area_id
         : STALE_AREA;
     this._view = "home";
+    this._commitRoute();
   }
   _editAsset(id) {
     if (!this._isAdmin() || !this._advancedPinned) return;
     this._advancedAssetId = id;
     this._view = "advanced";
+    this._commitRoute();
   }
   _humanAssetCommitted(updated) {
     if (!updated?.id) return;
@@ -545,6 +606,7 @@ export class BindHomePanel extends LitElement {
     if (this._registry) this._registry = { ...this._registry, assets: this._assets };
     this._selectedAssetId = updated.id;
     this._selectedAreaId = !updated.area_id ? NO_AREA : this._areas.some((area) => area.area_id === updated.area_id) ? updated.area_id : STALE_AREA;
+    if (this._view === "home") this._commitRoute({ replace: true });
   }
   _hassFor(view) {
     if (this._view === view || this._hassByView[view] == null) {
@@ -610,6 +672,8 @@ export class BindHomePanel extends LitElement {
           .assets=${this._assets}
           .areas=${this._areas}
           .floors=${this._floors}
+          .query=${this._searchQuery}
+          @search-query-changed=${this._searchQueryChangedHandler}
           @open-asset=${(e) => this._openAsset(e.detail)}
         ></bindhome-search-view>
       </section>
@@ -662,7 +726,7 @@ export class BindHomePanel extends LitElement {
             ? html`<button
                 class=${this._view === "advanced" ? "advanced active" : "advanced"}
                 aria-current=${this._view === "advanced" ? "page" : "false"}
-                ?disabled=${!this._advancedPinned}
+                ?disabled=${!this._advancedPinned && this._view !== "advanced"}
                 @click=${() => this._navigate("advanced")}
               >${this._t("nav.advanced")}</button>
               <ha-switch

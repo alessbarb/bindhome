@@ -10,7 +10,7 @@ export class BindHomeSearchView extends LitElement {
     assets: { attribute: false },
     areas: { attribute: false },
     floors: { attribute: false },
-    _query: { state: true },
+    query: { type: String },
   };
   constructor() {
     super();
@@ -19,7 +19,7 @@ export class BindHomeSearchView extends LitElement {
     this.assets = [];
     this.areas = [];
     this.floors = [];
-    this._query = "";
+    this.query = "";
   }
   static styles = [
     tokens,
@@ -88,7 +88,7 @@ export class BindHomeSearchView extends LitElement {
       this.assets,
       this.areas,
       this.floors,
-      this._query,
+      this.query,
     );
     const normalized = found.map((item) =>
       item.asset
@@ -107,12 +107,21 @@ export class BindHomeSearchView extends LitElement {
           type="search"
           aria-label=${this.t("search.label")}
           placeholder=${this.t("search.placeholder")}
-          .value=${this._query}
-          @input=${(e) => (this._query = e.target.value)}
+          .value=${this.query}
+          @input=${(e) => {
+            this.query = e.target.value;
+            this.dispatchEvent(
+              new CustomEvent("search-query-changed", {
+                detail: this.query,
+                bubbles: true,
+                composed: true,
+              }),
+            );
+          }}
         />
       </div>
       <p class="hint muted">
-        ${this._query
+        ${this.query
           ? this.t("search.results", { count: normalized.length })
           : this.t("search.suggestions")}
       </p>
