@@ -244,6 +244,118 @@ class Representation:
 
 
 @dataclass(frozen=True, slots=True)
+class HardwareAdoption:
+    """Record reversible visibility ownership for one stable HA entity target."""
+
+    entity_registry_id: str
+    entity_id: str
+    previous_hidden_by: str | None
+    changed_hidden_by: bool
+    binding_ids: tuple[str, ...]
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        entity_registry_id: str,
+        entity_id: str,
+        previous_hidden_by: str | None,
+        changed_hidden_by: bool,
+        binding_ids: tuple[str, ...] | list[str],
+    ) -> HardwareAdoption:
+        """Create a canonical visibility ownership record."""
+        previous = (
+            normalize_identifier(previous_hidden_by, "previous_hidden_by")
+            if previous_hidden_by is not None
+            else None
+        )
+        if previous not in {None, "integration", "user"}:
+            raise ModelValidationError(
+                "previous_hidden_by must be integration, user or null",
+                field="previous_hidden_by",
+            )
+        if not isinstance(changed_hidden_by, bool):
+            raise ModelValidationError(
+                "changed_hidden_by must be a boolean",
+                field="changed_hidden_by",
+            )
+        owners = tuple(
+            sorted(
+                {
+                    normalize_non_empty(binding_id, "binding_id")
+                    for binding_id in binding_ids
+                }
+            )
+        )
+        if not owners:
+            raise ModelValidationError(
+                "Hardware adoption requires at least one Binding owner",
+                field="binding_ids",
+            )
+        return cls(
+            entity_registry_id=normalize_non_empty(
+                entity_registry_id, "entity_registry_id"
+            ),
+            entity_id=normalize_non_empty(entity_id, "entity_id"),
+            previous_hidden_by=previous,
+            changed_hidden_by=changed_hidden_by,
+            binding_ids=owners,
+        )
+
+    def with_binding(self, binding_id: str) -> HardwareAdoption:
+        """Add one Binding owner without changing the original visibility snapshot."""
+        owner = normalize_non_empty(binding_id, "binding_id")
+        return replace(self, binding_ids=tuple(sorted({*self.binding_ids, owner})))
+
+    def without_binding(self, binding_id: str) -> HardwareAdoption | None:
+        """Remove one Binding owner, returning None when the last owner leaves."""
+        owners = tuple(owner for owner in self.binding_ids if owner != binding_id)
+        return replace(self, binding_ids=owners) if owners else None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize the exact reversible visibility ownership record."""
+        return {
+            "entity_registry_id": self.entity_registry_id,
+            "entity_id": self.entity_id,
+            "previous_hidden_by": self.previous_hidden_by,
+            "changed_hidden_by": self.changed_hidden_by,
+            "binding_ids": list(self.binding_ids),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> HardwareAdoption:
+        """Deserialize and validate a hardware adoption record."""
+        if not isinstance(data, dict):
+            raise ModelValidationError("Hardware adoption data must be a dictionary")
+        try:
+            raw_binding_ids = data["binding_ids"]
+            if not isinstance(raw_binding_ids, (list, tuple)):
+                raise ModelValidationError(
+                    "binding_ids must be a list or tuple",
+                    field="binding_ids",
+                )
+            changed = data["changed_hidden_by"]
+            if not isinstance(changed, bool):
+                raise ModelValidationError(
+                    "changed_hidden_by must be a boolean",
+                    field="changed_hidden_by",
+                )
+            previous = data.get("previous_hidden_by")
+            return cls.create(
+                entity_registry_id=str(data["entity_registry_id"]),
+                entity_id=str(data["entity_id"]),
+                previous_hidden_by=(str(previous) if previous is not None else None),
+                changed_hidden_by=changed,
+                binding_ids=[str(item) for item in raw_binding_ids],
+            )
+        except KeyError as err:
+            raise ModelValidationError(
+                f"Missing required hardware adoption field: {err.args[0]}",
+                field=str(err.args[0]),
+            ) from err
+
+
+@dataclass(frozen=True, slots=True)
 class Relation:
     """A directed topology relation between two assets."""
 

@@ -75,7 +75,7 @@ def sync_adoption_visibility_transition(
 
     for registry_id, adoption in current.items():
         old = previous.get(registry_id)
-        if old == adoption or not adoption.changed_hidden_by:
+        if old is not None or not adoption.changed_hidden_by:
             continue
         entry = entity_registry.entities.get_entry(registry_id)
         if entry is None or entry.hidden_by is er.RegistryEntryHider.INTEGRATION:
@@ -91,13 +91,6 @@ def sync_adoption_visibility_transition(
             )
         except (KeyError, ValueError):
             continue
-
-
-def sync_current_adoption_visibility(
-    hass: HomeAssistant, adoptions: dict[str, HardwareAdoption]
-) -> None:
-    """Reconcile persisted adoptions after startup without overriding user state."""
-    sync_adoption_visibility_transition(hass, {}, adoptions)
 
 
 async def async_adopt_binding(

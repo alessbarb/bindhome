@@ -29,19 +29,19 @@ def _fixture(name: str) -> dict[str, object]:
     return json.loads((_FIXTURES / name).read_text(encoding="utf-8"))
 
 
-def test_current_v2_golden_payload_loads_unchanged() -> None:
-    payload = _fixture("v2_canonical.json")
+def test_current_v3_golden_payload_loads_unchanged() -> None:
+    payload = _fixture("v3_canonical.json")
 
     result = migrate_registry_payload(payload)
 
-    assert result.source_version == 2
-    assert result.target_version == REGISTRY_SCHEMA_VERSION == 2
+    assert result.source_version == 3
+    assert result.target_version == REGISTRY_SCHEMA_VERSION == 3
     assert result.changed is False
     assert result.canonical_payload == payload
     assert result.registry.to_dict() == payload
 
 
-def test_v1_golden_payload_migrates_to_v2() -> None:
+def test_v1_golden_payload_migrates_to_current() -> None:
     payload = _fixture("v1_canonical.json")
     original = deepcopy(payload)
 
@@ -49,9 +49,9 @@ def test_v1_golden_payload_migrates_to_v2() -> None:
 
     assert payload == original
     assert result.source_version == 1
-    assert result.target_version == 2
+    assert result.target_version == 3
     assert result.changed is True
-    assert result.canonical_payload["schema_version"] == 2
+    assert result.canonical_payload["schema_version"] == 3
 
 
 def test_v1_binding_gets_explicit_entity_registry_fallback() -> None:
@@ -94,9 +94,9 @@ def test_legacy_v0_golden_payload_migrates_to_current_schema() -> None:
 
     assert payload == original
     assert result.source_version == 0
-    assert result.target_version == 2
+    assert result.target_version == 3
     assert result.changed is True
-    assert result.canonical_payload["schema_version"] == 2
+    assert result.canonical_payload["schema_version"] == 3
     assert result.canonical_payload["representations"] == [
         {"asset_id": "legacy-light", "platform": "light"}
     ]
@@ -128,6 +128,20 @@ def test_historical_v1_shape_without_representations_is_migrated() -> None:
     assert result.canonical_payload["representations"] == [
         {"asset_id": "old-light", "platform": "light"}
     ]
+
+
+def test_v2_golden_payload_migrates_to_v3() -> None:
+    payload = _fixture("v2_canonical.json")
+    original = deepcopy(payload)
+
+    result = migrate_registry_payload(payload)
+
+    assert payload == original
+    assert result.source_version == 2
+    assert result.target_version == 3
+    assert result.changed is True
+    assert result.canonical_payload["schema_version"] == 3
+    assert result.canonical_payload["adoptions"] == []
 
 
 def test_migration_is_idempotent_once_payload_is_canonical() -> None:
@@ -173,14 +187,15 @@ def test_schema_bump_requires_a_complete_stepwise_migration_path() -> None:
 def test_current_schema_parser_does_not_hide_migration_logic() -> None:
     with pytest.raises(
         RegistryValidationError,
-        match="missing representations",
+        match="missing adoptions",
     ):
         BindHomeRegistry.from_dict(
             {
-                "schema_version": 2,
+                "schema_version": 3,
                 "assets": [],
                 "relations": [],
                 "bindings": [],
+                "representations": [],
             }
         )
 

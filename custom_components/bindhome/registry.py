@@ -9,6 +9,7 @@ from .const import REGISTRY_SCHEMA_VERSION
 from .models import (
     Asset,
     Binding,
+    HardwareAdoption,
     ModelValidationError,
     Relation,
     Representation,
@@ -49,6 +50,7 @@ class BindHomeRegistry:
         self.relations: dict[str, Relation] = {}
         self.bindings: dict[str, Binding] = {}
         self.representations: dict[str, Representation] = {}
+        self.adoptions: dict[str, HardwareAdoption] = {}
 
     def add_asset(self, asset: Asset) -> Asset:
         """Add an asset."""
@@ -203,6 +205,17 @@ class BindHomeRegistry:
             None,
         )
         if existing is not None:
+            same_stable_target = (
+                existing.entity_registry_id is not None
+                and existing.entity_registry_id == binding.entity_registry_id
+            )
+            same_fallback_target = (
+                existing.entity_registry_id is None
+                and binding.entity_registry_id is None
+                and existing.entity_id == binding.entity_id
+            )
+            if not (same_stable_target or same_fallback_target):
+                self.remove_adoption_for_binding(existing.id)
             updated = replace(
                 existing,
                 entity_id=binding.entity_id,
@@ -237,10 +250,61 @@ class BindHomeRegistry:
         )
 
     def remove_binding(self, binding_id: str) -> None:
-        """Remove a capability binding."""
+        """Remove a capability binding and release its visibility ownership."""
         if binding_id not in self.bindings:
             raise RegistryNotFoundError(f"Binding {binding_id} was not found")
+        self.remove_adoption_for_binding(binding_id)
         del self.bindings[binding_id]
+
+    def set_adoption(self, adoption: HardwareAdoption) -> HardwareAdoption:
+        """Persist reversible visibility ownership for one stable HA target."""
+        for binding_id in adoption.binding_ids:
+            binding = self.bindings.get(binding_id)
+            if binding is None:
+                raise RegistryNotFoundError(f"Binding {binding_id} was not found")
+            if binding.entity_registry_id != adoption.entity_registry_id:
+                raise RegistryValidationError(
+                    "Hardware adoption owner does not target the adopted Entity Registry entry",
+                    field="binding_ids",
+                )
+        existing = self.adoptions.get(adoption.entity_registry_id)
+        if existing is not None and (
+            existing.previous_hidden_by != adoption.previous_hidden_by
+            or existing.changed_hidden_by != adoption.changed_hidden_by
+        ):
+            raise RegistryConflictError(
+                "Cannot replace the original visibility snapshot of an active adoption"
+            )
+        self.adoptions[adoption.entity_registry_id] = adoption
+        return adoption
+
+    def adoption_for_binding(self, binding_id: str) -> HardwareAdoption | None:
+        """Return the visibility record currently owned by one Binding."""
+        return next(
+            (
+                adoption
+                for adoption in self.adoptions.values()
+                if binding_id in adoption.binding_ids
+            ),
+            None,
+        )
+
+    def remove_adoption_for_binding(self, binding_id: str) -> bool:
+        """Release one Binding owner and delete the record after the last owner."""
+        for registry_id, adoption in tuple(self.adoptions.items()):
+            if binding_id not in adoption.binding_ids:
+                continue
+            remaining = adoption.without_binding(binding_id)
+            if remaining is None:
+                del self.adoptions[registry_id]
+            else:
+                self.adoptions[registry_id] = remaining
+            return True
+        return False
+
+    def clear_adoptions(self) -> None:
+        """Release all persisted visibility ownership records."""
+        self.adoptions.clear()
 
     def set_representation(
         self,
@@ -306,6 +370,9 @@ class BindHomeRegistry:
                 representation.to_dict()
                 for representation in self.representations.values()
             ],
+            "adoptions": [
+                adoption.to_dict() for adoption in self.adoptions.values()
+            ],
         }
 
     @classmethod
@@ -369,6 +436,18 @@ class BindHomeRegistry:
             except (ModelValidationError, RegistryError) as err:
                 raise RegistryValidationError(
                     f"Invalid representation in registry: {err}"
+                ) from err
+
+        if "adoptions" not in data:
+            raise RegistryValidationError(
+                "Current registry schema is missing adoptions"
+            )
+        for raw_adoption in data.get("adoptions", []):
+            try:
+                registry.set_adoption(HardwareAdoption.from_dict(raw_adoption))
+            except (ModelValidationError, RegistryError) as err:
+                raise RegistryValidationError(
+                    f"Invalid hardware adoption in registry: {err}"
                 ) from err
 
         return registry
