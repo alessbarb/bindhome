@@ -52,6 +52,7 @@ def test_v1_golden_payload_migrates_to_current() -> None:
     assert result.target_version == 3
     assert result.changed is True
     assert result.canonical_payload["schema_version"] == 3
+    assert result.canonical_payload["adoptions"] == []
 
 
 def test_v1_binding_gets_explicit_entity_registry_fallback() -> None:
@@ -84,6 +85,7 @@ def test_v1_binding_gets_explicit_entity_registry_fallback() -> None:
     assert binding.entity_id == "switch.legacy"
     assert binding.entity_registry_id is None
     assert result.canonical_payload["bindings"][0]["entity_registry_id"] is None
+    assert result.canonical_payload["adoptions"] == []
 
 
 def test_legacy_v0_golden_payload_migrates_to_current_schema() -> None:
@@ -97,6 +99,7 @@ def test_legacy_v0_golden_payload_migrates_to_current_schema() -> None:
     assert result.target_version == 3
     assert result.changed is True
     assert result.canonical_payload["schema_version"] == 3
+    assert result.canonical_payload["adoptions"] == []
     assert result.canonical_payload["representations"] == [
         {"asset_id": "legacy-light", "platform": "light"}
     ]
@@ -125,6 +128,7 @@ def test_historical_v1_shape_without_representations_is_migrated() -> None:
 
     assert result.source_version == 1
     assert result.changed is True
+    assert result.canonical_payload["adoptions"] == []
     assert result.canonical_payload["representations"] == [
         {"asset_id": "old-light", "platform": "light"}
     ]
