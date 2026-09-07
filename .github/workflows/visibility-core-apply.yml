@@ -19,6 +19,8 @@ jobs:
           fetch-depth: 0
       - name: Apply patch script
         run: python .github/scripts/apply_visibility_core.py
+      - name: Normalize generated files
+        run: python .github/scripts/fix_visibility_patch.py
       - name: Commit generated source
         run: |
           git config user.name "github-actions[bot]"
