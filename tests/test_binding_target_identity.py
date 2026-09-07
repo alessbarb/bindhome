@@ -115,7 +115,7 @@ async def test_v1_store_migration_enriches_exact_registered_target(
     assert binding.entity_registry_id == entry.id
     persisted = await store._store.async_load()
     assert persisted is not None
-    assert persisted["schema_version"] == 2
+    assert persisted["schema_version"] == 3
     assert persisted["bindings"][0]["entity_registry_id"] == entry.id
 
 

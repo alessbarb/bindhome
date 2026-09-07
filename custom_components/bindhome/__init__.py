@@ -9,6 +9,8 @@ from homeassistant.exceptions import ConfigEntryError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 
+from .adoption import async_revert_all_adoptions
+from .adoption_websocket import async_register_adoption_websocket_commands
 from .backup_websocket import async_register_backup_websocket_commands
 from .binding_events import BindingTargetEventTracker
 from .const import DOMAIN
@@ -36,6 +38,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up BindHome and register service actions."""
     async_register_services(hass)
     async_register_websocket_commands(hass)
+    async_register_adoption_websocket_commands(hass)
     async_register_backup_websocket_commands(hass)
     async_register_csv_websocket_commands(hass)
     async_register_import_websocket_commands(hass)
@@ -76,3 +79,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: BindHomeConfigEntry) ->
     if unload_ok:
         async_unregister_panel(hass)
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: BindHomeConfigEntry) -> None:
+    """Restore every visibility value BindHome owns before config-entry removal."""
+    manager = BindHomeManager(hass)
+    await manager.async_load()
+    await async_revert_all_adoptions(manager)

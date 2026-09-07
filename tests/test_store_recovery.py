@@ -128,6 +128,7 @@ async def test_future_registry_schema_is_rejected_without_rewrite(
             "relations": [],
             "bindings": [],
             "representations": [],
+            "adoptions": [],
         }
     )
     store.async_save = AsyncMock()
@@ -183,6 +184,7 @@ async def test_canonical_registry_is_not_rewritten_on_load(
             "relations": [],
             "bindings": [],
             "representations": [],
+            "adoptions": [],
         }
     )
     store.async_save = AsyncMock()

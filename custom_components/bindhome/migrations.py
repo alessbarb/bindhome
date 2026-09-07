@@ -101,9 +101,18 @@ def _migrate_v1_to_v2(data: dict[str, Any]) -> dict[str, Any]:
     return migrated
 
 
+def _migrate_v2_to_v3(data: dict[str, Any]) -> dict[str, Any]:
+    """Add the reversible hardware-visibility ownership collection."""
+    migrated = deepcopy(data)
+    migrated.setdefault("adoptions", [])
+    migrated["schema_version"] = 3
+    return migrated
+
+
 REGISTRY_MIGRATIONS: dict[int, MigrationStep] = {
     0: _migrate_v0_to_v1,
     1: _migrate_v1_to_v2,
+    2: _migrate_v2_to_v3,
 }
 
 

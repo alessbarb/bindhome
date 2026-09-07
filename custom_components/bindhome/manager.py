@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 
+from .adoption import sync_adoption_visibility_transition
 from .binding_identity import entity_registry_id_for_entity
 from .const import SIGNAL_REGISTRY_CHANGED
 from .models import (
@@ -164,9 +165,13 @@ class BindHomeManager:
     ) -> None:
         """Persist validated staged state, then publish it to runtime consumers."""
         canonical = BindHomeRegistry.from_dict(staged.to_dict())
+        previous_adoptions = dict(self.registry.adoptions)
         await self._store.async_save(canonical)
         self._adopt_staged_registry(canonical)
         self._revision += 1
+        sync_adoption_visibility_transition(
+            self.hass, previous_adoptions, self.registry.adoptions
+        )
         async_dispatcher_send(self.hass, SIGNAL_REGISTRY_CHANGED)
 
     def _adopt_staged_registry(self, staged: BindHomeRegistry) -> None:
