@@ -184,6 +184,7 @@ async def test_canonical_registry_is_not_rewritten_on_load(
             "relations": [],
             "bindings": [],
             "representations": [],
+            "adoptions": [],
         }
     )
     store.async_save = AsyncMock()
