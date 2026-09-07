@@ -264,7 +264,10 @@ class BindHomeRegistry:
                 raise RegistryNotFoundError(f"Binding {binding_id} was not found")
             if binding.entity_registry_id != adoption.entity_registry_id:
                 raise RegistryValidationError(
-                    "Hardware adoption owner does not target the adopted Entity Registry entry",
+                    (
+                        "Hardware adoption owner does not target the adopted "
+                        "Entity Registry entry"
+                    ),
                     field="binding_ids",
                 )
         existing = self.adoptions.get(adoption.entity_registry_id)
@@ -370,9 +373,7 @@ class BindHomeRegistry:
                 representation.to_dict()
                 for representation in self.representations.values()
             ],
-            "adoptions": [
-                adoption.to_dict() for adoption in self.adoptions.values()
-            ],
+            "adoptions": [adoption.to_dict() for adoption in self.adoptions.values()],
         }
 
     @classmethod

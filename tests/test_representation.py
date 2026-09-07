@@ -210,6 +210,7 @@ def test_explicit_empty_representation_list_disables_legacy_inference() -> None:
             "relations": [],
             "bindings": [],
             "representations": [],
+            "adoptions": [],
         }
     )
 

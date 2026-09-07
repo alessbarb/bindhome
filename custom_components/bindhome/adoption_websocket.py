@@ -8,8 +8,14 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components import websocket_api
 from homeassistant.components.websocket_api.connection import ActiveConnection
-from homeassistant.components.websocket_api.const import ERR_INVALID_FORMAT, ERR_NOT_FOUND
-from homeassistant.components.websocket_api.decorators import async_response, websocket_command
+from homeassistant.components.websocket_api.const import (
+    ERR_INVALID_FORMAT,
+    ERR_NOT_FOUND,
+)
+from homeassistant.components.websocket_api.decorators import (
+    async_response,
+    websocket_command,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv
 
@@ -168,9 +174,7 @@ async def ws_adoption_revert_asset(
     except RegistryError as err:
         _send_error(connection, msg, err)
         return
-    connection.send_result(
-        msg["id"], {"reverted": count, "revision": manager.revision}
-    )
+    connection.send_result(msg["id"], {"reverted": count, "revision": manager.revision})
 
 
 @admin_write
@@ -194,9 +198,7 @@ async def ws_adoption_revert_all(
     except RegistryError as err:
         _send_error(connection, msg, err)
         return
-    connection.send_result(
-        msg["id"], {"reverted": count, "revision": manager.revision}
-    )
+    connection.send_result(msg["id"], {"reverted": count, "revision": manager.revision})
 
 
 def async_register_adoption_websocket_commands(hass: HomeAssistant) -> None:

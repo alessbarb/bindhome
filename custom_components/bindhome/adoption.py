@@ -70,7 +70,7 @@ def sync_adoption_visibility_transition(
                 entry.entity_id,
                 hidden_by=_hidden_enum(old.previous_hidden_by),
             )
-        except (KeyError, ValueError):
+        except KeyError, ValueError:
             continue
 
     for registry_id, adoption in current.items():
@@ -89,7 +89,7 @@ def sync_adoption_visibility_transition(
                 entry.entity_id,
                 hidden_by=er.RegistryEntryHider.INTEGRATION,
             )
-        except (KeyError, ValueError):
+        except KeyError, ValueError:
             continue
 
 
@@ -219,8 +219,12 @@ def adoption_status(
                 "binding": binding.to_dict(),
                 "eligible": entry is not None and registry_id is not None,
                 "adopted": adoption is not None and binding.id in adoption.binding_ids,
-                "entity_id": entry.entity_id if entry is not None else binding.entity_id,
-                "hidden_by": _hidden_value(entry.hidden_by) if entry is not None else None,
+                "entity_id": entry.entity_id
+                if entry is not None
+                else binding.entity_id,
+                "hidden_by": _hidden_value(entry.hidden_by)
+                if entry is not None
+                else None,
                 "visibility_owned": bool(
                     adoption is not None and adoption.changed_hidden_by
                 ),
@@ -241,9 +245,7 @@ def adoption_status(
         )
     }
     relevant_logical = (
-        logical_ids
-        if asset_id is None
-        else {logical.get(asset_id)} - {None}
+        logical_ids if asset_id is None else {logical.get(asset_id)} - {None}
     )
     return {
         "revision": manager.revision,

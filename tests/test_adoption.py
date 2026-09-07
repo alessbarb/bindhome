@@ -83,7 +83,9 @@ async def test_preexisting_user_hidden_state_is_never_owned_or_changed(
     assert adoption.changed_hidden_by is False
 
 
-async def test_user_change_after_adoption_wins_over_reversal(hass: HomeAssistant) -> None:
+async def test_user_change_after_adoption_wins_over_reversal(
+    hass: HomeAssistant,
+) -> None:
     manager, _asset, binding, entry = await _manager_with_binding(hass)
     registry = er.async_get(hass)
     await async_adopt_binding(manager, binding.id)
@@ -122,7 +124,9 @@ async def test_binding_target_change_releases_old_visibility_without_adopting_ne
     assert manager.registry.adoptions == {}
 
 
-async def test_state_machine_only_binding_cannot_be_adopted(hass: HomeAssistant) -> None:
+async def test_state_machine_only_binding_cannot_be_adopted(
+    hass: HomeAssistant,
+) -> None:
     hass.states.async_set("switch.state_only", "off")
     manager = BindHomeManager(hass)
     await manager.async_load()
