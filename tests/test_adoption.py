@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
+from custom_components.bindhome import async_remove_entry
 from custom_components.bindhome.adoption import (
     async_adopt_binding,
     async_revert_all_adoptions,
@@ -199,4 +202,17 @@ async def test_revert_all_restores_all_owned_visibility(hass: HomeAssistant) -> 
     current = er.async_get(hass).entities.get_entry(first.id)
     assert count == 1
     assert current is not None and current.hidden_by is None
+    assert manager.registry.adoptions == {}
+
+
+async def test_remove_entry_reverts_all_owned_visibility(hass: HomeAssistant) -> None:
+    manager, _asset, binding, entry = await _manager_with_binding(hass, "remove")
+    await async_adopt_binding(manager, binding.id)
+
+    with patch("custom_components.bindhome.BindHomeManager", return_value=manager):
+        await async_remove_entry(hass, MagicMock())
+
+    current = er.async_get(hass).entities.get_entry(entry.id)
+    assert current is not None
+    assert current.hidden_by is None
     assert manager.registry.adoptions == {}
