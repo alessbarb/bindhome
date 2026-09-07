@@ -53,8 +53,9 @@ def sync_adoption_visibility_transition(
     """Apply only visibility transitions owned by committed Registry changes.
 
     This function is deliberately best-effort after durable Registry persistence.
-    Missing or concurrently changed Home Assistant entries are left untouched. A
-    later startup reconciliation can re-apply an active adoption, while reversal
+    Missing or concurrently changed Home Assistant entries are left untouched.
+    Active adoptions are not reasserted on later unrelated commits or startup, so
+    a user decision made after consent remains authoritative. Reversal likewise
     never overwrites a newer user decision.
     """
     entity_registry = er.async_get(hass)
