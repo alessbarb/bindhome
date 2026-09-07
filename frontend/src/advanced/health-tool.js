@@ -27,6 +27,7 @@ export class BindHomeHealthTool extends LitElement {
     _recovery: { state: true },
     _drift: { state: true },
     _referenceAudit: { state: true },
+    _adoptionStatus: { state: true },
     _loading: { state: true },
     _error: { state: true },
   };
@@ -42,6 +43,7 @@ export class BindHomeHealthTool extends LitElement {
     this._recovery = null;
     this._drift = [];
     this._referenceAudit = null;
+    this._adoptionStatus = null;
     this._loading = false;
     this._error = null;
   }
@@ -142,13 +144,14 @@ export class BindHomeHealthTool extends LitElement {
     this._error = null;
     try {
       const api = createBindHomeApi(this.hass);
-      const [recovery, discovery, referenceAudit] = await Promise.all([
+      const [recovery, discovery, adoptionStatus] = await Promise.all([
         api.getBackupRecoveryStatus(),
         api.discoverImport(),
-        api.auditDirectReferences(),
+        api.getAdoptionStatus(),
       ]);
       this._recovery = recovery;
-      this._referenceAudit = referenceAudit;
+      this._adoptionStatus = adoptionStatus;
+      this._referenceAudit = adoptionStatus?.reference_audit ?? null;
       const grouped = new Map();
       for (const proposal of discovery?.proposals ?? []) {
         if (proposal?.duplicate_status === DOCUMENTED_IMPORT_STATUS) continue;
@@ -217,6 +220,7 @@ export class BindHomeHealthTool extends LitElement {
     const staleAreas = this._staleAreas();
     const referenceSummary = this._referenceAudit?.summary ?? {};
     const referenceCount = referenceSummary.references ?? 0;
+    const surface = this._adoptionStatus?.summary ?? {};
     const actionableCount = staleBindings.length + unbound.length + staleAreas.length + (this._recovery?.recovery_required ? 1 : 0) + this._drift.reduce((sum, item) => sum + item.count, 0) + referenceCount;
 
     return html`<section class="card" aria-busy=${this._loading ? "true" : "false"}>
@@ -240,6 +244,17 @@ export class BindHomeHealthTool extends LitElement {
         ${Object.entries(byStatus).map(([status, count]) => html`<span class="pill">${this.t(`health.status.${status}`)}: ${count}</span>`)}
       </div>
       <p class=${actionableCount ? "warning" : "ok"}>${this.t(actionableCount ? "health.actionable_count" : "health.all_clear", { count: actionableCount })}</p>
+
+      <div class="section">
+        <h3>${this.t("health.surface_title")}</h3>
+        <p class="muted">${this.t("health.surface_intro")}</p>
+        <div class="summary">
+          <div class="metric"><strong>${surface.logical_entities ?? 0}</strong><span>${this.t("health.surface_logical")}</span></div>
+          <div class="metric"><strong>${surface.adopted_hardware ?? 0}</strong><span>${this.t("health.surface_adopted")}</span></div>
+          <div class="metric"><strong>${surface.bound_hardware_visible ?? 0}</strong><span>${this.t("health.surface_visible")}</span></div>
+          <div class="metric"><strong>${referenceCount}</strong><span>${this.t("health.direct_reference_debt")}</span></div>
+        </div>
+      </div>
 
       ${this._recovery?.recovery_required
         ? html`<div class="section">
