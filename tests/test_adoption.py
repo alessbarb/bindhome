@@ -66,6 +66,48 @@ async def test_revert_restores_exact_previous_visibility(hass: HomeAssistant) ->
     assert manager.registry.adoptions == {}
 
 
+async def test_shared_hardware_stays_adopted_until_last_binding_releases(
+    hass: HomeAssistant,
+) -> None:
+    manager, _asset, first_binding, entry = await _manager_with_binding(hass)
+    second_asset = await manager.async_create_asset(
+        name="Second logical owner",
+        asset_type="relay",
+        code=None,
+        area_id=None,
+        capabilities=["on_off"],
+    )
+    second_binding = await manager.async_set_binding(
+        asset_id=second_asset.id,
+        capability="on_off",
+        entity_id=entry.entity_id,
+        role="primary",
+    )
+
+    await async_adopt_binding(manager, first_binding.id)
+    adoption = await async_adopt_binding(manager, second_binding.id)
+
+    assert adoption.binding_ids == tuple(sorted((first_binding.id, second_binding.id)))
+    current = er.async_get(hass).entities.get_entry(entry.id)
+    assert current is not None
+    assert current.hidden_by is er.RegistryEntryHider.INTEGRATION
+
+    await async_revert_binding_adoption(manager, first_binding.id)
+
+    remaining = manager.registry.adoptions[entry.id]
+    assert remaining.binding_ids == (second_binding.id,)
+    current = er.async_get(hass).entities.get_entry(entry.id)
+    assert current is not None
+    assert current.hidden_by is er.RegistryEntryHider.INTEGRATION
+
+    await async_revert_binding_adoption(manager, second_binding.id)
+
+    current = er.async_get(hass).entities.get_entry(entry.id)
+    assert current is not None
+    assert current.hidden_by is None
+    assert manager.registry.adoptions == {}
+
+
 async def test_preexisting_user_hidden_state_is_never_owned_or_changed(
     hass: HomeAssistant,
 ) -> None:
