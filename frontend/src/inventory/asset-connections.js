@@ -2,6 +2,7 @@ import { defineBindHomeElement } from "../custom-elements.js";
 import { LitElement, css, html, nothing } from "lit";
 
 import { indexBindingStatuses } from "../bindings/binding-state.js";
+import "../bindings/hardware-adoption-control.js";
 import "../bindings/primary-connection-editor.js";
 import "../topology/asset-topology.js";
 
@@ -59,7 +60,7 @@ export class BindHomeAssetConnections extends LitElement {
     }
     .connection-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 14px;
       align-items: start;
     }
@@ -173,6 +174,17 @@ export class BindHomeAssetConnections extends LitElement {
                 `,
               )}
             </div>
+          </article>
+
+          <article class="connection-card">
+            <h4>${this.t("adoption.title")}</h4>
+            <bindhome-hardware-adoption-control
+              .hass=${this.hass}
+              .t=${this.t}
+              .asset=${this.asset}
+              .bindingStatuses=${this.bindingStatuses}
+              .refreshBindingData=${this.refreshBindingData}
+            ></bindhome-hardware-adoption-control>
           </article>
 
           <article class="connection-card">
